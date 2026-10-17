@@ -76,7 +76,10 @@ Two routes: free route reachable in roughly 2 to 4 weeks of casual play, or a mu
 | 3 | Club stadium: floodlights, bigger stand | up to 9 |
 | 4 | Pro stadium: roof, crowd, scoreboard | 11 |
 
-- The stadium tier costs cash only. Floors and stadium tier are two separate tracks (floors by completion, tier by cash).
+- The stadium tier costs cash only. Floors and stadium tier are two separate tracks (floors by completion, tier by cash). The price is taken from the player's cash, and the server charges and applies the upgrade in one step.
+- **"Next goal" HUD row:** a small row under the money label shows one goal at a time ("Next goal: Stadium upgrade", progress bar, "$120 / $200"). It follows the buying path (first player, start the game, first upgrade, next players, stadium upgrade). It is not a list of every upgrade.
+- When the goal becomes affordable, the row **glows brightly** and reads "Stadium upgrade available!", and the guide arrow points to the pad. The glow pulses a few times and then stays steady. No sound and no nagging.
+- **Upgrades can be bought from the HUD row** with a button (stadium tiers and Store upgrades), as well as by standing on the pad in the world. Because it is a big spend, the HUD button asks for a second tap to confirm. Players are still bought only on the capsule pads.
 - **Upgrade animation:** the server confirms the purchase, that player's controls are locked and the camera moves to a cinematic view for about 5 to 8 s while the pitch transforms, then the new capacity shows and controls unlock. It has a time limit (so nobody gets stuck), affects only that player, and the server finishes the upgrade even if the player leaves.
 
 ### World and plots
@@ -116,7 +119,7 @@ Principles: value in the first 30 s, teach by doing (no popups), one new idea pe
 | 3:30 | The first Rare player is bought with a small reveal animation. | Small peak |
 | 4:00 to 4:30 | First hat-trick, scripted once (afterwards real odds apply). The text reads "HAT-TRICK x2". | Surprise before the main peak |
 | 4:30 | They buy the 4th player. The court shows "Field 4/4" and the stadium upgrade pad glows with its price and a progress bar fed by match income. | Creates the next goal |
-| 5:00 | **Peak:** they afford the stadium upgrade. Controls lock, the camera moves, the court transforms into the local ground, and the new capacity shows ("Field 4 to 7"). | Main peak and transition |
+| 5:00 | **Peak:** once they can afford the upgrade, a short message says "Stadium upgrade available!" and the arrow points to the pad (it never fires on its own and never nags). They pay by standing on the pad or by pressing the glowing HUD button. Controls lock, the camera moves, the court transforms into the local ground, and the new capacity shows ("Field 4 to 7"). | Main peak and transition |
 | After 5:00 | The daily penalty pad appears with a short clear prompt. More Store options appear gradually. | Loop established |
 
 Not in the first 5 minutes: training ground, cases, Robux shop, notifications, leaderboard, New Season. They open later, one at a time.
@@ -141,7 +144,8 @@ Pass: no fake timers, no scarcity, no guilt, nothing for sale in the first 5 min
 | Duplicates | Add a star (income bonus, capped) |
 | Field | Auto-filled with top-N income players, no swapping, first player added by a stadium button |
 | Training | One training ground, stamina bar cap (provisional) |
-| Stadium tier cost | Cash only |
+| Stadium tier cost | Cash only, taken on purchase |
+| Goal guidance | HUD "Next goal" row, glows when affordable, buy from HUD (with confirm) or the pad |
 | Floors | Open when the previous floor is complete |
 | Cases and floors | Cases can give higher-floor players, at minimum chances |
 | Trading | Out of version 1 |
