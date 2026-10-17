@@ -158,7 +158,14 @@ Income is cash per match for a player on the field. Prices rise faster than inco
 - **"Cash per match" upgrade, 8 levels:** $15, $60, $240, $960, $3.8K, $15K, $61K, $246K, giving multipliers x1.5, x2.1, x2.7, x3.5, x4.3, x5.1, x5.9, x6.7.
 - **Simulated timeline:** first purchase 0:23, first upgrade 1:06, player 2 at 2:06, player 3 at 3:36, player 4 at 4:16, stadium tier 2 at 5:16, floor 1 complete at about 11 min, floor 2 at about 28 min, floor 3 at about 65 min. Real players should land around 75 to 90 minutes for the first New Season.
 - **Legends (floor 4):** at the end of floor 3 the income is about $1.5M per second. For a free route of roughly 10 to 30 hours of play, the first Legend costs on the order of $50B to $150B, and the 5 Legends rise from there (placeholder: $50B, $100B, $250B, $600B, $1.5T). The permanent New Season multiplier makes later seasons faster.
-- **Still to set:** star bonus size, TP level costs, case odds (minimum chances for higher floors), the New Season multiplier, free daily case amounts.
+- **Stars:** +10% income per star, maximum 5 stars (+50%).
+- **Training points (TP):** stamina session of 5 minutes, refilling in about 5 minutes away. Placeholder rate 10 TP per minute (50 TP per session). Each level adds **+3% income**. Level caps: Common 5, Rare 10, Very Rare 15, Epic 20, Legend 25. Cost of level L = 40 x L x rarity factor (Common 1, Rare 2, Very Rare 3, Epic 4, Legend 5). A Common player reaches level 5 in about 1 hour of training (600 TP, about 12 sessions). A Legend at level 25 is a very long-term goal (about 65,000 TP).
+- **Case (Robux):** 49 Robux. Pool: 70% players from floors you have reached, 25% from the next floor, 5% from further floors. A Legend has a 0.5% chance (inside the 5%) and is only possible once the case is allowed to reach floor 4. Duplicates add a star. All odds, including the chance of a duplicate, are shown before purchase. Pay-to-win risk is limited by the field capacity, the 5-star cap and the x4 total boost cap.
+- **Free daily case:** a mixed prize, either cash worth about 5 minutes of the player's income or a x2 boost for 5 minutes. Never players, never large amounts.
+- **Momentum:** +1% per match in a row this session, maximum +25%. Resets on join.
+- **Offline earnings:** capped at 4 hours of income.
+- **New Season:** the button appears when floor 3 is complete (no extra cash threshold). Each season adds +50% to the permanent multiplier (season 2 = x1.5, season 3 = x2.0, season 4 = x2.5). The second climb should take roughly 40 to 45 minutes instead of 65.
+- **Still to test in playtests:** the real pace of floors 2 and 3 with stars, TP and daily boosts, the Legend prices, the hat-trick chance, and the other Store upgrades (match speed, hat-trick chance, offline earnings), which still need levels and prices.
 
 ## Decisions log
 | Topic | Decision |
@@ -184,7 +191,7 @@ Income is cash per match for a player on the field. Prices rise faster than inco
 | Names | Real names, names kept in Config, risk acknowledged |
 
 ## Steps still to do
-3. Economy (finish): star bonus, TP and level costs, case odds, New Season multiplier. Prices and income are drafted above
+3. Economy: drafted (remaining: levels and prices for the other Store upgrades, then playtest)
 4. Retention and ethics review
 5. Architecture and security (roblox-architecture, roblox-security)
 6. Saving (roblox-data)
