@@ -53,6 +53,7 @@ Two routes: free route reachable in roughly 2 to 4 weeks of casual play, or a mu
 
 ### Training ground
 - One training ground where standing earns **training points (TP)**, spent on levelling any owned player (more income) (*provisional*: no position stations, since rosters are fixed).
+- **Spending TP on a specific player:** every owned player's capsule has a **level-up pad** in front of it (the same spot as the purchase pad, which becomes the training pad once the player is owned). The pad shows the player's level ("Level 3/10"), the TP cost of the next level, and the income bonus it gives. Standing on it (a short ring fills, like a purchase) spends TP and raises that player's level. At the level cap it reads "MAX". No menu. The HUD shows the TP balance once the training ground is unlocked.
 - A **stamina bar** is the cap: it drains while training and refills while away. TP are earned only while present, never offline, never sold for Robux.
 - Level caps by rarity (Common 5, Rare 10, Very Rare 15, Epic 20, Legend 25, placeholders).
 
@@ -74,9 +75,9 @@ Two routes: free route reachable in roughly 2 to 4 weeks of casual play, or a mu
 |---|---|---|---|
 | 1 (start) | Street futsal court: walled, painted lines, centre circle, flags and murals (blocky) | 4 | free |
 | 2 | Walled court with proper lines and a small bench | 5 | $250 |
-| 3 | Local ground: fences and a small stand | 6 | $8K |
-| 4 | Club stadium: floodlights, bigger stand | 8 | $250K |
-| 5 | Pro stadium: roof, crowd, scoreboard, fireworks | 11 | $15M |
+| 3 | Local ground: fences and a small stand | 6 | $25K |
+| 4 | Club stadium: floodlights, bigger stand | 8 | $750K |
+| 5 | Pro stadium: roof, crowd, scoreboard, fireworks | 11 | $45M |
 
 - **Each stadium upgrade gives a free x2 income boost for 5 minutes.** The timer counts only while the player is online (it waits if they leave), and a HUD badge shows the time left ("x2 · 4:32"). A new upgrade resets the timer, it does not add up. It stacks with other boosts inside the total x4 cap. It is free, never a Robux item, and repeats each New Season when the tiers are bought again.
 - The stadium tier costs cash only. Floors and stadium tier are two separate tracks (floors by completion, tier by cash). The price is taken from the player's cash, and the server charges and applies the upgrade in one step.
@@ -158,7 +159,7 @@ Income is cash per match for a player on the field. Prices rise faster than inco
 
 - **Starting cash:** $15.
 - **Legends (floor 4):** $400B, $1T, $2.5T, $6T, $15T. The first Legend should take about 3 weeks of casual free play. The cash route is very expensive and a direct Robux purchase is also available. Re-check these after the first playtests.
-- **Stadium tiers (cash):** tier 2 $250 (field 5), tier 3 $8K (field 6), tier 4 $250K (field 8), tier 5 $15M (field 11). The simulated player buys them at about 5:16, 10 min, 22 min and 53 min. A bigger field adds only about +5% to +27% income in total (the best players do most of the earning), so tiers are mostly milestones. Each one gives a free x2 boost for 5 minutes (counts only while online, resets if a new one starts, inside the x4 cap).
+- **Stadium tiers (cash):** tier 2 $250 (field 5), tier 3 $25K (field 6), tier 4 $750K (field 8), tier 5 $45M (field 11). The final back test (with all boosts, momentum and stars) has a player buying them at about 4 min, 7 min, 10 min and 28 min. Raising tiers 3 to 5 about 3 times spread them out from about 4, 6, 9 and 20 minutes. A bigger field adds only about +5% to +27% income in total (the best players do most of the earning), so tiers are mostly milestones. Each one gives a free x2 boost for 5 minutes (counts only while online, resets if a new one starts, inside the x4 cap).
 - **"Cash per match" upgrade, 8 levels:** $15, $60, $240, $960, $3.8K, $15K, $61K, $246K, giving multipliers x1.5, x2.1, x2.7, x3.5, x4.3, x5.1, x5.9, x6.7.
 - **Match speed (unlocks after stadium tier 2, minimum 5 s so the bar, "VICTORY" text and counter stay readable):** $120 (9 s), $2K (8 s), $30K (7 s), $500K (6 s), $8M (5 s).
 - **Hat-trick chance (unlocks after floor 1):** base 10%, then $300 (12%), $5K (14%), $80K (17%), $1.5M (21%), $25M (25%). It is a cash upgrade, not a Robux luck boost.
