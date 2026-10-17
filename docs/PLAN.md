@@ -1,6 +1,6 @@
 # soccer-tycoon: design plan
 
-Status: steps 1 and 2 agreed, step 3 (economy) drafted. Items marked *provisional* use defaults and can change. Steps 4 to 8 are still to do.
+Status: steps 1 to 3 agreed (step 3 numbers are a draft to be playtested). Items marked *provisional* use defaults and can change. Steps 4 to 8 are still to do.
 
 ## Step 1: core loop
 
@@ -16,7 +16,7 @@ payout = base x sum(field player income) x upgrades x momentum x daily boost x (
 
 - **Hat-trick:** small random chance (about 10%) of a 2x match. The same text reads "HAT-TRICK x2" in a different colour, and "+$N" is the doubled amount. A Store upgrade can raise the chance later.
 - **Momentum:** session-only bonus for matches played in a row (for example +1% per match, capped). Never saved. Resets to 0 on join.
-- **Offline earnings:** capped. Matches pay offline.
+- **Offline earnings:** capped at 4 hours of income. The offline rate starts at 10% of normal income and an upgrade raises it up to 35% (see Step 3).
 
 ### Stadium: 4 floors of capsules
 Players are physical displays in the world (glass capsules on pedestals, like a tycoon). There is no inventory menu and no picker.
@@ -61,8 +61,8 @@ Two routes: free route reachable in roughly 2 to 4 weeks of casual play, or a mu
 - The server judges each kick (the client only sends the aim) and decides the reset time. No day-streak, no penalty for skipping.
 
 ### Store
-- **Cash upgrades:** match speed, cash per match, hat-trick chance (later), offline earnings. No daily limit: rising prices are the gate. Every upgrade is reachable with cash.
-- **Robux match boost:** "next 5 matches x2" (developer product, price and size on the button). Boosted matches are banked up to a **maximum of 10**, shown by a counter ("Boosted matches left: 7"). It can be bought again once the bank has room. Stacking with other boosts is capped (placeholder: total boost never above x4).
+- **Cash upgrades:** cash per match (from the start), match speed (after stadium tier 2), hat-trick chance and offline earnings (after floor 1 is complete). No daily limit: rising prices are the gate. Every upgrade is reachable with cash. Levels and prices are in Step 3.
+- **Robux match boost:** "next 30 matches x2" (developer product, price about 25 to 49 Robux, size and price on the button). Boosted matches are banked up to a **maximum of 60**, shown by a counter ("Boosted matches left: 27"). It can be bought again once the bank has room. Stacking with other boosts is capped (total boost never above x4).
 - Purchases are granted by the server and must be safe if the purchase message arrives twice (`roblox-monetization`).
 - The offer lives in the Store only: no purchase popups after matches, nothing in the first 5 minutes.
 
@@ -70,18 +70,20 @@ Two routes: free route reachable in roughly 2 to 4 weeks of casual play, or a mu
 - Each plot has two areas: **the building** (capsule floors, where you farm and own players) and **the pitch outside** (the "stadium", where matches are shown). The building has an open or glass front so matches can be watched from the pads (*provisional* layout: pitch in front, building behind).
 - The match scene is a short scripted animation. The server has already decided the result and payout. Opponents are cosmetic dummies.
 
-| Stadium tier | Pitch | Players on the field (placeholder) |
-|---|---|---|
-| 1 (start) | Street futsal court: walled, painted lines, centre circle, flags and murals (blocky) | up to 4 |
-| 2 | Local ground: fences, small stand | up to 7 |
-| 3 | Club stadium: floodlights, bigger stand | up to 9 |
-| 4 | Pro stadium: roof, crowd, scoreboard | 11 |
+| Stadium tier | Pitch | Players on the field | Price |
+|---|---|---|---|
+| 1 (start) | Street futsal court: walled, painted lines, centre circle, flags and murals (blocky) | 4 | free |
+| 2 | Walled court with proper lines and a small bench | 5 | $250 |
+| 3 | Local ground: fences and a small stand | 6 | $8K |
+| 4 | Club stadium: floodlights, bigger stand | 8 | $250K |
+| 5 | Pro stadium: roof, crowd, scoreboard, fireworks | 11 | $15M |
 
+- **Each stadium upgrade gives a free x2 income boost for 5 minutes.** The timer counts only while the player is online (it waits if they leave), and a HUD badge shows the time left ("x2 · 4:32"). A new upgrade resets the timer, it does not add up. It stacks with other boosts inside the total x4 cap. It is free, never a Robux item, and repeats each New Season when the tiers are bought again.
 - The stadium tier costs cash only. Floors and stadium tier are two separate tracks (floors by completion, tier by cash). The price is taken from the player's cash, and the server charges and applies the upgrade in one step.
 - **"Next goal" HUD row:** a small row under the money label shows one goal at a time ("Next goal: Stadium upgrade", progress bar, "$120 / $200"). It follows the buying path (first player, start the game, first upgrade, next players, stadium upgrade). It is not a list of every upgrade.
 - When the goal becomes affordable, the row **glows brightly** and reads "Stadium upgrade available!", and the guide arrow points to the pad. The glow pulses a few times and then stays steady. No sound and no nagging.
 - **Upgrades can be bought from the HUD row** with a button (stadium tiers and Store upgrades), as well as by standing on the pad in the world. Because it is a big spend, the HUD button asks for a second tap to confirm. Players are still bought only on the capsule pads.
-- **Upgrade animation:** the server confirms the purchase, that player's controls are locked and the camera moves to a cinematic view for about 5 to 8 s while the pitch transforms, then the new capacity shows and controls unlock. Beats (about 6 s): pay and lock, camera to the court, shake and dust while field players step aside, fences and stand rise and floodlights switch on one by one, "STADIUM UPGRADED" and "Field 4 to 7" text, the next-best bench players run onto the new spots, controls unlock and the HUD goal switches. It works wherever the player bought it (the camera goes to the court). The first upgrade cannot be skipped; from the second upgrade a tap skips to the end. Later tiers get bigger versions (tier 2 to 3: bigger stand and lights; tier 3 to 4: roof, crowd, scoreboard, fireworks). No fast flashes, mobile friendly. It has a time limit (so nobody gets stuck), affects only that player, and the server finishes the upgrade even if the player leaves.
+- **Upgrade animation:** the server confirms the purchase, that player's controls are locked and the camera moves to a cinematic view for about 5 to 8 s while the pitch transforms, then the new capacity shows and controls unlock. Beats (about 6 s): pay and lock, camera to the court, shake and dust while field players step aside, fences and stand rise and floodlights switch on one by one, "STADIUM UPGRADED", "Field 4 to 5" and "x2 for 5 minutes" text, the next-best bench players run onto the new spots, controls unlock and the HUD goal switches. It works wherever the player bought it (the camera goes to the court). The first upgrade cannot be skipped; from the second upgrade a tap skips to the end. Later tiers get bigger versions (tier 2 to 3: fences and a small stand; tier 3 to 4: floodlights and a bigger stand; tier 4 to 5: roof, crowd, scoreboard, fireworks). No fast flashes, mobile friendly. It has a time limit (so nobody gets stuck), affects only that player, and the server finishes the upgrade even if the player leaves.
 
 ### World and plots
 - Shared world: players spawn in a shared area outside, with free plots in front. Visitors can see claimed plots, buildings and pitches.
@@ -92,7 +94,7 @@ Two routes: free route reachable in roughly 2 to 4 weeks of casual play, or a mu
 
 ### New Season (rebirth) (*provisional*)
 - Called "New Season", not leagues: the 35 players stay the same.
-- Unlocked after floor 3 (the last cash floor) is complete and a cash threshold is met. Target first New Season about 60 to 90 minutes in. It does not require owning Legends.
+- Unlocked after floor 3 (the last cash floor) is complete and a cash threshold is met. Target first New Season about 2 to 3 hours of play in (day 2 for an efficient player, around day 4 for a casual one). It does not require owning Legends.
 - **Resets:** cash, floors 1 to 3 back to floor 1, players from floors 1 to 3, Store upgrade levels, TP levels.
 - **Stays:** Legends, anything bought with Robux, trophies, the permanent income multiplier (diminishing returns), stars, the collection record.
 - Confirm screen shows exactly what is lost and gained. Optional, no timers, no guilt.
@@ -121,8 +123,8 @@ Principles: value in the first 30 s, teach by doing (no popups), one new idea pe
 | 1:30 to 3:00 | The next capsule lights up with the arrow. They buy the 2nd and 3rd players, who join the field automatically (the court shows 2, then 3 players). | The buying order is the tutorial, and each purchase visibly changes the court |
 | 3:30 | The 3rd player is bought with a small reveal animation (name, number, nationality). | Small peak |
 | 4:00 to 4:30 | First hat-trick, scripted once (afterwards real odds apply). The text reads "HAT-TRICK x2". | Surprise before the main peak |
-| 4:30 | They buy the 4th player. The court shows "Field 4/4" and the stadium upgrade pad glows with its price and a progress bar fed by match income. | Creates the next goal |
-| 5:00 | **Peak:** once they can afford the upgrade, a short message says "Stadium upgrade available!" and the arrow points to the pad (it never fires on its own and never nags). They pay by standing on the pad or by pressing the glowing HUD button. Controls lock, the camera moves, the court transforms into the local ground, and the new capacity shows ("Field 4 to 7"). | Main peak and transition |
+| 4:30 | They buy the 4th player. The court shows "Field 4/4" and the stadium upgrade pad shows its price ($250) and a progress bar fed by match income. | Creates the next goal |
+| 5:00 | **Peak:** once they can afford the upgrade, a short message says "Stadium upgrade available!" and the arrow points to the pad (it never fires on its own and never nags). They pay by standing on the pad or by pressing the glowing HUD button. Controls lock, the camera moves, the street court becomes a walled court with proper lines, the new capacity shows ("Field 4 to 5") and a x2 income boost starts for 5 minutes. | Main peak and transition |
 | After 5:00 | The daily penalty pad appears with a short clear prompt. More Store options appear gradually. | Loop established |
 
 Not in the first 5 minutes: training ground, cases, Robux shop, notifications, leaderboard, New Season. They open later, one at a time.
@@ -137,42 +139,54 @@ Pass: no fake timers, no scarcity, no guilt, nothing for sale in the first 5 min
 
 ## Step 3: economy (draft, to be playtested)
 
-Method: a small simulation of a player who buys the cheapest next item as soon as they can, with matches every 10 s and the average effect of hat-tricks. It ignores stars, TP and daily boosts (which speed things up) and assumes efficient play (real players are slower). All numbers are placeholders for `Config`. The HUD shows large numbers with K, M, B abbreviations.
+Method: a small simulation of a player who buys the cheapest next item as soon as they can, with matches every 10 s and the average effect of hat-tricks. Back tests ran five player types (free efficient, free casual, light, regular and heavy spenders). They ignore training points, momentum, daily penalties, the New Season multiplier and real player behaviour, treat star bonuses roughly, and use placeholder Robux prices. All numbers are placeholders for `Config`. The HUD shows large numbers with K, M, B, T abbreviations.
 
-Income is cash per match for a player on the field. Prices rise faster than income, so each purchase takes a bit longer to pay back.
+Income is cash per match for a player on the field. Prices rise faster than income, so each purchase takes longer to pay back. Floor 1 grows by 2.05x per player, floor 2 by 1.9x and floor 3 by 2.0x (income grows 1.6x, 1.5x and 1.45x).
 
 | # | Floor | Price | Income | | # | Floor | Price | Income | | # | Floor | Price | Income |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | 1 | $10 | $3 | | 11 | 2 | $19.5K | $403 | | 21 | 3 | $4.8M | $22.4K |
-| 2 | 1 | $30 | $5 | | 12 | 2 | $34.1K | $604 | | 22 | 3 | $7.7M | $32.5K |
-| 3 | 1 | $70 | $9 | | 13 | 2 | $59.7K | $906 | | 23 | 3 | $12.3M | $47.2K |
-| 4 | 1 | $150 | $16 | | 14 | 2 | $104K | $1.4K | | 24 | 3 | $19.7M | $68.4K |
-| 5 | 1 | $308 | $26 | | 15 | 2 | $183K | $2K | | 25 | 3 | $31.4M | $99.2K |
-| 6 | 1 | $630 | $41 | | 16 | 2 | $320K | $3.1K | | 26 | 3 | $50.3M | $144K |
-| 7 | 1 | $1.3K | $66 | | 17 | 2 | $560K | $4.6K | | 27 | 3 | $80.5M | $209K |
-| 8 | 1 | $2.7K | $105 | | 18 | 2 | $979K | $6.9K | | 28 | 3 | $129M | $302K |
-| 9 | 1 | $5.4K | $168 | | 19 | 2 | $1.7M | $10.3K | | 29 | 3 | $206M | $439K |
-| 10 | 1 | $11.1K | $268 | | 20 | 2 | $3M | $15.5K | | 30 | 3 | $330M | $636K |
+| 1 | 1 | $10 | $3 | | 11 | 2 | $21.2K | $403 | | 21 | 3 | $13.7M | $22.4K |
+| 2 | 1 | $30 | $5 | | 12 | 2 | $40.2K | $604 | | 22 | 3 | $27.3M | $32.5K |
+| 3 | 1 | $70 | $9 | | 13 | 2 | $76.4K | $906 | | 23 | 3 | $54.6M | $47.2K |
+| 4 | 1 | $150 | $16 | | 14 | 2 | $145K | $1.4K | | 24 | 3 | $109M | $68.4K |
+| 5 | 1 | $308 | $26 | | 15 | 2 | $276K | $2K | | 25 | 3 | $218M | $99.2K |
+| 6 | 1 | $630 | $41 | | 16 | 2 | $524K | $3.1K | | 26 | 3 | $437M | $144K |
+| 7 | 1 | $1.3K | $66 | | 17 | 2 | $995K | $4.6K | | 27 | 3 | $874M | $209K |
+| 8 | 1 | $2.7K | $105 | | 18 | 2 | $1.9M | $6.9K | | 28 | 3 | $1.75B | $302K |
+| 9 | 1 | $5.4K | $168 | | 19 | 2 | $3.6M | $10.3K | | 29 | 3 | $3.49B | $439K |
+| 10 | 1 | $11.1K | $268 | | 20 | 2 | $6.8M | $15.5K | | 30 | 3 | $6.99B | $636K |
 
-- **Stadium tiers (cash):** tier 2 $250 (field 7), tier 3 $3,000 (field 9), tier 4 $120,000 (field 11).
+- **Starting cash:** $15.
+- **Legends (floor 4):** $400B, $1T, $2.5T, $6T, $15T. The first Legend should take about 3 weeks of casual free play. The cash route is very expensive and a direct Robux purchase is also available. Re-check these after the first playtests.
+- **Stadium tiers (cash):** tier 2 $250 (field 5), tier 3 $8K (field 6), tier 4 $250K (field 8), tier 5 $15M (field 11). The simulated player buys them at about 5:16, 10 min, 22 min and 53 min. A bigger field adds only about +5% to +27% income in total (the best players do most of the earning), so tiers are mostly milestones. Each one gives a free x2 boost for 5 minutes (counts only while online, resets if a new one starts, inside the x4 cap).
 - **"Cash per match" upgrade, 8 levels:** $15, $60, $240, $960, $3.8K, $15K, $61K, $246K, giving multipliers x1.5, x2.1, x2.7, x3.5, x4.3, x5.1, x5.9, x6.7.
-- **Simulated timeline:** first purchase 0:23, first upgrade 1:06, player 2 at 2:06, player 3 at 3:36, player 4 at 4:16, stadium tier 2 at 5:16, floor 1 complete at about 11 min, floor 2 at about 28 min, floor 3 at about 65 min. Real players should land around 75 to 90 minutes for the first New Season.
-- **Legends (floor 4):** at the end of floor 3 the income is about $1.5M per second. For a free route of roughly 10 to 30 hours of play, the first Legend costs on the order of $50B to $150B, and the 5 Legends rise from there (placeholder: $50B, $100B, $250B, $600B, $1.5T). The permanent New Season multiplier makes later seasons faster.
+- **Match speed (unlocks after stadium tier 2, minimum 5 s so the bar, "VICTORY" text and counter stay readable):** $120 (9 s), $2K (8 s), $30K (7 s), $500K (6 s), $8M (5 s).
+- **Hat-trick chance (unlocks after floor 1):** base 10%, then $300 (12%), $5K (14%), $80K (17%), $1.5M (21%), $25M (25%). It is a cash upgrade, not a Robux luck boost.
+- **Offline earnings (unlocks after floor 1):** cap 4 hours of income. Rate starts at 10% and rises with $500 (15%), $10K (20%), $200K (25%), $4M (30%), $80M (35%). At 100% it out-earned active play, so it is deliberately low.
 - **Stars:** +10% income per star, maximum 5 stars (+50%).
 - **Training points (TP):** stamina session of 5 minutes, refilling in about 5 minutes away. Placeholder rate 10 TP per minute (50 TP per session). Each level adds **+3% income**. Level caps: Common 5, Rare 10, Very Rare 15, Epic 20, Legend 25. Cost of level L = 40 x L x rarity factor (Common 1, Rare 2, Very Rare 3, Epic 4, Legend 5). A Common player reaches level 5 in about 1 hour of training (600 TP, about 12 sessions). A Legend at level 25 is a very long-term goal (about 65,000 TP).
-- **Case (Robux):** 49 Robux. Pool: 70% players from floors you have reached, 25% from the next floor, 5% from further floors. A Legend has a 0.5% chance (inside the 5%) and is only possible once the case is allowed to reach floor 4. Duplicates add a star. All odds, including the chance of a duplicate, are shown before purchase. Pay-to-win risk is limited by the field capacity, the 5-star cap and the x4 total boost cap.
-- **Free daily case:** a mixed prize, either cash worth about 5 minutes of the player's income or a x2 boost for 5 minutes. Never players, never large amounts.
 - **Momentum:** +1% per match in a row this session, maximum +25%. Resets on join.
-- **Offline earnings:** capped at 4 hours of income.
-- **New Season:** the button appears when floor 3 is complete (no extra cash threshold). Each season adds +50% to the permanent multiplier (season 2 = x1.5, season 3 = x2.0, season 4 = x2.5). The second climb should take roughly 40 to 45 minutes instead of 65.
-- **Still to test in playtests:** the real pace of floors 2 and 3 with stars, TP and daily boosts, the Legend prices, the hat-trick chance, and the other Store upgrades (match speed, hat-trick chance, offline earnings), which still need levels and prices.
+- **Daily penalties:** x1.5 income for up to 10 minutes.
+- **Case (Robux):** 49 Robux. Pool: 70% players from floors you have reached, 25% from the next floor, 5% from further floors. A Legend has a 0.5% chance (inside the 5%). Duplicates add a star. All odds, including the chance of a duplicate, are shown before purchase.
+- **Free daily case:** a mixed prize, either cash worth about 5 minutes of the player's income or a x2 boost for 5 minutes. Never players, never large amounts.
+- **Robux boost:** next 30 matches x2, banked up to 60, about 25 to 49 Robux. A 5-match pack was too small to feel worth buying (a 30-minute session has about 180 matches). Total boost never above x4.
+- **New Season:** the button appears when floor 3 is complete (no extra cash threshold). Each season adds +50% to the permanent multiplier (season 2 = x1.5, season 3 = x2.0, season 4 = x2.5).
+
+### Simulated pacing
+- First 5 minutes: first purchase 0:23, first upgrade 1:06, player 2 at 2:06, player 3 at 3:36, player 4 at 4:16, stadium tier 2 at 5:16. This matches the Step 2 script.
+- Floor 1 complete at about 11 min, floor 2 at about 40 min, floor 3 in about 2.7 hours of play (day 2 for an efficient player, around day 4 for a 30-minute-a-day player). First Legend after about 3 weeks of casual free play.
+- Spenders save time but not a lot. Boosts roughly equal playing twice as long, and a free player can catch up with time. **Cases are the strongest shortcut** (a regular spender skipped much of floor 3), so watch the 70 / 25 / 5 case pool in playtests and lower it (for example to 90 / 9 / 1) if players skip floors.
+
+### Still to test in playtests
+Real pacing of floors 2 and 3 with stars, TP, momentum and daily boosts, the Legend prices, the case pool, the hat-trick chance, the offline rate and whether the 30-match boost feels worth its price.
 
 ## Decisions log
 | Topic | Decision |
 |---|---|
 | Opponent | Cosmetic only, always a win |
 | Match feedback | Loading bar in HUD, then "VICTORY" (or "HAT-TRICK x2") text and "+$N" on the money label |
-| Store | Cash upgrades with no daily limit. Robux boost: next 5 matches x2, banked up to 10 |
+| Store | Cash upgrades with no daily limit. Robux boost: next 30 matches x2, banked up to 60, total boost cap x4 |
+| Stadium | 5 tiers (field 4, 5, 6, 8, 11), each upgrade gives a free x2 boost for 5 minutes |
 | Streak | Momentum, session only |
 | Stadium | 4 floors of capsules, 10 + 10 + 10 + 5 players (35) |
 | Buying | Stand on the pad in front of the capsule |
@@ -191,7 +205,7 @@ Income is cash per match for a player on the field. Prices rise faster than inco
 | Names | Real names, names kept in Config, risk acknowledged |
 
 ## Steps still to do
-3. Economy: drafted (remaining: levels and prices for the other Store upgrades, then playtest)
+3. Economy: drafted and tested with a simulation (needs real playtests)
 4. Retention and ethics review
 5. Architecture and security (roblox-architecture, roblox-security)
 6. Saving (roblox-data)
