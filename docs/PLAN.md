@@ -1,6 +1,6 @@
 # soccer-tycoon: design plan
 
-Status: steps 1 and 2 agreed (items marked *provisional* use defaults and can change). Steps 3 to 8 are still to do.
+Status: steps 1 and 2 agreed, step 3 (economy) drafted. Items marked *provisional* use defaults and can change. Steps 4 to 8 are still to do.
 
 ## Step 1: core loop
 
@@ -18,16 +18,17 @@ payout = base x sum(field player income) x upgrades x momentum x daily boost x (
 - **Momentum:** session-only bonus for matches played in a row (for example +1% per match, capped). Never saved. Resets to 0 on join.
 - **Offline earnings:** capped. Matches pay offline.
 
-### Stadium: 3 floors of capsules
+### Stadium: 4 floors of capsules
 Players are physical displays in the world (glass capsules on pedestals, like a tycoon). There is no inventory menu and no picker.
 
-| Floor | Players | Rarity |
-|---|---|---|
-| 1 | 10 | Common + Rare (placeholder split 6 + 4) |
-| 2 | 10 | Very Rare + Epic (placeholder split 5 + 5) |
-| 3 | 5 | Legend |
+| Floor | Players | Rarity | Role |
+|---|---|---|---|
+| 1 | 10 | Common + Rare (placeholder split 4 + 6) | First hour, the tutorial floor |
+| 2 | 10 | Rare + Very Rare | Early mid game |
+| 3 | 10 | Very Rare + Epic | Late mid game, the last cash floor |
+| 4 | 5 | Legend | Long-term goal (the Legends hall) |
 
-- 25 players in total. Rarity tiers: Common, Rare, Very Rare, Epic, Legend.
+- 35 players in total. Rarity tiers: Common, Rare, Very Rare, Epic, Legend.
 - Each capsule is one specific named player with a fixed price and income.
 - **Purchase pad:** each capsule has a pad on the floor in front of it showing the name and price. The player buys by standing on the pad (a short ring fills for about half a second to avoid accidental buys). If they cannot afford it, the pad shows the missing amount. The server decides the purchase and checks proximity.
 - **A floor opens when the previous floor is complete** (all its players owned). Players won from cases count as owned for completion. Nobody is ever replaced or removed.
@@ -47,8 +48,8 @@ Players are physical displays in the world (glass capsules on pedestals, like a 
 - **Player case (Robux):** CS-style case-opening animation. The server decides the result first, then the animation shows it. The strip must reflect the real odds (no fake near-misses). Odds are shown before purchase, including the chance of a duplicate. Roblox treats this as a paid random item: odds disclosure is required, pity systems and luck boosts count as paid random items too, and a `PolicyService` restriction may apply to some users. Before building, check current policy and offer the documented alternatives (direct purchase, earnable reward, a known non-random sequence) for affected users.
 - Cap the total star bonus and let the free paths also produce duplicates, so paying is not the only way to get stronger.
 
-### Legends (floor 3)
-Two routes: free route reachable in roughly 2 to 4 weeks of casual play, or a much more expensive cash route, or a direct Robux purchase at a clearly shown price. A Legend bought with Robux can only be bought inside the building once floor 3 has been reached, so the rule is the same for everyone. Never reset anything bought with Robux.
+### Legends (floor 4)
+Two routes: free route reachable in roughly 2 to 4 weeks of casual play, or a much more expensive cash route, or a direct Robux purchase at a clearly shown price. A Legend bought with Robux can only be bought inside the building once floor 4 has been reached, so the rule is the same for everyone. Legends stay across New Seasons, and so does anything bought with Robux.
 
 ### Training ground
 - One training ground where standing earns **training points (TP)**, spent on levelling any owned player (more income) (*provisional*: no position stations, since rosters are fixed).
@@ -90,11 +91,13 @@ Two routes: free route reachable in roughly 2 to 4 weeks of casual play, or a mu
 - Blocky cartoon style. Mobile first.
 
 ### New Season (rebirth) (*provisional*)
-- Called "New Season", not leagues: the 25 players stay the same.
-- Unlocked after floor 3 is reached and a cash threshold is met (target first rebirth about 45 to 60 minutes in).
-- **Resets:** cash, floors back to floor 1, cash-bought players, Store upgrade levels, TP levels.
-- **Stays:** anything bought with Robux, trophies, the permanent income multiplier (diminishing returns), stars, the collection record.
+- Called "New Season", not leagues: the 35 players stay the same.
+- Unlocked after floor 3 (the last cash floor) is complete and a cash threshold is met. Target first New Season about 60 to 90 minutes in. It does not require owning Legends.
+- **Resets:** cash, floors 1 to 3 back to floor 1, players from floors 1 to 3, Store upgrade levels, TP levels.
+- **Stays:** Legends, anything bought with Robux, trophies, the permanent income multiplier (diminishing returns), stars, the collection record.
 - Confirm screen shows exactly what is lost and gained. Optional, no timers, no guilt.
+- **Season badge in the HUD** next to the money label ("Season 2 · x1.5": season number and permanent multiplier). Tapping it shows progress (floors complete, cash threshold, what the next season gives). When New Season becomes available the badge glows and reads "New Season available" (no nagging, no timer), and the "Next goal" row switches to "Start New Season".
+- Legends and anything bought with Robux are kept across seasons (*provisional*: this replaces the idea of resetting every cash-bought player).
 - Trophies perk shop: later, not in the first release.
 
 ### Naming
@@ -116,7 +119,7 @@ Principles: value in the first 30 s, teach by doing (no popups), one new idea pe
 | 0:40 to 1:00 | A match every ~10 s keeps paying. The Store pad glows when an upgrade is affordable and the arrow points to it. | Guide without a menu |
 | 1:00 | First upgrade (Cash per match, about $20). Next matches pay visibly more. | Spending makes numbers go up |
 | 1:30 to 3:00 | The next capsule lights up with the arrow. They buy the 2nd and 3rd players, who join the field automatically (the court shows 2, then 3 players). | The buying order is the tutorial, and each purchase visibly changes the court |
-| 3:30 | The first Rare player is bought with a small reveal animation. | Small peak |
+| 3:30 | The 3rd player is bought with a small reveal animation (name, number, nationality). | Small peak |
 | 4:00 to 4:30 | First hat-trick, scripted once (afterwards real odds apply). The text reads "HAT-TRICK x2". | Surprise before the main peak |
 | 4:30 | They buy the 4th player. The court shows "Field 4/4" and the stadium upgrade pad glows with its price and a progress bar fed by match income. | Creates the next goal |
 | 5:00 | **Peak:** once they can afford the upgrade, a short message says "Stadium upgrade available!" and the arrow points to the pad (it never fires on its own and never nags). They pay by standing on the pad or by pressing the glowing HUD button. Controls lock, the camera moves, the court transforms into the local ground, and the new capacity shows ("Field 4 to 7"). | Main peak and transition |
@@ -132,6 +135,31 @@ Time to first purchase under about 30 s; share reaching the first stadium upgrad
 ### Ethics check
 Pass: no fake timers, no scarcity, no guilt, nothing for sale in the first 5 minutes.
 
+## Step 3: economy (draft, to be playtested)
+
+Method: a small simulation of a player who buys the cheapest next item as soon as they can, with matches every 10 s and the average effect of hat-tricks. It ignores stars, TP and daily boosts (which speed things up) and assumes efficient play (real players are slower). All numbers are placeholders for `Config`. The HUD shows large numbers with K, M, B abbreviations.
+
+Income is cash per match for a player on the field. Prices rise faster than income, so each purchase takes a bit longer to pay back.
+
+| # | Floor | Price | Income | | # | Floor | Price | Income | | # | Floor | Price | Income |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 1 | $10 | $3 | | 11 | 2 | $19.5K | $403 | | 21 | 3 | $4.8M | $22.4K |
+| 2 | 1 | $30 | $5 | | 12 | 2 | $34.1K | $604 | | 22 | 3 | $7.7M | $32.5K |
+| 3 | 1 | $70 | $9 | | 13 | 2 | $59.7K | $906 | | 23 | 3 | $12.3M | $47.2K |
+| 4 | 1 | $150 | $16 | | 14 | 2 | $104K | $1.4K | | 24 | 3 | $19.7M | $68.4K |
+| 5 | 1 | $308 | $26 | | 15 | 2 | $183K | $2K | | 25 | 3 | $31.4M | $99.2K |
+| 6 | 1 | $630 | $41 | | 16 | 2 | $320K | $3.1K | | 26 | 3 | $50.3M | $144K |
+| 7 | 1 | $1.3K | $66 | | 17 | 2 | $560K | $4.6K | | 27 | 3 | $80.5M | $209K |
+| 8 | 1 | $2.7K | $105 | | 18 | 2 | $979K | $6.9K | | 28 | 3 | $129M | $302K |
+| 9 | 1 | $5.4K | $168 | | 19 | 2 | $1.7M | $10.3K | | 29 | 3 | $206M | $439K |
+| 10 | 1 | $11.1K | $268 | | 20 | 2 | $3M | $15.5K | | 30 | 3 | $330M | $636K |
+
+- **Stadium tiers (cash):** tier 2 $250 (field 7), tier 3 $3,000 (field 9), tier 4 $120,000 (field 11).
+- **"Cash per match" upgrade, 8 levels:** $15, $60, $240, $960, $3.8K, $15K, $61K, $246K, giving multipliers x1.5, x2.1, x2.7, x3.5, x4.3, x5.1, x5.9, x6.7.
+- **Simulated timeline:** first purchase 0:23, first upgrade 1:06, player 2 at 2:06, player 3 at 3:36, player 4 at 4:16, stadium tier 2 at 5:16, floor 1 complete at about 11 min, floor 2 at about 28 min, floor 3 at about 65 min. Real players should land around 75 to 90 minutes for the first New Season.
+- **Legends (floor 4):** at the end of floor 3 the income is about $1.5M per second. For a free route of roughly 10 to 30 hours of play, the first Legend costs on the order of $50B to $150B, and the 5 Legends rise from there (placeholder: $50B, $100B, $250B, $600B, $1.5T). The permanent New Season multiplier makes later seasons faster.
+- **Still to set:** star bonus size, TP level costs, case odds (minimum chances for higher floors), the New Season multiplier, free daily case amounts.
+
 ## Decisions log
 | Topic | Decision |
 |---|---|
@@ -139,7 +167,7 @@ Pass: no fake timers, no scarcity, no guilt, nothing for sale in the first 5 min
 | Match feedback | Loading bar in HUD, then "VICTORY" (or "HAT-TRICK x2") text and "+$N" on the money label |
 | Store | Cash upgrades with no daily limit. Robux boost: next 5 matches x2, banked up to 10 |
 | Streak | Momentum, session only |
-| Stadium | 3 floors of capsules, 10 + 10 + 5 players |
+| Stadium | 4 floors of capsules, 10 + 10 + 10 + 5 players (35) |
 | Buying | Stand on the pad in front of the capsule |
 | Duplicates | Add a star (income bonus, capped) |
 | Field | Auto-filled with top-N income players, no swapping, first player added by a stadium button |
@@ -152,11 +180,11 @@ Pass: no fake timers, no scarcity, no guilt, nothing for sale in the first 5 min
 | Roulette | Replaced by cases (free daily, Robux player case) |
 | Legends | Free grind or cash or Robux |
 | World | Shared world, claimable plots, personal building and pitch |
-| Rebirth | New Season, same roster (provisional) |
+| Rebirth | New Season after floor 3 is complete, Legends and Robux purchases kept (provisional) |
 | Names | Real names, names kept in Config, risk acknowledged |
 
 ## Steps still to do
-3. Economy: prices, income, stars, TP and level costs, case odds, first rebirth timing
+3. Economy (finish): star bonus, TP and level costs, case odds, New Season multiplier. Prices and income are drafted above
 4. Retention and ethics review
 5. Architecture and security (roblox-architecture, roblox-security)
 6. Saving (roblox-data)
