@@ -98,10 +98,18 @@ local function makeTile(parent: Instance, reward: Config.CaseReward, index: numb
 		Name = "Tile" .. index,
 		Position = UDim2.fromOffset((index - 1) * (TILE_W + TILE_GAP), (WINDOW_H - TILE_H) / 2),
 		Size = UDim2.fromOffset(TILE_W, TILE_H),
-		BackgroundColor3 = KIND_COLORS[reward.kind],
+		BackgroundColor3 = KIND_COLORS[reward.kind]:Lerp(Color3.fromRGB(20, 24, 35), 0.55),
 	}, parent)
-	rounded(tile, 8)
+	rounded(tile, 6)
 	new("UIStroke", { Name = "Outline", Color = Style.ui.dark, Thickness = 2 }, tile)
+	-- The coloured bar on top says what kind of reward it is (like the rarity bar of a case tile).
+	local bar = new("Frame", {
+		Name = "KindBar",
+		Size = UDim2.new(1, 0, 0, 5),
+		BackgroundColor3 = KIND_COLORS[reward.kind]:Lerp(Color3.new(1, 1, 1), 0.25),
+		BorderSizePixel = 0,
+	}, tile)
+	rounded(bar, 3)
 	new("TextLabel", {
 		Name = "Label",
 		Position = UDim2.fromOffset(4, 10),
@@ -321,15 +329,30 @@ function CaseModal.init()
 		Size = UDim2.fromOffset(TILE_COUNT * (TILE_W + TILE_GAP), WINDOW_H),
 		BackgroundTransparency = 1,
 	}, window)
-	new("Frame", {
+	-- The indicator: a thin line through the middle that reaches above and below the strip, with a
+	-- little arrow on top (it is a sibling of the window, because the window clips its children).
+	local marker = new("Frame", {
 		Name = "Marker",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.fromScale(0.5, 0),
-		Size = UDim2.new(0, 4, 1, 0),
-		BackgroundColor3 = Style.ui.gold,
+		Position = UDim2.fromOffset(18 + WINDOW_W / 2, 180 - 12),
+		Size = UDim2.fromOffset(3, WINDOW_H + 24),
+		BackgroundColor3 = Color3.fromRGB(255, 150, 40),
 		BorderSizePixel = 0,
-		ZIndex = 5,
-	}, window)
+		ZIndex = 6,
+		Visible = false,
+	}, panel)
+	new("TextLabel", {
+		Name = "Arrow",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 0, 2),
+		Size = UDim2.fromOffset(26, 18),
+		BackgroundTransparency = 1,
+		Text = "▼",
+		Font = Enum.Font.GothamBold,
+		TextSize = 24,
+		TextColor3 = Color3.fromRGB(255, 150, 40),
+		ZIndex = 6,
+	}, marker)
 
 	local resultLabel = new("TextLabel", {
 		Name = "Result",
@@ -400,6 +423,7 @@ function CaseModal.init()
 		preview.Visible = which == "preview"
 		window.Visible = which == "window"
 		lockedText.Visible = which == "locked"
+		marker.Visible = which == "window"
 		previewTitle.Visible = which ~= "window"
 	end
 
