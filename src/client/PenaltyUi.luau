@@ -11,12 +11,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
+local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(script.Parent.Net)
 local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
 
-local PANEL_W, PANEL_H = 360, 330
+local PANEL_W, PANEL_H = 360, 380
 local FIELD_W, FIELD_H = 340, 140
 local BALL_START = Vector2.new(170, 124)
 local KEEPER_REST = Vector2.new(170, 70)
@@ -207,10 +208,113 @@ function PenaltyUi.init()
 		result
 	)
 
+	-- The reward ladder: one chip per goal, lighting up as the goals come in.
+	local chips: { Frame } = {}
+	local chipScales: { UIScale } = {}
+	for goalsNeeded = 1, Config.Daily.penaltyKicks do
+		local seconds = Config.Daily.penaltyBoostSeconds[goalsNeeded] or 0
+		local chip = new("Frame", {
+			Name = "Chip" .. goalsNeeded,
+			Position = UDim2.fromOffset(10 + (goalsNeeded - 1) * 116, 224),
+			Size = UDim2.fromOffset(108, 48),
+			BackgroundColor3 = Style.ui.dark,
+			BackgroundTransparency = 0.3,
+		}, panel)
+		rounded(chip, 10)
+		new("UIStroke", { Name = "Outline", Color = Style.ui.idle, Thickness = 2 }, chip)
+		new("TextLabel", {
+			Name = "Goals",
+			Position = UDim2.fromOffset(4, 3),
+			Size = UDim2.new(1, -8, 0, 20),
+			BackgroundTransparency = 1,
+			Text = string.format("%d / %d goals", goalsNeeded, Config.Daily.penaltyKicks),
+			Font = Style.font,
+			TextSize = 14,
+			TextColor3 = Style.ui.text,
+		}, chip)
+		new("TextLabel", {
+			Name = "Reward",
+			Position = UDim2.fromOffset(4, 24),
+			Size = UDim2.new(1, -8, 0, 20),
+			BackgroundTransparency = 1,
+			Text = string.format(
+				"x%g · %d min",
+				Config.Daily.penaltyMultiplier,
+				math.ceil(seconds / 60)
+			),
+			Font = Style.font,
+			TextSize = 14,
+			TextColor3 = Style.ui.idle,
+		}, chip)
+		table.insert(chips, chip)
+		table.insert(chipScales, new("UIScale", {}, chip))
+	end
+
+	-- Lights the chips up to `goals`; the newest one pops.
+	local function showLadder(goals: number, pop: boolean)
+		for index, chip in chips do
+			local reached = index <= goals
+			chip.BackgroundColor3 = if reached then Color3.fromRGB(190, 140, 40) else Style.ui.dark
+			chip.BackgroundTransparency = if reached then 0.05 else 0.3
+			local outline = chip:FindFirstChild("Outline")
+			if outline and outline:IsA("UIStroke") then
+				outline.Color = if reached then Style.ui.gold else Style.ui.idle
+			end
+			local reward = chip:FindFirstChild("Reward")
+			if reward and reward:IsA("TextLabel") then
+				reward.TextColor3 = if reached then Style.ui.text else Style.ui.idle
+			end
+			chipScales[index].Scale = 1
+			if pop and index == goals and not GuiService.ReducedMotionEnabled then
+				chipScales[index].Scale = 0.8
+				TweenService:Create(
+					chipScales[index],
+					TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+					{ Scale = 1 }
+				):Play()
+			end
+		end
+	end
+
+	-- A short "+x1.5 · 3 min" that rises from the ball when a goal goes in.
+	local function floatText(text: string)
+		local label = new("TextLabel", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromOffset(170, 118),
+			Size = UDim2.fromOffset(240, 30),
+			BackgroundTransparency = 1,
+			Text = text,
+			Font = Style.font,
+			TextSize = 26,
+			TextColor3 = Style.ui.gold,
+			ZIndex = 6,
+		}, field)
+		new("UIStroke", {
+			Color = Style.ui.dark,
+			Thickness = 3,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
+		}, label)
+		if GuiService.ReducedMotionEnabled then
+			task.delay(1.2, function()
+				label:Destroy()
+			end)
+			return
+		end
+		local tween = TweenService:Create(
+			label,
+			TweenInfo.new(1.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ Position = UDim2.fromOffset(170, 70), TextTransparency = 1 }
+		)
+		tween.Completed:Connect(function()
+			label:Destroy()
+		end)
+		tween:Play()
+	end
+
 	-- The target pad: four corners and the middle, like the goal in front of the player.
 	local pad = new("Frame", {
 		Name = "Pad",
-		Position = UDim2.fromOffset(30, 222),
+		Position = UDim2.fromOffset(30, 280),
 		Size = UDim2.fromOffset(300, 98),
 		BackgroundColor3 = Style.ui.dark,
 		BackgroundTransparency = 0.3,
@@ -346,6 +450,7 @@ function PenaltyUi.init()
 		waiting = false
 		resetScene()
 		setButtons(true)
+		showLadder(0, false)
 		showKicksLeft()
 		result.Text = "Pick a target"
 		result.TextColor3 = Style.ui.gold
@@ -406,8 +511,18 @@ function PenaltyUi.init()
 				return
 			end
 			if scored then
-				result.Text = "GOAL!"
+				local goalsNow = if type(info.goals) == "number" then info.goals else 0
+				local seconds = Config.Daily.penaltyBoostSeconds[goalsNow] or 0
+				local reward = string.format(
+					"x%g · %d min",
+					Config.Daily.penaltyMultiplier,
+					math.ceil(seconds / 60)
+				)
+				result.Text =
+					string.format("GOAL!  %d/%d · %s", goalsNow, Config.Daily.penaltyKicks, reward)
 				result.TextColor3 = Style.ui.good
+				showLadder(goalsNow, true)
+				floatText("+" .. reward)
 			else
 				result.Text = if wide then "Just wide!" else "Saved!"
 				result.TextColor3 = Style.ui.bad
