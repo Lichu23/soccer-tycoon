@@ -20,6 +20,7 @@ export type Runtime = {
 	matchesInRow: number, -- momentum: matches played this session
 	matchesPlayed: number,
 	nextMatchAt: number, -- os.clock() when the next match ends, 0 when none is scheduled
+	upgrading: boolean, -- a stadium upgrade is waiting to build its pitch
 }
 
 export type Session = {
@@ -86,6 +87,8 @@ local function startOne(player: Player): Session?
 
 	-- A save is never blocked here, but a bad profile is logged loudly so it gets noticed.
 	profile.OnSave:Connect(function()
+		-- Every save (autosave too) stamps the time, so a crash costs at most a minute of "away".
+		profile.Data.lastSeen = os.time()
 		local valid, problem = ProfileSchema.validate(profile.Data)
 		if not valid then
 			warn(
@@ -120,6 +123,7 @@ local function startOne(player: Player): Session?
 			matchesInRow = 0,
 			matchesPlayed = 0,
 			nextMatchAt = 0,
+			upgrading = false,
 		},
 	}
 	sessions[player] = session

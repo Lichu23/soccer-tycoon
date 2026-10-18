@@ -37,6 +37,15 @@ function Economy.grant(data: Wallet, amount: number): number
 	return data.cash - before
 end
 
+-- Takes `amount` training points. False (and nothing changes) when invalid or too much.
+function Economy.spendTp(data: Wallet, amount: number): boolean
+	if not validAmount(amount) or data.tp < amount then
+		return false
+	end
+	data.tp -= amount
+	return true
+end
+
 function Economy.grantTp(data: Wallet, amount: number): number
 	if not validAmount(amount) or amount == 0 then
 		return 0

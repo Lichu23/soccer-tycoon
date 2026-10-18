@@ -83,22 +83,26 @@ local CLIENT_TO_SERVER = {
 	"TrainingDrillHit",
 	"RequestPurchase",
 	"AckReveal",
+	"DevCommand",
 }
 
-T.test("all ten client-to-server remotes from Step 5 exist", function()
-	local count = 0
-	for name, def in RemoteSpec.remotes do
-		if def.direction == "toServer" then
-			count += 1
+T.test(
+	"the ten client-to-server remotes from Step 5 and the Studio-only DevCommand exist",
+	function()
+		local count = 0
+		for name, def in RemoteSpec.remotes do
+			if def.direction == "toServer" then
+				count += 1
+			end
+		end
+		T.eq(count, 11)
+		for _, name in CLIENT_TO_SERVER do
+			local def = RemoteSpec.remotes[name]
+			T.truthy(def, name .. " is missing")
+			T.eq(def.direction, "toServer", name)
 		end
 	end
-	T.eq(count, 10)
-	for _, name in CLIENT_TO_SERVER do
-		local def = RemoteSpec.remotes[name]
-		T.truthy(def, name .. " is missing")
-		T.eq(def.direction, "toServer", name)
-	end
-end)
+)
 
 T.test("every client-to-server remote has a rate limit and valid arguments", function()
 	for name, def in RemoteSpec.remotes do

@@ -2,9 +2,15 @@
 -- Sends a player's state to their client (docs/PLAN.md, Step 5): single values travel as player
 -- attributes (no remote), lists as one snapshot. The server never reads these back.
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local Boosts = require(script.Parent.Boosts)
+local Daily = require(script.Parent.Daily)
 local Economy = require(script.Parent.Economy)
+local Config = require(ReplicatedStorage.Shared.Config)
+local Formulas = require(ReplicatedStorage.Shared.Formulas)
+local Progress = require(ReplicatedStorage.Shared.Progress)
 local Remotes = require(script.Parent.Remotes)
 local Session = require(script.Parent.Session)
 
@@ -16,8 +22,17 @@ function Sync.scalars(session: Session.Session)
 	Economy.publish(player, data)
 	player:SetAttribute("stadiumTier", data.stadiumTier)
 	player:SetAttribute("fieldStarted", data.fieldStarted)
-	local left = data.boosts.stadiumBoostLeft
+	-- The badge shows the multiplier of all running boosts and the time until the next one ends.
+	local left = Boosts.nextEnd(data)
 	player:SetAttribute("boostEndsAt", if left > 0 then Workspace:GetServerTimeNow() + left else 0)
+	player:SetAttribute("boostMultiplier", Formulas.boostMultiplier(Boosts.active(data)))
+	player:SetAttribute("trainingUnlocked", Progress.trainingUnlocked(data))
+	player:SetAttribute("staminaMax", Config.Training.staminaSeconds)
+	-- The daily icons: when each one is ready (os.time(), 0 = now), and whether they exist yet.
+	player:SetAttribute("dailyUnlocked", Daily.unlocked(data))
+	player:SetAttribute("caseReadyAt", Daily.caseReadyAt(data))
+	player:SetAttribute("penaltyReadyAt", Daily.penaltyReadyAt(data, os.time()))
+	player:SetAttribute("penaltyKicksLeft", Daily.kicksLeft(data, os.time()))
 end
 
 -- The progress subset the HUD, the pads and the goal row need.
@@ -29,6 +44,7 @@ function Sync.snapshot(session: Session.Session)
 	end
 	Remotes.fireClient("Snapshot", session.player, {
 		cash = data.cash,
+		tp = data.tp,
 		stadiumTier = data.stadiumTier,
 		storeLevels = {
 			cashPerMatch = data.storeLevels.cashPerMatch,
@@ -39,6 +55,12 @@ function Sync.snapshot(session: Session.Session)
 		fieldStarted = data.fieldStarted,
 		players = players,
 	})
+end
+
+-- Tells the client how much it earned while away (the HUD shows it once).
+function Sync.offline(player: Player, earned: number, secondsAway: number)
+	player:SetAttribute("offlineSeconds", secondsAway)
+	player:SetAttribute("offlineEarned", earned)
 end
 
 function Sync.all(session: Session.Session)

@@ -1,35 +1,78 @@
 --!strict
 -- Server bootstrap: starts each module in an explicit order and fails visibly.
 
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Actions = require(script.Parent.Actions)
 local Analytics = require(script.Parent.Analytics)
+local DailyActions = require(script.Parent.DailyActions)
+local DevTools = require(script.Parent.DevTools)
 local Match = require(script.Parent.Match)
+local Config = require(ReplicatedStorage.Shared.Config)
+local Offline = require(script.Parent.Offline)
 local Pads = require(script.Parent.Pads)
 local Plots = require(script.Parent.Plots)
 local Remotes = require(script.Parent.Remotes)
 local Session = require(script.Parent.Session)
+local Stadium = require(script.Parent.Stadium)
+local Training = require(script.Parent.Training)
+local TrainingActions = require(script.Parent.TrainingActions)
 local Sync = require(script.Parent.Sync)
 
 Remotes.init()
+DevTools.start()
 Session.init()
 Pads.start()
 Plots.init()
 Match.start()
+DailyActions.start()
+TrainingActions.start()
 
 -- Whatever a player buys: tell their client, redraw their capsules and log the funnel.
 Actions.onChange = function(session, what, _id)
 	Sync.all(session)
+	if what == "stadium" then
+		-- Before the refresh, so the refresh waits for the new pitch instead of building it at once.
+		local first = Analytics.milestone(session, "first_stadium_upgrade")
+		Stadium.upgraded(session, first)
+	end
 	Plots.refresh(session)
 	if what == "player" then
 		Analytics.milestone(session, "first_purchase")
 	elseif what == "store" then
 		Analytics.milestone(session, "first_upgrade")
-	elseif what == "stadium" then
-		Analytics.milestone(session, "first_stadium_upgrade")
 	end
 end
 
+-- Everyone walks faster than the Roblox default (the plots are large).
+local function setWalkSpeed(character: Model)
+	local humanoid = character:WaitForChild("Humanoid", 10)
+	if humanoid and humanoid:IsA("Humanoid") then
+		humanoid.WalkSpeed = Config.Player.walkSpeed
+	end
+end
+local function watchCharacters(player: Player)
+	player.CharacterAdded:Connect(setWalkSpeed)
+	if player.Character then
+		task.spawn(setWalkSpeed, player.Character)
+	end
+end
+Players.PlayerAdded:Connect(watchCharacters)
+for _, player in Players:GetPlayers() do
+	watchCharacters(player)
+end
+
 Session.onLoaded(function(session)
+	-- Time away becomes cash first, so the first sync already has it. The client shows the message.
+	local now = os.time()
+	local lastSeen = session.data.lastSeen
+	Training.refillAway(session.data, if lastSeen > 0 then now - lastSeen else 0)
+	local earned, secondsAway = Offline.apply(session.data, now)
+	if earned > 0 then
+		Sync.offline(session.player, earned, secondsAway)
+		Analytics.event(session, "offline_earnings")
+	end
 	Sync.all(session)
 	session.player:SetAttribute("profileLoaded", true)
 	Analytics.event(session, "joined")

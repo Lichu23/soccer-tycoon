@@ -173,6 +173,13 @@ Config.Pad = {
 	holdSeconds = 1, -- one value for every pad (purchase, level-up, stadium, claim)
 }
 
+-- The size of one plot (the plaza slots in tools/studio/BuildMap.luau are spaced for it).
+Config.Plot = { width = 280, depth = 300 }
+
+Config.Player = {
+	walkSpeed = 32, -- studs per second (Roblox default is 16); every player gets it on spawn
+}
+
 Config.Match = {
 	seconds = 10, -- base time between matches, before the match speed upgrade
 	firstMatchSeconds = 5, -- the very first match is shorter (Step 2)
@@ -193,12 +200,78 @@ Config.Boost = {
 	matchMultiplier = 2,
 }
 
+export type CaseReward = {
+	id: string,
+	kind: "cash" | "boost" | "tp",
+	label: string,
+	detail: string,
+	weight: number,
+	minutes: number?,
+	seconds: number?,
+	tp: number?,
+}
+
 Config.Daily = {
 	cooldownSeconds = 20 * 60 * 60,
 	penaltyKicks = 3,
 	penaltyMultiplier = 1.5,
 	-- Seconds of boost for the number of goals scored out of 3 kicks.
 	penaltyBoostSeconds = { [0] = 0, [1] = 180, [2] = 300, [3] = 600 } :: { [number]: number },
+	unlockTier = 2, -- the daily icons and the penalty pad open with the first stadium upgrade
+	-- Chance that a kick goes wide or over before the keeper is even asked, by aim zone. Corners
+	-- are riskier than the middle; the keeper then dives to a random zone.
+	zoneMissChance = {
+		topLeft = 0.2,
+		topRight = 0.2,
+		bottomLeft = 0.08,
+		bottomRight = 0.08,
+		center = 0.03,
+	} :: { [string]: number },
+	-- The free daily case: five small rewards (never players, never large amounts). `weight` is the
+	-- relative chance. Cash is worth `minutes` of normal income, a boost is x2 for `seconds`, `tp`
+	-- is a few training points. The roulette on screen spins through exactly these.
+	caseRewards = {
+		{
+			id = "cashSmall",
+			kind = "cash",
+			label = "Cash",
+			detail = "3 min of income",
+			minutes = 3,
+			weight = 35,
+		},
+		{
+			id = "boostShort",
+			kind = "boost",
+			label = "x2 boost",
+			detail = "3 minutes",
+			seconds = 180,
+			weight = 25,
+		},
+		{
+			id = "tpSmall",
+			kind = "tp",
+			label = "Training points",
+			detail = "+40 TP",
+			tp = 40,
+			weight = 20,
+		},
+		{
+			id = "boostLong",
+			kind = "boost",
+			label = "x2 boost",
+			detail = "8 minutes",
+			seconds = 480,
+			weight = 12,
+		},
+		{
+			id = "cashBig",
+			kind = "cash",
+			label = "Big cash",
+			detail = "8 min of income",
+			minutes = 8,
+			weight = 8,
+		},
+	} :: { CaseReward },
 }
 
 Config.Offline = {
@@ -214,9 +287,23 @@ Config.Training = {
 	bonusPerLevel = 0.03,
 	levelCostBase = 40, -- cost of level L = base x L x rarity cost factor
 	idleTpPerMinute = 10,
-	drillTpPerMinuteMax = 15,
 	staminaSeconds = 300,
 	staminaRefillSeconds = 300, -- time away to refill from empty
+	-- The timing drill (active farm): a marker moves back and forth across the bar, one pass in
+	-- `drillSweepSeconds`, until the player presses. A press inside the green zone (`drillWindow`
+	-- either side of its centre) is a hit: base TP plus the bonus. A press outside it is a miss: the
+	-- base TP only, then a short cooldown with a red bar. Either way the marker starts again and the
+	-- green zone jumps to a new place (never touching the sides: zone centre between `drillZoneMin`
+	-- and `drillZoneMax`). The active farm pays only for presses; the idle rate is the AFK farm's.
+	-- The drill pays at most `drillTpPerMinuteMax` TP in any minute.
+	drillTpPerMinuteMax = 30,
+	drillSweepSeconds = 1.2,
+	drillWindow = 0.08, -- half the width of the green zone, as a fraction of the bar
+	drillZoneMin = 0.12,
+	drillZoneMax = 0.88,
+	drillCooldownSeconds = 1.2,
+	drillBaseTp = 1,
+	drillHitBonusTp = 0.3,
 }
 
 Config.Season = {
@@ -252,6 +339,14 @@ Config.Store = {
 		floorsComplete = 1,
 	},
 } :: { [StoreUpgradeId]: StoreUpgradeDef }
+
+-- The upgrade cinematic (docs/PLAN.md, Step 7). The server builds the new pitch after
+-- buildDelaySeconds, when the camera has arrived. The client unlocks by itself after maxSeconds.
+Config.Cinematic = {
+	seconds = 6.5,
+	maxSeconds = 9,
+	buildDelaySeconds = 1.8,
+}
 
 Config.StadiumTiers = {
 	{ tier = 1, price = 0, field = 4, courtLength = 60, courtWidth = 36 },

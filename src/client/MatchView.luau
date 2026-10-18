@@ -11,6 +11,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local CourtPlan = require(ReplicatedStorage.Shared.CourtPlan)
 local Formation = require(ReplicatedStorage.Shared.Formation)
 local Mannequin = require(ReplicatedStorage.Shared.Mannequin)
 local Net = require(script.Parent.Net)
@@ -20,7 +21,7 @@ local State = require(script.Parent.State)
 local player = Players.LocalPlayer
 local random = Random.new()
 
-local COURT_CENTER_Z = 64 -- the middle of every pitch, in plot space (docs/PLAN.md, Step 7)
+local COURT_CENTER_Z = CourtPlan.CENTER_Z -- the middle of every pitch, in plot space
 local TORSO_HEIGHT = 0.7 + Mannequin.FEET_TO_TORSO - 1 -- in gate space (the gate is 1 stud up)
 local RIVAL_KIT = Color3.fromRGB(215, 70, 70)
 local SPEED = 5 -- studs per second while jogging
@@ -111,7 +112,7 @@ local function buildTeam(plot: Model, fieldIds: { string }, tier: Config.Stadium
 	local team: Team = {
 		plot = plot,
 		gate = gate,
-		key = table.concat(fieldIds, ","),
+		key = table.concat(fieldIds, ",") .. "|" .. tier.tier,
 		runners = {},
 		length = tier.courtLength,
 		width = tier.courtWidth,
@@ -158,7 +159,7 @@ end
 -- The team of a plot, rebuilt when the players on the field changed.
 local function ensureTeam(plot: Model, fieldIds: { string }, tier: Config.StadiumTierDef): Team?
 	local existing = teams[plot]
-	local key = table.concat(fieldIds, ",")
+	local key = table.concat(fieldIds, ",") .. "|" .. tier.tier
 	if existing and existing.key == key then
 		existing.lastUsed = os.clock()
 		return existing
@@ -182,7 +183,11 @@ local function playResult(plot: Model, info: any)
 	if type(fieldIds) ~= "table" or #fieldIds == 0 then
 		return
 	end
-	local team = ensureTeam(plot, fieldIds, tierFor(#fieldIds))
+	local tierNumber = info.stadiumTier
+	local tier = if type(tierNumber) == "number" and Config.StadiumTiers[tierNumber]
+		then Config.StadiumTiers[tierNumber]
+		else tierFor(#fieldIds)
+	local team = ensureTeam(plot, fieldIds, tier)
 	if team == nil or not nearCamera(team) then
 		return
 	end

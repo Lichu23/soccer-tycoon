@@ -14,6 +14,7 @@ export type StoreLevels = {
 -- What the progress rules (roster, store, stadium, goals) need to know.
 export type ProgressData = {
 	cash: number,
+	tp: number, -- training points
 	stadiumTier: number,
 	storeLevels: StoreLevels,
 	fieldStarted: boolean,

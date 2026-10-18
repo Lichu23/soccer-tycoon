@@ -19,6 +19,8 @@ local Style = require(ReplicatedStorage.Shared.Style)
 local player = Players.LocalPlayer
 
 local COLUMN_WIDTH = 230
+local TP_GAIN_HOLD_SECONDS = 1.2 -- how long "+N TP" stays after the last gain
+local AWAY_HOLD_SECONDS = 5 -- how long "+$N while you were away" stays
 local RESULT_HOLD_SECONDS = 0.65 -- the result texts are fully visible for this long...
 local RESULT_FADE_SECONDS = 0.35 -- ...then fade out: 1 second in total, then they are hidden
 
@@ -82,7 +84,7 @@ function Hud.build(parent: Instance): any
 		Name = "Top",
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -10, 0, 6),
-		Size = UDim2.fromOffset(COLUMN_WIDTH, 92),
+		Size = UDim2.fromOffset(COLUMN_WIDTH, 148),
 		BackgroundTransparency = 1,
 	}, gui)
 
@@ -153,6 +155,57 @@ function Hud.build(parent: Instance): any
 	}, top)
 	rounded(boost, 8)
 
+	-- Training points and the stamina bar, under the boost badge. They show once training is open.
+	local tp = new("TextLabel", {
+		Name = "Tp",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, 0, 0, 92),
+		Size = UDim2.fromOffset(96, 26),
+		BackgroundColor3 = Style.ui.panel,
+		BackgroundTransparency = 0.15,
+		Text = "TP 0",
+		Font = Style.font,
+		TextSize = 14,
+		TextColor3 = Style.ui.bar,
+		Visible = false,
+	}, top)
+	rounded(tp, 8)
+	local stamina = new("Frame", {
+		Name = "Stamina",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -104, 0, 100),
+		Size = UDim2.fromOffset(100, 10),
+		BackgroundColor3 = Style.ui.dark,
+		BackgroundTransparency = 0.2,
+		Visible = false,
+	}, top)
+	rounded(stamina, 5)
+	stroke(stamina, Style.ui.idle, 1)
+	local staminaFill = new("Frame", {
+		Name = "Fill",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = Style.ui.bar,
+		BorderSizePixel = 0,
+	}, stamina)
+	rounded(staminaFill, 5)
+
+	-- "+N TP" under the TP badge whenever training points come in (like "+$N" next to the money).
+	local tpGain = new("TextLabel", {
+		Name = "TpGain",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, 0, 0, 122),
+		Size = UDim2.fromOffset(120, 24),
+		BackgroundTransparency = 1,
+		Text = "",
+		TextXAlignment = Enum.TextXAlignment.Right,
+		Font = Style.font,
+		TextSize = 20,
+		TextColor3 = Style.ui.bar,
+		Visible = false,
+		ZIndex = 3,
+	}, top)
+	stroke(tpGain, Style.ui.dark, 2)
+
 	-- The result text sits near the top of the screen, in the middle, and does not take clicks.
 	local banner = new("TextLabel", {
 		Name = "Banner",
@@ -169,6 +222,22 @@ function Hud.build(parent: Instance): any
 	}, gui)
 	stroke(banner, Style.ui.dark, 3)
 
+	-- "+$N while you were away", shown once after joining.
+	local away = new("TextLabel", {
+		Name = "Away",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 72),
+		Size = UDim2.fromOffset(420, 32),
+		BackgroundTransparency = 1,
+		Text = "",
+		Font = Style.font,
+		TextSize = 24,
+		TextColor3 = Style.ui.gold,
+		Visible = false,
+		Active = false,
+	}, gui)
+	stroke(away, Style.ui.dark, 2)
+
 	return gui
 end
 
@@ -179,6 +248,8 @@ function Hud.init()
 	local top = gui.Top
 	local money, matchFill, payout = top.MoneyRow.Money, top.MoneyRow.MatchBar.Fill, top.Payout
 	local boost, banner = top.BoostBadge, gui.Banner
+	local tp, stamina = top.Tp, top.Stamina
+	local staminaFill = stamina.Fill
 
 	-- Money counts up towards the real value; the real value is never delayed.
 	local shownCash = State.data.cash
@@ -220,6 +291,67 @@ function Hud.init()
 		end)
 	end)
 
+	-- Training points coming in: the gains of the last moment add up in one "+N TP" next to the badge.
+	local tpGain = top.TpGain
+	local lastTp: number? = nil
+	local pendingTp = 0
+	local tpToken = 0
+	State.onChange(function()
+		if not State.loaded then
+			return
+		end
+		local now = State.data.tp
+		local before = lastTp
+		lastTp = now
+		if before == nil or now <= before then
+			return
+		end
+		pendingTp += now - before
+		tpToken += 1
+		local token = tpToken
+		tpGain.Text = "+" .. NumberFormat.short(pendingTp) .. " TP"
+		fadeIn(tpGain)
+		task.delay(TP_GAIN_HOLD_SECONDS, function()
+			if token ~= tpToken then
+				return -- a newer gain is showing
+			end
+			pendingTp = 0
+			fadeOut(tpGain)
+			task.delay(RESULT_FADE_SECONDS + 0.05, function()
+				if token == tpToken then
+					tpGain.Visible = false
+				end
+			end)
+		end)
+	end)
+
+	-- Offline earnings: the server sets the attributes before the profile counts as loaded.
+	local awayLabel = gui.Away
+	local function showAway()
+		local earned = player:GetAttribute("offlineEarned")
+		local seconds = player:GetAttribute("offlineSeconds")
+		if type(earned) ~= "number" or type(seconds) ~= "number" or earned <= 0 then
+			return
+		end
+		player:SetAttribute("offlineEarned", nil) -- shown once
+		local hours, minutes = seconds // 3600, (seconds % 3600) // 60
+		local span = if hours > 0 then string.format("%dh %dm", hours, minutes) else minutes .. "m"
+		awayLabel.Text = "+"
+			.. NumberFormat.money(earned)
+			.. " while you were away ("
+			.. span
+			.. ")"
+		fadeIn(awayLabel)
+		task.delay(AWAY_HOLD_SECONDS, function()
+			fadeOut(awayLabel)
+			task.delay(RESULT_FADE_SECONDS + 0.05, function()
+				awayLabel.Visible = false
+			end)
+		end)
+	end
+	showAway()
+	player:GetAttributeChangedSignal("offlineEarned"):Connect(showAway)
+
 	-- Every frame: the money counter, the match bar and the boost badge ------------------
 	RunService.RenderStepped:Connect(function(dt: number)
 		local target = State.data.cash
@@ -247,10 +379,28 @@ function Hud.init()
 			matchFill.Size = UDim2.fromScale(0, 1)
 		end
 
+		-- TP and stamina (the bar is blue while training, grey while it refills).
+		local trainingOpen = player:GetAttribute("trainingUnlocked") == true
+		tp.Visible = trainingOpen
+		stamina.Visible = trainingOpen
+		if trainingOpen then
+			tp.Text = "TP " .. NumberFormat.short(State.data.tp)
+			local left = player:GetAttribute("staminaLeft")
+			local most = player:GetAttribute("staminaMax")
+			if type(left) == "number" and type(most) == "number" and most > 0 then
+				staminaFill.Size = UDim2.fromScale(math.clamp(left / most, 0, 1), 1)
+			end
+			staminaFill.BackgroundColor3 = if player:GetAttribute("training") == true
+				then Style.ui.bar
+				else Style.ui.idle
+		end
+
 		local boostEnds = player:GetAttribute("boostEndsAt")
 		if type(boostEnds) == "number" and boostEnds > now then
 			boost.Visible = true
-			boost.Text = "x2 · " .. clockText(boostEnds - now)
+			local multiplier = player:GetAttribute("boostMultiplier")
+			local shown = if type(multiplier) == "number" then multiplier else 2
+			boost.Text = string.format("x%g · %s", shown, clockText(boostEnds - now))
 		else
 			boost.Visible = false
 		end

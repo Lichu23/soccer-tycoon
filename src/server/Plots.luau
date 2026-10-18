@@ -3,6 +3,7 @@
 -- hold time clones the plot template there, so two players cannot claim the same slot. When the
 -- owner leaves, the plot is removed and the ring comes back.
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -16,6 +17,7 @@ local Pads = require(script.Parent.Pads)
 local Roster = require(ReplicatedStorage.Shared.Roster)
 local Session = require(script.Parent.Session)
 local Style = require(ReplicatedStorage.Shared.Style)
+local Stadium = require(script.Parent.Stadium)
 local Sync = require(script.Parent.Sync)
 
 local SLOT_COUNT = 8
@@ -82,7 +84,27 @@ end
 -- ones that are no longer owned.
 function Plots.refresh(session: Session.Session)
 	local plot = session.runtime.plot
-	local capsules = plot and plot:FindFirstChild("Capsules")
+	if plot == nil then
+		return
+	end
+	Stadium.ensure(session)
+
+	-- The stairs are always walkable (the owner wants to see every floor). The gate marker at the
+	-- bottom of each flight only carries the label; Open says whether buying there is unlocked.
+	local stairs = plot:FindFirstChild("Stairs")
+	if stairs then
+		for _, gate in stairs:GetChildren() do
+			local floor = gate:GetAttribute("Floor")
+			if gate:IsA("BasePart") and type(floor) == "number" then
+				CollectionService:AddTag(gate, "FloorGate") -- the client labels it
+				gate.CanCollide = false
+				gate.Transparency = 1
+				gate:SetAttribute("Open", Roster.floorUnlocked(session.data, floor))
+			end
+		end
+	end
+
+	local capsules = plot:FindFirstChild("Capsules")
 	if capsules == nil then
 		return
 	end
@@ -138,6 +160,11 @@ function Plots.assign(session: Session.Session, slotIndex: number?): boolean
 	-- The template's origin is the middle of the gate, one stud above the ground reference.
 	plot:PivotTo(slotAnchor(index).CFrame * CFrame.new(0, 1, 0))
 	-- The claim ring part replaced the template's Claim marker while the slot was free.
+	-- The penalty kicks open from the HUD icon, so the old penalty marker is not needed.
+	local penaltyMarker = plot.Markers:FindFirstChild("Penalty")
+	if penaltyMarker then
+		penaltyMarker:Destroy()
+	end
 	local claimMarker = plot.Markers:FindFirstChild("Claim")
 	if claimMarker then
 		claimMarker:Destroy()

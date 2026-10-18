@@ -42,6 +42,27 @@ function Actions.buyPlayer(session: ActionSession, id: string): (boolean, string
 	return true, nil
 end
 
+-- Spends TP on the next level of an owned player (the level-up pad). `levelSeen` (when given) must
+-- match the current level, like the Store, so a double tap cannot buy two levels.
+function Actions.levelUp(session: ActionSession, id: string, levelSeen: number?): (boolean, string?)
+	local data = session.data
+	local status = Progress.levelStatus(data, id)
+	if status ~= "ready" then
+		return false, status
+	end
+	local owned = data.players[id]
+	if levelSeen ~= nil and levelSeen ~= owned.level then
+		return false, "stale"
+	end
+	local cost = Progress.levelCost(data, id)
+	if cost == nil or not Economy.spendTp(data, cost) then
+		return false, "cannotAfford"
+	end
+	owned.level += 1
+	Actions.onChange(session, "level", id)
+	return true, nil
+end
+
 -- `levelSeen` (when given) must match the current level, so a double tap cannot buy two levels.
 function Actions.buyStore(
 	session: ActionSession,

@@ -28,14 +28,13 @@ table.sort(storeIds)
 
 local RemoteSpec = {}
 
--- Provisional aim zones for the daily penalty kick (Step 7 decides the final layout).
+-- The five aim targets of the daily penalty kick: the four corners of the goal and the middle.
 RemoteSpec.aimZones = {
 	"topLeft",
-	"topCenter",
 	"topRight",
 	"bottomLeft",
-	"bottomCenter",
 	"bottomRight",
+	"center",
 } :: { string }
 
 local ID_FIELD: FieldSchema = { kind = "string", maxLength = 40 }
@@ -103,6 +102,28 @@ RemoteSpec.remotes = {
 		args = { ID_FIELD },
 		ratePerSecond = 0.5,
 		burst = 2,
+	},
+	-- Test shortcuts for Studio playtests (grant floors, set cash, reset). The server registers a
+	-- handler only while running in Studio, so this does nothing in a published game.
+	DevCommand = {
+		direction = "toServer",
+		args = {
+			{
+				kind = "enum",
+				values = {
+					"grantFloor",
+					"setCash",
+					"resetProfile",
+					"simulateAway",
+					"stadiumUp",
+					"resetDaily",
+					"grantTp",
+				},
+			},
+			{ kind = "number", min = 0, max = 1e15 },
+		},
+		ratePerSecond = 5,
+		burst = 5,
 	},
 	AckReveal = {
 		direction = "toServer",

@@ -6,6 +6,7 @@
 local Config = require(script.Parent.Config)
 local NumberFormat = require(script.Parent.NumberFormat)
 local Progress = require(script.Parent.Progress)
+local Roster = require(script.Parent.Roster)
 local Types = require(script.Parent.Types)
 
 type ProgressData = Types.ProgressData
@@ -35,6 +36,42 @@ local function missing(cost: number, cash: number): string
 	return "Need " .. NumberFormat.money(cost - cash) .. " more"
 end
 
+-- The pad of an owned player once training is open: it levels the player up with TP.
+function PadInfo.levelUp(data: ProgressData, def: Config.PlayerDef): Info
+	local owned = data.players[def.id]
+	local cap = Config.Rarities[def.rarity].levelCap
+	local level = if owned then owned.level else 0
+	local levelText = "Lv " .. level .. "/" .. cap
+	local benched = table.find(Roster.field(data), def.id) == nil
+	local status = Progress.levelStatus(data, def.id)
+	local cost = Progress.levelCost(data, def.id)
+	local bonus = "+" .. math.floor(Config.Training.bonusPerLevel * 100 + 0.5) .. "% income"
+	-- Spending TP on a player who is not earning yet is allowed, but the pad says so first.
+	local note = if benched then levelText .. " · on the bench" else levelText .. " · " .. bonus
+	if status == "maxed" or cost == nil then
+		return {
+			title = def.name,
+			price = "MAX",
+			note = if benched then levelText .. " · on the bench" else levelText,
+			state = "maxed",
+		}
+	elseif status == "cannotAfford" then
+		local short = NumberFormat.short(cost - data.tp)
+		return {
+			title = def.name,
+			price = NumberFormat.short(cost) .. " TP",
+			note = levelText .. " · need " .. short .. " TP",
+			state = status,
+		}
+	end
+	return {
+		title = def.name,
+		price = NumberFormat.short(cost) .. " TP",
+		note = note,
+		state = status,
+	}
+end
+
 function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 	if kind == "claim" then
 		return { title = "Claim this plot", price = "FREE", note = "Stand here", state = "ready" }
@@ -45,12 +82,15 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 		end
 		local status = Progress.playerStatus(data, padId)
 		if status == "owned" then
-			return { title = def.name, price = "OWNED", note = "", state = "owned" }
+			if not Progress.trainingUnlocked(data) then
+				return { title = def.name, price = "OWNED", note = "", state = "owned" }
+			end
+			return PadInfo.levelUp(data, def)
 		elseif status == "locked" then
 			return {
 				title = def.name,
-				price = "LOCKED",
-				note = "Finish the floor before",
+				price = NumberFormat.money(def.price),
+				note = "Finish floor " .. math.max(def.floor - 1, 1) .. " first",
 				state = "locked",
 			}
 		elseif status == "cannotAfford" then
@@ -83,6 +123,20 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 			}
 		end
 		return { title = title, price = NumberFormat.money(price), note = "", state = status }
+	elseif kind == "training" then
+		local active = padId == "trainingActive"
+		local title = if active then "Active farm" else "AFK farm"
+		if not Progress.trainingUnlocked(data) then
+			return { title = title, price = "", note = "Finish floor 1 first", state = "locked" }
+		end
+		local note = if active then "Hit the green for TP" else "Stand here: 10 TP per minute"
+		return { title = title, price = "TP", note = note, state = "info" }
+	elseif kind == "penalty" then
+		-- Whether kicks are left today is the server's call (the client shows the wait time).
+		if data.stadiumTier < Config.Daily.unlockTier then
+			return { title = "Penalty kicks", price = "", note = "", state = "locked" }
+		end
+		return { title = "Penalty kicks", price = "KICK", note = "", state = "ready" }
 	elseif kind == "stadium" then
 		local nextTier = Progress.nextTier(data)
 		local status = Progress.stadiumStatus(data)

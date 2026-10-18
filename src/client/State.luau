@@ -15,6 +15,7 @@ local State = {}
 
 State.data = {
 	cash = 0,
+	tp = 0,
 	stadiumTier = 1,
 	storeLevels = { cashPerMatch = 0, matchSpeed = 0, hatTrick = 0, offline = 0 },
 	fieldStarted = false,
@@ -47,6 +48,9 @@ local function applySnapshot(snapshot: any)
 	if type(snapshot.cash) == "number" then
 		data.cash = snapshot.cash
 	end
+	if type(snapshot.tp) == "number" then
+		data.tp = snapshot.tp
+	end
 	if type(snapshot.stadiumTier) == "number" then
 		data.stadiumTier = snapshot.stadiumTier
 	end
@@ -76,6 +80,13 @@ function State.init()
 		local cash = player:GetAttribute("cash")
 		if type(cash) == "number" then
 			State.data.cash = cash
+			notify()
+		end
+	end)
+	player:GetAttributeChangedSignal("tp"):Connect(function()
+		local tp = player:GetAttribute("tp")
+		if type(tp) == "number" then
+			State.data.tp = tp
 			notify()
 		end
 	end)
