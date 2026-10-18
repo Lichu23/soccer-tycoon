@@ -9,11 +9,15 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local GuiService = game:GetService("GuiService")
+local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Drill = require(ReplicatedStorage.Shared.Drill)
 local Net = require(script.Parent.Net)
+local NumberFormat = require(ReplicatedStorage.Shared.NumberFormat)
+local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
@@ -55,7 +59,7 @@ function TrainingUi.init()
 		Position = UDim2.new(0.5, 0, 1, -150),
 		Size = UDim2.fromOffset(BAR_WIDTH + 40, 24),
 		BackgroundTransparency = 1,
-		Text = "Hit when the marker is in the green",
+		Text = "Standing here earns TP. Hit the green for extra!",
 		Font = Style.font,
 		TextSize = 16,
 		TextColor3 = Style.ui.text,
@@ -108,10 +112,69 @@ function TrainingUi.init()
 	}, gui)
 	rounded(button, 14)
 
+	-- The readout above the bar: TP won in this session, the rate and the hit streak.
+	local readout = new("TextLabel", {
+		Name = "Readout",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -216),
+		Size = UDim2.fromOffset(BAR_WIDTH + 60, 30),
+		BackgroundColor3 = Style.ui.dark,
+		BackgroundTransparency = 0.25,
+		Text = "",
+		Font = Style.font,
+		TextSize = 20,
+		TextColor3 = Style.ui.bar,
+	}, gui)
+	rounded(readout, 10)
+
+	-- A pop-up above the bar after each press: PERFECT or MISS.
+	local feedback = new("TextLabel", {
+		Name = "Feedback",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -180),
+		Size = UDim2.fromOffset(BAR_WIDTH + 60, 34),
+		BackgroundTransparency = 1,
+		Text = "",
+		Font = Style.font,
+		TextSize = 28,
+		TextColor3 = Style.ui.good,
+		TextTransparency = 1,
+	}, gui)
+	local feedbackStroke = new("UIStroke", {
+		Color = Style.ui.dark,
+		Thickness = 3,
+		Transparency = 1,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
+	}, feedback)
+
 	-- What the player can do right now ---------------------------------------------------------
 	local pressedRound = -1
 	local flashUntil = 0
 	local flashColor = Style.ui.good
+	local sessionStartTp = 0
+	local wasActive = false
+	local streak = 0
+	local hitTimes: { number } = {}
+	local bonusPerHit = (Config.Training.drillTpPerMinuteMax - Config.Training.idleTpPerMinute)
+		* Config.Training.drillRoundSeconds
+		/ 60
+
+	local function popFeedback(text: string, color: Color3)
+		feedback.Text = text
+		feedback.TextColor3 = color
+		feedback.TextTransparency = 0
+		feedbackStroke.Transparency = 0
+		feedback.Position = UDim2.new(0.5, 0, 1, -170)
+		if GuiService.ReducedMotionEnabled then
+			return
+		end
+		TweenService:Create(
+			feedback,
+			TweenInfo.new(1.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ Position = UDim2.new(0.5, 0, 1, -196), TextTransparency = 1 }
+		):Play()
+		TweenService:Create(feedbackStroke, TweenInfo.new(1.1), { Transparency = 1 }):Play()
+	end
 
 	local function press()
 		if not gui.Enabled then
@@ -139,6 +202,14 @@ function TrainingUi.init()
 		if type(info) == "table" and info.kind == "drillResult" then
 			flashColor = if info.hit then Style.ui.good else Style.ui.bad
 			flashUntil = os.clock() + FLASH_SECONDS
+			if info.hit then
+				streak += 1
+				table.insert(hitTimes, os.clock())
+				popFeedback(string.format("PERFECT!  +%.1f TP", bonusPerHit), Style.ui.good)
+			else
+				streak = 0
+				popFeedback("MISS - base TP keeps coming", Style.ui.bad)
+			end
 		end
 	end)
 
@@ -150,8 +221,27 @@ function TrainingUi.init()
 		gui.Enabled = active
 		if not active then
 			pressedRound = -1
+			wasActive = false
 			return
 		end
+		if not wasActive then
+			wasActive = true
+			sessionStartTp = State.data.tp
+			streak = 0
+			table.clear(hitTimes)
+		end
+		-- Hits of the last minute decide the rate shown: 10 TP/min plus the drill bonus.
+		local now = os.clock()
+		while #hitTimes > 0 and now - hitTimes[1] > 60 do
+			table.remove(hitTimes, 1)
+		end
+		local rate = Config.Training.idleTpPerMinute + #hitTimes * bonusPerHit
+		readout.Text = string.format(
+			"+%s TP  ·  %.1f TP/min%s",
+			NumberFormat.short(math.max(State.data.tp - sessionStartTp, 0)),
+			rate,
+			if streak >= 2 then "  ·  streak x" .. streak else ""
+		)
 		local round, position = Drill.position(startedAt :: number, Workspace:GetServerTimeNow())
 		marker.Position = UDim2.fromScale(position, 0.5)
 		local used = round <= pressedRound
