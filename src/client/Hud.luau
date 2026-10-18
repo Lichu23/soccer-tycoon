@@ -19,6 +19,7 @@ local Style = require(ReplicatedStorage.Shared.Style)
 local player = Players.LocalPlayer
 
 local COLUMN_WIDTH = 230
+local AWAY_HOLD_SECONDS = 5 -- how long "+$N while you were away" stays
 local RESULT_HOLD_SECONDS = 0.65 -- the result texts are fully visible for this long...
 local RESULT_FADE_SECONDS = 0.35 -- ...then fade out: 1 second in total, then they are hidden
 
@@ -169,6 +170,22 @@ function Hud.build(parent: Instance): any
 	}, gui)
 	stroke(banner, Style.ui.dark, 3)
 
+	-- "+$N while you were away", shown once after joining.
+	local away = new("TextLabel", {
+		Name = "Away",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 72),
+		Size = UDim2.fromOffset(420, 32),
+		BackgroundTransparency = 1,
+		Text = "",
+		Font = Style.font,
+		TextSize = 24,
+		TextColor3 = Style.ui.gold,
+		Visible = false,
+		Active = false,
+	}, gui)
+	stroke(away, Style.ui.dark, 2)
+
 	return gui
 end
 
@@ -219,6 +236,33 @@ function Hud.init()
 			end)
 		end)
 	end)
+
+	-- Offline earnings: the server sets the attributes before the profile counts as loaded.
+	local awayLabel = gui.Away
+	local function showAway()
+		local earned = player:GetAttribute("offlineEarned")
+		local seconds = player:GetAttribute("offlineSeconds")
+		if type(earned) ~= "number" or type(seconds) ~= "number" or earned <= 0 then
+			return
+		end
+		player:SetAttribute("offlineEarned", nil) -- shown once
+		local hours, minutes = seconds // 3600, (seconds % 3600) // 60
+		local span = if hours > 0 then string.format("%dh %dm", hours, minutes) else minutes .. "m"
+		awayLabel.Text = "+"
+			.. NumberFormat.money(earned)
+			.. " while you were away ("
+			.. span
+			.. ")"
+		fadeIn(awayLabel)
+		task.delay(AWAY_HOLD_SECONDS, function()
+			fadeOut(awayLabel)
+			task.delay(RESULT_FADE_SECONDS + 0.05, function()
+				awayLabel.Visible = false
+			end)
+		end)
+	end
+	showAway()
+	player:GetAttributeChangedSignal("offlineEarned"):Connect(showAway)
 
 	-- Every frame: the money counter, the match bar and the boost badge ------------------
 	RunService.RenderStepped:Connect(function(dt: number)

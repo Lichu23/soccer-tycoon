@@ -86,6 +86,8 @@ local function startOne(player: Player): Session?
 
 	-- A save is never blocked here, but a bad profile is logged loudly so it gets noticed.
 	profile.OnSave:Connect(function()
+		-- Every save (autosave too) stamps the time, so a crash costs at most a minute of "away".
+		profile.Data.lastSeen = os.time()
 		local valid, problem = ProfileSchema.validate(profile.Data)
 		if not valid then
 			warn(

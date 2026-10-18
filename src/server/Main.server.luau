@@ -5,6 +5,7 @@ local Actions = require(script.Parent.Actions)
 local Analytics = require(script.Parent.Analytics)
 local DevTools = require(script.Parent.DevTools)
 local Match = require(script.Parent.Match)
+local Offline = require(script.Parent.Offline)
 local Pads = require(script.Parent.Pads)
 local Plots = require(script.Parent.Plots)
 local Remotes = require(script.Parent.Remotes)
@@ -32,6 +33,13 @@ Actions.onChange = function(session, what, _id)
 end
 
 Session.onLoaded(function(session)
+	-- Time away becomes cash first, so the first sync already has it. The client shows the message.
+	local earned, secondsAway = Offline.apply(session.data, os.time())
+	if earned > 0 then
+		session.player:SetAttribute("offlineSeconds", secondsAway)
+		session.player:SetAttribute("offlineEarned", earned)
+		Analytics.event(session, "offline_earnings")
+	end
 	Sync.all(session)
 	session.player:SetAttribute("profileLoaded", true)
 	Analytics.event(session, "joined")
