@@ -33,15 +33,15 @@ Goal: the project structure, `Config`, `Formulas` and the safety modules exist a
 
 - [x] **0.1 Tools and configs.** Rojo, luau-lsp, StyLua, selene, Lune installed; `.luaurc`, `stylua.toml`, `selene.toml` created. *Test:* `luau-lsp`, `stylua --check` and `selene` run clean on `src/` (U, done 2026-10-18).
 - [x] **0.2 Rojo connected.** *Test:* Studio shows `ServerScriptService.Server.Main` and `StarterPlayerScripts.Client.Main` (S, done 2026-10-18).
-- [ ] **0.3 Check script and test runner.** `tools/check.sh` runs sourcemap, analyze, stylua check, selene and the Lune tests; `tests/run.luau` runs every `tests/*.spec.luau`. *Test:* `tools/check.sh` exits 0 and fails when a test fails (U).
-- [ ] **0.4 Folder structure.** Empty strict modules from the Step 5 map: shared `Config`, `Formulas`, `Types`; server `Session`, `Economy`, `Plots`, `Match`, `Roster`, `Pads`, `Stadium`, `Store`, `Training`, `Daily`, `Cases`, `Season`, `Legends`, `Cosmetics`, `Purchases`; client `HUD`, `PadRing`, `MatchView`, `Reveal`, `StadiumCinematic`, `LockerRoom`, `CaseView`. *Test:* the type check passes and Studio shows the same tree after a sync (U, S).
-- [ ] **0.5 `Config`: the 35 players.** Name, nationality, number, rarity, floor, slot, with price and income from the Step 3 curve. *Test:* a spec checks 35 players, rarity counts 4/10/10/6/5, floor counts 10/10/10/5, unique IDs, price and income strictly rising with slot, and the Step 3 anchor values (slot 1 = $10 / $3, slot 10 = $11.1K / $268, slot 30 = $6.99B / $636K, Legends $400B / $1T / $2.5T / $6T / $15T) (U).
-- [ ] **0.6 `Config`: everything else.** Store upgrades and prices, match speed, hat-trick chance, offline rate, stadium tiers and field sizes, starting cash $15, hold time 1 s, cooldown 20 h, max cash, stamina, level caps, feature switches. *Test:* a spec checks each table against Step 3 (cash upgrades x1.5 to x6.7, tiers $250 / $25K / $750K / $45M, field 4/5/6/8/11) (U).
-- [ ] **0.7 `Formulas`.** Payout, star bonus (+10% per star, max 5), level bonus (+3%), level cost `40 x L x rarity factor`, offline earnings (cap 4 h, rate), pad price, season multiplier, boost stacking cap x4. *Test:* a spec with known values (a Common reaching level 5 costs 600 TP, a Legend level 25 about 65,000 TP, momentum caps at +25%, boosts never above x4) (U).
-- [ ] **0.8 Number formatter.** K / M / B / T. *Test:* a spec ($999, $1.2K, $11.1K, $6.99B, $15T, rounding at edges) (U).
-- [ ] **0.9 `Remotes` registry.** One module registers each remote with a payload shape, rate limit and cooldown; invalid payloads are dropped and logged. *Test:* a spec for the validator (wrong type, out of range, unknown ID, rate limit hit) (U); a Studio playtest sending a bad payload is dropped with a log line (S).
-- [ ] **0.10 ProfileStore and `Session`.** Vendor ProfileStore (pinned, with its LICENSE), profile template, version, migrations, reconcile, save checks, receipt pruning, Mock mode in Studio. *Test:* a spec for the template, migration chain, reconcile and the "bad value" check (U); a playtest joins with Mock, then reads the profile (S).
-- [ ] **0.11 Commit Phase 0.** Message `feat: project structure, config, formulas and tests`.
+- [x] **0.3 Check script and test runner.** `tools/check.sh` runs sourcemap, analyze, stylua check, selene and the Lune tests; `tests/run.luau` runs every `tests/*.spec.luau`. *Test:* `tools/check.sh` exits 0 and fails when a test fails (U).
+- [x] **0.4 Folder structure.** `src/shared`, `src/server` (with `vendor/`), `src/client`, `tests/`, `tools/`. Modules from the Step 5 map are created when their task first needs them, not as empty stubs (see "Decisions and changes"). *Test:* the type check passes and Studio shows the same tree after a sync (U, S).
+- [x] **0.5 `Config`: the 35 players.** Name, nationality, number, rarity, floor, slot, with price and income from the Step 3 curve. *Test:* a spec checks 35 players, rarity counts 4/10/10/6/5, floor counts 10/10/10/5, unique IDs, price and income strictly rising with slot, and the Step 3 anchor values (slot 1 = $10 / $3, slot 10 = $11.1K / $268, slot 30 = $6.99B / $636K, Legends $400B / $1T / $2.5T / $6T / $15T) (U).
+- [x] **0.6 `Config`: everything else.** Store upgrades and prices, match speed, hat-trick chance, offline rate, stadium tiers and field sizes, starting cash $15, hold time 1 s, cooldown 20 h, max cash, stamina, level caps, feature switches. *Test:* a spec checks each table against Step 3 (cash upgrades x1.5 to x6.7, tiers $250 / $25K / $750K / $45M, field 4/5/6/8/11) (U).
+- [x] **0.7 `Formulas`.** Payout, star bonus (+10% per star, max 5), level bonus (+3%), level cost `40 x L x rarity factor`, offline earnings (cap 4 h, rate), pad price, season multiplier, boost stacking cap x4. *Test:* a spec with known values (a Common reaching level 5 costs 600 TP, a Legend level 25 about 65,000 TP, momentum caps at +25%, boosts never above x4) (U).
+- [x] **0.8 Number formatter.** K / M / B / T. *Test:* a spec ($999, $1.2K, $11.1K, $6.99B, $15T, rounding at edges) (U).
+- [x] **0.9 `Remotes` registry.** One module registers each remote with a payload shape, rate limit and cooldown; invalid payloads are dropped and logged. *Test:* a spec for the validator (wrong type, out of range, unknown ID, rate limit hit) (U); a Studio playtest sending a bad payload is dropped with a log line (S).
+- [x] **0.10 ProfileStore and `Session`.** Vendor ProfileStore (pinned, with its LICENSE), profile template, version, migrations, reconcile, save checks, receipt pruning, Mock mode in Studio. *Test:* a spec for the template, migration chain, reconcile and the "bad value" check (U); a playtest joins with Mock, then reads the profile (S).
+- [x] **0.11 Commit Phase 0.** Message `feat: project structure, config, formulas and tests`.
 
 ## Phase 1: greybox (Studio, plain blocks)
 Goal: the right sizes, and walking times that match Step 2.
@@ -108,6 +108,18 @@ Each group is done when its unit tests pass, its Studio playtest passes, and the
 |---|---|---|---|---|
 | 2026-10-18 | 0.1 | U | pass | luau-lsp, stylua and selene clean on `src/` |
 | 2026-10-18 | 0.2 | S | pass | Both Main scripts visible in Studio through Rojo |
+| 2026-10-18 | 0.3 | U | pass | `tools/check.sh` exits 0; a deliberately failing spec exits 1; a deliberate type error is caught by luau-lsp |
+| 2026-10-18 | 0.5, 0.6 | U | pass | 35 players, rarity and floor counts, Step 3 anchors, store tables, tiers (21 tests) |
+| 2026-10-18 | 0.7, 0.8 | U | pass | Formulas (level cost 600 TP / 65,000 TP, season, boosts cap, payout 416 example, offline cap) and number format |
+| 2026-10-18 | 0.9 | U | pass | Validate, RemoteSpec (10 client-to-server remotes), RateLimiter (burst, refill, penalty, cooldown) |
+| 2026-10-18 | 0.9 | S | pass | In a playtest: valid payload handled; bad payload dropped and logged with its reason; flood of 50 limited to the burst of 2; a handler that errors was caught and logged |
+| 2026-10-18 | 0.10 | U | pass | Profile template, validation, migration chain, reconcile, receipt pruning (91 unit tests in total) |
+| 2026-10-18 | 0.10 | S | pass | Playtest join on the Mock store: `$15, tier 1, 0 players owned`. The Studio store (real saving) is not tested yet, it needs API access and a published place |
 
 ## Decisions and changes during the build
-(Write here anything we change from the plan while building, with the date and the reason.)
+- **2026-10-18, task 0.4:** no empty stub modules. A module is created when its task first needs it, so there is no dead code and the type check stays meaningful.
+- **2026-10-18, task 0.10:** ProfileStore's real autosave default is 300 seconds, not 30 as Step 6 said by mistake. `Config.Data.autoSaveSeconds` is 60. `Profile:Save()` does not wait for the write, so `Session.saveAndConfirm` waits until `LastSavedData` shows the change (used for purchase receipts).
+- **2026-10-18, task 0.5:** Legend incomes are not in the Step 3 table. Placeholders continue the floor 3 growth (about x1.6 per Legend: 1.0M, 1.6M, 2.6M, 4.1M, 6.6M). Check them in the economy simulation. Shirt numbers are also provisional.
+- **2026-10-18, task 0.9:** `BuyStoreUpgrade` sends the level the client saw as well as the upgrade id, so a double tap cannot buy two levels (Step 5 only listed the id).
+- **2026-10-18, test method:** `require` inside `execute_luau` creates a separate module instance, so it cannot register handlers on the running game. Studio tests that need server handlers use temporary scripts (added in Edit mode, then deleted).
+- **2026-10-18, unit tests:** `tests/framework.luau` loads modules from `src/` in Lune with a fake `script` and `game`, so the same `require(script.Parent.X)` lines work in Studio and in tests. It reads every source file once at startup because Lune file calls cannot yield inside the loader.

@@ -1,0 +1,35 @@
+--!nocheck
+local T = require("./framework")
+
+T.suite("framework")
+
+T.test("eq passes on equal values and fails on different ones", function()
+	T.eq(1 + 1, 2)
+	T.throws(function()
+		T.eq(1, 2)
+	end)
+end)
+
+T.test("deepEq compares nested tables", function()
+	T.deepEq({ a = { 1, 2 }, b = "x" }, { a = { 1, 2 }, b = "x" })
+	T.throws(function()
+		T.deepEq({ a = 1 }, { a = 2 })
+	end)
+	T.throws(function()
+		T.deepEq({ a = 1 }, { a = 1, b = 2 })
+	end)
+end)
+
+T.test("near uses an epsilon", function()
+	T.near(0.1 + 0.2, 0.3, 1e-9)
+	T.throws(function()
+		T.near(1, 2, 0.5)
+	end)
+end)
+
+T.test("throws returns the error message", function()
+	local message = T.throws(function()
+		error("boom", 0)
+	end)
+	T.eq(message, "boom")
+end)
