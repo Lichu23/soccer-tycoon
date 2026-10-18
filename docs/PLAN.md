@@ -1,6 +1,6 @@
 # soccer-tycoon: design plan
 
-Status: steps 1 to 3 agreed (step 3 numbers are a draft to be playtested). Items marked *provisional* use defaults and can change. Steps 4 to 8 are still to do.
+Status: steps 1 to 4 agreed (step 3 numbers are a draft to be playtested). Items marked *provisional* use defaults and can change. Steps 5 to 8 are still to do.
 
 ## Step 1: core loop
 
@@ -46,10 +46,14 @@ Players are physical displays in the world (glass capsules on pedestals, like a 
 - **Case pool includes players from higher floors, but with minimum chances** (the better the player, the lower the odds). The field capacity limits how much a lucky case can earn. Exact odds are set in step 3 and shown before purchase.
 - **Free daily case:** cash or temporary boosts only, never players, never large amounts. No login streak.
 - **Player case (Robux):** CS-style case-opening animation. The server decides the result first, then the animation shows it. The strip must reflect the real odds (no fake near-misses). Odds are shown before purchase, including the chance of a duplicate. Roblox treats this as a paid random item: odds disclosure is required, pity systems and luck boosts count as paid random items too, and a `PolicyService` restriction may apply to some users. Before building, check current policy and offer the documented alternatives (direct purchase, earnable reward, a known non-random sequence) for affected users.
-- Cap the total star bonus and let the free paths also produce duplicates, so paying is not the only way to get stronger.
+- **Decision: stars are for paying players.** They come only from case duplicates (Robux) and no free path produces them. The star bonus is capped (+10% per star, 5 stars, +50% per player), and no free goal, including the Legend Trials, depends on stars. Free players still reach every floor, tier and Legend through cash, training and the trials.
 
 ### Legends (floor 4)
-Two routes: free route reachable in roughly 2 to 4 weeks of casual play, or a much more expensive cash route, or a direct Robux purchase at a clearly shown price. A Legend bought with Robux can only be bought inside the building once floor 4 has been reached, so the rule is the same for everyone. Legends stay across New Seasons, and so does anything bought with Robux.
+Two routes:
+- **Legend Trials (free):** each Legend has a short checklist of goals plus the cash price. The goals use only training, owned players and stadium tiers, never stars (stars are paid-only, see Cases and stars). First Legend (*provisional*, to be tuned in the step 3 simulation): own all players of floors 1 to 3, train three players to level 5, and reach stadium tier 4. Later Legends ask for more (more players trained, higher levels, stadium tier 5). Reachable in roughly 2 to 4 weeks of casual play. The checklist is shown on each Legend capsule's panel in the Legends hall (no HUD row). The hall is visible through glass from floor 2, so the panel can be read early, with goals greyed out until floor 4 is reached. Progress is recorded permanently, so a New Season does not undo a completed goal. No streak, no daily cap, no expiry.
+- **Direct Robux purchase** at a clearly shown price, which skips the trials and the cash price.
+
+There is no separate expensive cash route: everyone pays the cash price and completes the trials, or buys with Robux. A Legend bought with Robux can only be bought inside the building once floor 4 has been reached, so the rule is the same for everyone. Legends stay across New Seasons, and so does anything bought with Robux.
 
 ### Training ground
 - One training ground where standing earns **training points (TP)**, spent on levelling any owned player (more income) (*provisional*: no position stations, since rosters are fixed).
@@ -88,7 +92,7 @@ Two routes: free route reachable in roughly 2 to 4 weeks of casual play, or a mu
 
 ### World and plots
 - Shared world: players spawn in a shared area outside, with free plots in front. Visitors can see claimed plots, buildings and pitches.
-- **Plot claiming:** the player walks onto a free plot's "Claim" ring. The server assigns it (so two players cannot claim the same one) and the building appears with a build animation. Plots equal max players per server (*provisional*: 8).
+- **Plot claiming:** the player walks onto a free plot's "Claim" ring. The server assigns it (so two players cannot claim the same one) and the building appears with a build animation. Plots equal max players per server: 8 (decided).
 - When a player leaves, the plot is freed. Their saved data rebuilds their building on rejoin on any free plot.
 - Idle players: the arrow points to the nearest free plot, and after about 20 s the server assigns one (*provisional*).
 - Blocky cartoon style. Mobile first.
@@ -97,10 +101,13 @@ Two routes: free route reachable in roughly 2 to 4 weeks of casual play, or a mu
 - Called "New Season", not leagues: the 35 players stay the same.
 - Unlocked after floor 3 (the last cash floor) is complete and a cash threshold is met. Target first New Season about 2 to 3 hours of play in (day 2 for an efficient player, around day 4 for a casual one). It does not require owning Legends.
 - **Resets:** cash, floors 1 to 3 back to floor 1, players from floors 1 to 3, Store upgrade levels, TP levels.
+- **Head start (replaces "start from scratch"):** a new season starts with earlier floors already owned. Season 2 starts with floor 1 owned, season 3 and later with floors 1 and 2 owned. **Floor 3 is never granted**, because completing it opens floor 4 and the next New Season, so it must be played every season. Floor 4 and Legends are never granted by a season. Head-start players start at level 0 and 0 stars (stars from earlier seasons are kept, see below). The confirm screen shows exactly which floors are kept. Pacing is checked in the step 3 simulation (provisional).
 - **Stays:** Legends, anything bought with Robux, trophies, the permanent income multiplier (diminishing returns), stars, the collection record.
-- Confirm screen shows exactly what is lost and gained. Optional, no timers, no guilt.
+- **Preview from floor 3:** as soon as floor 3 opens (reached, not yet complete), the New Season button appears in the HUD in a locked state. Tapping it explains how it works: a permanent x1.5 income that grows each season, you start again from floor 1 with no cash, what resets, what stays (the floor head start, Legends, Robux purchases, stars, trophies), and how much of floor 3 is left to unlock it. It does not glow or nag while locked. The reset itself is available only when floor 3 is complete.
+- Confirm screen shows exactly what is lost and gained, plus an estimate of the re-climb ("floor 3 again in about 1.8 h at x1.5"). Optional, no timers, no guilt.
 - **Season badge in the HUD** next to the money label ("Season 2 · x1.5": season number and permanent multiplier). Tapping it shows progress (floors complete, cash threshold, what the next season gives). When New Season becomes available the badge glows and reads "New Season available" (no nagging, no timer), and the "Next goal" row switches to "Start New Season".
 - Legends and anything bought with Robux are kept across seasons (*provisional*: this replaces the idea of resetting every cash-bought player).
+- **Season trophies:** starting a New Season awards the trophy for the season just finished, with a short reveal in the style of the rarity reveal (a small celebration after the reset). Trophies use generic names to avoid trademarked competitions (*provisional*: Street Cup, City Cup, National Cup, Continental Cup, World Cup, then World Cup with a number), kept in `Config` so they are easy to swap. They stand on a shelf in the building's entrance hall, visible to visitors. Purely cosmetic, permanent, kept across seasons.
 - Trophies perk shop: later, not in the first release.
 
 ### Naming
@@ -158,7 +165,7 @@ Income is cash per match for a player on the field. Prices rise faster than inco
 | 10 | 1 | $11.1K | $268 | | 20 | 2 | $6.8M | $15.5K | | 30 | 3 | $6.99B | $636K |
 
 - **Starting cash:** $15.
-- **Legends (floor 4):** $400B, $1T, $2.5T, $6T, $15T. The first Legend should take about 3 weeks of casual free play. The cash route is very expensive and a direct Robux purchase is also available. Re-check these after the first playtests.
+- **Legends (floor 4):** $400B, $1T, $2.5T, $6T, $15T. Everyone pays the cash price and completes the Legend Trials, or buys with Robux. The first Legend should take about 3 weeks of casual free play, but the cash price on top of the trials may now be the real bottleneck, so check it in the simulation. Re-check these after the first playtests.
 - **Stadium tiers (cash):** tier 2 $250 (field 5), tier 3 $25K (field 6), tier 4 $750K (field 8), tier 5 $45M (field 11). The final back test (with all boosts, momentum and stars) has a player buying them at about 4 min, 7 min, 10 min and 28 min. Raising tiers 3 to 5 about 3 times spread them out from about 4, 6, 9 and 20 minutes. A bigger field adds only about +5% to +27% income in total (the best players do most of the earning), so tiers are mostly milestones. Each one gives a free x2 boost for 5 minutes (counts only while online, resets if a new one starts, inside the x4 cap).
 - **"Cash per match" upgrade, 8 levels:** $15, $60, $240, $960, $3.8K, $15K, $61K, $246K, giving multipliers x1.5, x2.1, x2.7, x3.5, x4.3, x5.1, x5.9, x6.7.
 - **Match speed (unlocks after stadium tier 2, minimum 5 s so the bar, "VICTORY" text and counter stay readable):** $120 (9 s), $2K (8 s), $30K (7 s), $500K (6 s), $8M (5 s).
@@ -181,6 +188,121 @@ Income is cash per match for a player on the field. Prices rise faster than inco
 ### Still to test in playtests
 Real pacing of floors 2 and 3 with stars, TP, momentum and daily boosts, the Legend prices, the case pool, the hat-trick chance, the offline rate and whether the 30-match boost feels worth its price.
 
+## Step 4: retention and ethics review (agreed)
+
+Method: the retention stack (core loop, hour-to-hour meta-game, day-to-day progression) plus the Fogg model (motivation, ability, prompt) for each return trigger, then the Regret Test and Black Mirror Test on every persuasive feature. Nothing here is measured yet: all targets come from playtests and the Creator Dashboard after launch.
+
+### Why a player comes back
+| Window | Reason to return | Where it comes from |
+|---|---|---|
+| Same session | The next player or upgrade is always one or two minutes away | Step 3 pacing, "Next goal" row |
+| Day 1 | Offline earnings waiting, free daily case, daily penalty kicks, floor 2 in progress (about 40 min) | Offline cap 4 h, no streak |
+| Days 2 to 4 | Floor 3 complete, first New Season (a visible fresh start with x1.5) | Step 1 New Season |
+| Weeks 1 to 3 | Climb floor 3, TP levelling, stars from duplicates, first Legend (about 3 weeks) | Legends route, collection |
+| Month 1+ | Collection record, more seasons, seeing other players' plots | Shared world |
+
+Return triggers are all **pull, not push**: a reason that is true (cash is waiting), never a made-up deadline.
+
+### Pit and peak map (first sessions)
+- **Peaks:** first purchase (0:23), first hat-trick (about 4:15), first stadium upgrade (about 5:16, the main one), floor 1 complete (about 11 min), floor 2 complete (about 40 min).
+- **Pits to watch:** minutes 5 to 11 (after the big peak, before floor 1 is done), the long wait for items 10 to 12 on each floor, and the first New Season reset.
+- **Fix for the post-peak dip:** open one new thing right after the first upgrade (daily penalty pad), and open the next one when floor 1 completes (hat-trick and offline upgrades, training ground). One new idea at a time, never a menu dump.
+- **End on a high:** when a player leaves, the HUD shows what is banked ("Offline earnings ready: up to 4 h") so the last thing they see is progress, not a treadmill.
+- **Welcome back:** a single non-blocking line ("+$N while you were away", the cap is shown). It is the Day 1 hook, so it must always load correctly (see Step 6).
+
+### Unlock order (one new idea at a time)
+| Moment | Opens |
+|---|---|
+| Start | Claim plot, capsule pads, the field button |
+| About 1 min | Store: cash per match |
+| About 5 min | Daily penalties, free daily case, their two HUD icons, stadium tier 2 |
+| Floor 1 complete (about 11 min) | Hat-trick and offline upgrades, training ground, the notification opt-in (below) |
+| Stadium tier 2 | Match speed |
+| Floor 2 started | The Robux player case, in the Store (not before, so the first 30 minutes are about the loop). The Legends hall becomes visible through glass |
+| Floor 3 reached | New Season button appears locked, with the explainer |
+| Floor 3 complete | New Season can be started |
+| Floor 4 reached | Legends hall and the direct Robux Legend |
+
+### Active play during the waits
+The game stays idle by design. Two small additions, no chores:
+- **Training drill:** at the training ground, standing still earns the base 10 TP per minute. A timing drill (same aim-only input and server judging as the daily penalties, so one mechanic built once) raises the rate for as long as the player keeps hitting it, up to about 15 TP per minute (*provisional*). The stamina bar stays the cap. Pacing and the Legend Trials are always tuned on the idle rate, so nobody falls behind.
+- **Team customization** (below).
+- Not in version 1: world collectibles, tap-to-boost during matches, daily quests.
+
+### Team customization by stadium tier
+Each stadium tier unlocks a new thing to customise, so a tier is more than a bigger field. Choices apply to the match scene, the plot outside and what visitors see, through a "Locker room" button on the pitch. Defaults look good, so nobody has to use it, and a new unlock shows a small note on the HUD that never blocks.
+
+| Tier | Free styles | Robux styles |
+|---|---|---|
+| 1 | Kit colours (home and away), team name from a preset list | Premium kit designs |
+| 2 | Crest from a small preset set, bench style | Premium crests |
+| 3 | Fence banners, stand colours | Premium stand and banner sets |
+| 4 | Floodlight colour, flags | Premium floodlight and flag sets |
+| 5 | Scoreboard style, crowd chant style, fireworks colour | Premium stadium themes |
+
+- **Each tier has several free styles and a few premium ones** (counts are *provisional*). Premium styles are purely cosmetic: no income, no capacity, no advantage.
+- A premium style is shown only for tiers the player has reached, with a preview before buying. It is a direct purchase of a visible style: no random cosmetic crates. Offers live only in the Locker room, with no popups and nothing in the first 30 minutes. Prices are placeholders (set in Step 8).
+- Bought styles are kept across New Seasons, like anything bought with Robux. Free choices are also kept and re-apply as the player reaches each tier again.
+- The client sends only an option ID from `Config` and the server checks it against what the tier unlocks and what the player owns. No free-text names in version 1 (presets avoid filtering). Purchases follow the Step 1 rule of being safe if a message arrives twice (`roblox-monetization`).
+- Art cost: kit colours and banners are cheap, crowd chants and fireworks are the most expensive. Tier 5 is the first thing to cut if time is short.
+
+### Daily return: HUD icons and cooldown
+- After the first 5 minutes (when penalties unlock), two icons sit next to the money label: the **free daily case** and the **daily penalties**. When one is ready it shows a small dot or soft glow, with no sound and no red counter, and the glow stops pulsing after a few seconds. When not ready the icon is dimmed and a tap shows the time left ("Ready in 3 h 20 min").
+- The icon opens the **free** case only (cash or a boost, never players). The Robux case lives in the Store from floor 2 and never shows a "ready" glow, because nothing free is pending there.
+- **Cooldown: 20 hours from claiming**, for the case and for the penalties (the 3 kicks refill together 20 hours after the first kick of a batch). A player who claims at 6 pm finds it ready again at 2 pm the next day, so a daily player never meets "not ready yet". It cannot be claimed twice in a day, and the ready time drifts earlier, so a changing schedule loses nothing. A fixed midnight reset was rejected: someone could claim at 11:59 pm and again at 12:01 am, and it feels unfair across timezones. Judged by the server clock.
+- No streak, nothing lost by skipping, and the icons never block anything.
+- HUD layout (*to check in the GUI pass, `roblox-gui`*): icons at least 44 px, inside the safe area, not overlapping the money label, the season badge or the "Next goal" row. This is the busiest part of the HUD.
+- The free case opens at minute 5 as a small cash prize (about 5 minutes of income), so the Step 3 cash numbers for the first session need a quick recheck.
+
+### Notifications (opt-in only)
+- Ask once, after floor 1 is complete, never in the first 5 minutes, and with a plain "Notify me when my offline earnings are full" text.
+- Send only when it is true and useful: offline bank full (4 h), a free daily case waiting. At most 1 a day. If the player ignores several in a row, stop sending. No guilt wording, no countdown language.
+
+### Ethics gate: feature by feature
+| Feature | Regret Test | Black Mirror Test | Verdict and rule |
+|---|---|---|---|
+| Hold-to-buy ring | Player knows what they pay and can step off | None | Pass |
+| Glowing "available" row | It is true information; the glow stops pulsing | None | Pass. Keep it silent and short |
+| Hat-trick | Positive-only luck, cash only, odds visible in the upgrade | Chance upgrades could look like gambling | Pass. The scripted first hat-trick is a tutorial moment; show the real chance in the upgrade text and do not call it "lucky" |
+| Momentum | It only adds income, never removes it | Rewards staying online, reaching the cap in about 4 min | Pass. Capped at +25% so it does not trap players in long sessions |
+| Stadium x2 timer | Pauses while offline, so nothing is lost | A countdown on a HUD badge | Pass. Keep the badge calm, no red or flashing |
+| Offline earnings | Low rate, no punishment for being away | None | Pass |
+| Stamina and TP | Free, never sold | Could be a chore | Pass. Never sell stamina refills |
+| Daily penalties and free case | No streak, no penalty for skipping | None | Pass |
+| Robux match boost | Bank never expires, cap 60, price on the button | Stacking cap x4 | Pass |
+| **Robux player case** | **Main risk: a paid random item, likely young players** | Repeat buying for duplicates | **Pass only with the rules below** |
+| New Season reset | Player loses progress for a bonus | Feels forced if cash Legends become unreachable without it | Pass with a clear confirm and a re-climb estimate. Verify in playtests that it stays optional |
+
+### Rarity reveal (fills the minute 5 to 11 dip)
+- The **first time a player owns a player of a rarity** (first Common, first Rare, first Very Rare, first Epic, first Legend), a short reveal plays: a background colour for that rarity, the player's name and number, and the player doing a ball trick (juggle, flick, or a celebration).
+- Rarity colours (*provisional*): Common grey or white, Rare blue, Very Rare purple, Epic gold, Legend a rainbow or red-gold. The rarity name is always written as text too, so the colour is not the only signal.
+- About 3 s, a tap skips it, no fast flashes, readable on mobile. It plays for purchases, case wins and free unlocks alike. Later players of a known rarity get only the small reveal from Step 2 (name, number, nationality).
+- **The first Common reveal is the first purchase (about 0:23)**, so it is shorter (about 2 s) and does not lock movement: the guide arrow to the stadium shows as soon as it ends or is skipped, to keep the 30 s first-match target of Step 2.
+- **Every player won from a case gets a reveal**, whether or not the rarity is new. A duplicate shows the same reveal plus the star it adds ("+1 star, 3/5"). It plays after the result is final, and it never replaces the odds strip or hints at a better result than the one won.
+- The first Rare player arrives early in floor 1, so the player gets the second reveal in the first 10 minutes.
+
+### Cases are in version 1
+Decision: the Robux player case ships in version 1 with the rules below, because it is optional and nothing in the progression depends on it. Re-check the 70 / 25 / 5 pool in the first playtests (see Step 3).
+
+### Rules for the Robux player case
+- Odds, the chance of a duplicate and the star effect are shown before purchase and on the button screen.
+- The server decides first and the strip shows the true odds (no fake near-misses). No pity counter and no luck boost.
+- One purchase per confirmation. No "open again" button that skips the confirm, no bundle discounts that push quantity, no limited-time banners, no popups after matches.
+- No case offers in the first 30 minutes. Never the only way to progress: every player, cases included, can be earned with cash.
+- Duplicates beyond 5 stars turn into cash (about 5 minutes of income) so a pull is never dead.
+- Check `PolicyService` before showing it and offer the direct-purchase alternative where it is restricted (see Step 1 and `roblox-monetization`).
+- Keep real player names away from the case flow (already in the naming safeguard).
+- The confirm screen shows the session total ("This session: 4 cases, 196 Robux"). Information only: no limits and no lockouts.
+
+### What disappears if this succeeds (Black Mirror)
+- The game is mostly automatic, so a player can leave it running without doing anything. That is fine for income, but engagement then lives in the buying decisions, so keep those fresh (new items, short upgrade animations) and avoid "stay online or lose out" mechanics.
+- The collection record and plot visiting are the only social hooks. If growth needs more, add them later (cheering a visitor's plot, a trophy shelf), never leaderboards ranked by time played.
+
+### How to verify
+- Metrics: day 1, day 7 and day 30 return, average session length, share reaching the first stadium upgrade by minute 5 (target at least 60%), share reaching floor 1, floor 2 and floor 3, share who press New Season, share who regret it (rejoin and quit within a day), case purchases per paying player.
+- Check for harm: how many players buy cases repeatedly in one session, and refund requests. If a small group spends a lot, add a confirm showing a session total.
+- Questions to ask testers: "What made you stop?", "What did you want to do next?", "Was anything you bought not what you expected?"
+
 ## Decisions log
 | Topic | Decision |
 |---|---|
@@ -200,14 +322,23 @@ Real pacing of floors 2 and 3 with stars, TP, momentum and daily boosts, the Leg
 | Cases and floors | Cases can give higher-floor players, at minimum chances |
 | Trading | Out of version 1 |
 | Roulette | Replaced by cases (free daily, Robux player case) |
-| Legends | Free grind or cash or Robux |
+| Legends | Legend Trials (training, owned players, stadium tiers) plus the cash price, or a direct Robux purchase. No stars in the trials, no separate expensive cash route |
+| Stars | Paid-only (case duplicates), capped at +50% per player, never required by a free goal |
 | World | Shared world, claimable plots, personal building and pitch |
-| Rebirth | New Season after floor 3 is complete, Legends and Robux purchases kept (provisional) |
+| Robux player case | Ships in version 1 with the Step 4 rules (odds shown, no pity or luck boost, none in the first 30 minutes, one purchase per confirm) |
+| Rarity reveal | First player of each rarity (Common included) gets a 3 s reveal (2 s for the first purchase): rarity colour background, name and number, ball trick, skippable. Every case win gets a reveal, duplicates show the star gained |
+| Waits | Idle by design. Training drill raises TP up to about 15 per minute while played, idle rate stays the baseline. No quests or tap-to-boost in version 1 |
+| Customization | Each stadium tier unlocks free styles to choose and a few Robux cosmetic styles. Purely cosmetic, kept across seasons, direct purchase only |
+| Daily return | HUD icons for the free daily case and the penalties from minute 5, 20-hour cooldown from claiming, no streak |
+| Plots | 8 per server (decided) |
+| Trophies | One generic-named trophy per finished season, shown on a shelf in the entrance hall, cosmetic |
+| Rebirth head start | Season 2 keeps floor 1, season 3+ keeps floors 1 and 2. Floor 3 is never granted (it opens floor 4 and the next season) |
+| Rebirth | New Season stays optional. Button and explainer visible from floor 3 reached (locked), startable when floor 3 is complete. Legends and Robux purchases kept (provisional) |
 | Names | Real names, names kept in Config, risk acknowledged |
 
 ## Steps still to do
 3. Economy: drafted and tested with a simulation (needs real playtests)
-4. Retention and ethics review
+4. Retention and ethics review: agreed (needs playtest data)
 5. Architecture and security (roblox-architecture, roblox-security)
 6. Saving (roblox-data)
 7. Build and polish (roblox-building, roblox-gui, roblox-lighting)
