@@ -1,6 +1,6 @@
 # soccer-tycoon: design plan
 
-Status: steps 1 to 5 agreed (step 3 numbers are a draft to be playtested). Items marked *provisional* use defaults and can change. Steps 6 to 8 are still to do.
+Status: steps 1 to 6 agreed (step 3 numbers are a draft to be playtested). Items marked *provisional* use defaults and can change. Steps 7 and 8 are still to do.
 
 ## Step 1: core loop
 
@@ -369,6 +369,44 @@ Principle: the server owns every game fact and the client only draws. No framewo
 ### Threats covered (summary)
 Forged price or ID (IDs only from `Config`), double tap or resent message (numbers seen, one-step check and change), double receipt (`PurchaseId` record), clock change (server clock), remote flooding (rate limits and cooldowns), standing on someone else's pad (owner check), teleport to a pad (all other rules still apply), training drill bots (rate and stamina cap), client-side value edits (server never reads them back).
 
+## Step 6: saving (agreed)
+
+Principle: one small profile per player, saved safely, and a failed load never lets someone play on a blank profile. Each item below was discussed and agreed.
+
+### Decisions
+- **ProfileStore for saving**, not hand-written DataStore code. It gives session locking (one server holds a profile at a time, which stops duplicated progress when a player hops servers), retries and throttling, a Mock mode for Studio, and template reconcile. It is free: Apache-2.0 license (checked on the official repo page, not the full text). Copy a pinned version into `src/server/` with its LICENSE and copyright notice beside it, read its current documentation before using it, and do not auto-update.
+- **Profile shape: small and flat, only what cannot be recomputed.** Key `Player_<UserId>`.
+
+```
+version        1
+cash, tp
+staminaLeft            seconds left in the current session
+lastSeen               server time, for offline earnings
+stadiumTier
+storeLevels            { cashPerMatch, matchSpeed, hatTrick, offline }
+fieldStarted           true once the first player is on the field
+players                { [playerId] = { level, stars } }   owned only, Legends included
+season                 { number }
+trials                 { [legendId] = { [goalId] = true } }   goals are never unset
+cosmetics              { owned = { [id] = true }, chosen = { kit, crest, ... } }
+daily                  { caseClaimedAt, penaltyBatchAt, kicksUsed }
+boosts                 { bankedMatches, stadiumBoostLeft }
+receipts               { [purchaseId] = { at, result } }
+pendingReveals         results the player has not seen yet
+seenRarities           { Common = true, ... }
+flags                  { firstHatTrickDone, notificationAsked, ... }
+```
+
+  - **Derived values are not stored:** the field lineup, the permanent multiplier, head-start floors, the trophy shelf and floor completion come from `players` and `season.number`.
+  - **New Season is one step** that rebuilds the progress fields from the template and the head-start rule, and keeps `trials`, `cosmetics`, Legends, `receipts` and `season.number + 1`. A crash before saving loses the reset, never progress.
+  - IDs in the profile (players, products, cosmetics) come from `Config`, never names.
+  - **Versioning:** a `version` number and ordered migration functions run on load, then ProfileStore reconcile fills new fields from the template. Reconcile handles added fields, migrations handle changed meaning. No field is renamed or repurposed without a migration.
+  - **Checks before saving:** numbers finite and within the `Config` maximum cash, and `players` keys must be known IDs, because one bad value fails the whole write.
+- **When we save.** ProfileStore's autosave (about every 30 seconds) is the baseline, so a server crash loses at most about 30 seconds of normal play. On top of that there are **forced saves** at moments that matter: right after any Robux purchase (the receipt is confirmed to Roblox only after the save succeeds), at New Season (the reset and trophy are written together), at a stadium upgrade, at buying a Legend and at finishing a Legend Trial goal. Leaving ends the session and saves, and `BindToClose` waits for every profile to finish. Cash, TP and ordinary pad buys are not saved one by one (rate limits, and autosave covers them). Saves run in the background and never block the game, except that a purchase reveal waits for its own save. If a forced save fails it is retried a few times, and a purchase is left unconfirmed so Roblox retries it later and nobody is charged without receiving the item.
+- **When loading fails, nobody plays on a blank profile.** The server retries quietly for a short time (a few attempts over about 10 to 20 seconds, which also covers a lock left by a quick server hop) while the player sees a loading screen ("Loading your stadium…") and no plot is claimed yet. The lock is never stolen, because that could erase progress from the other server. If it still fails the player is kicked with a clear message ("Couldn't load your save. Please rejoin in a minute. Your progress is safe."). A blank profile could be saved over the real one, which is the worst failure in the game. A failed save during play does not kick anyone: the profile in memory is correct and the save is retried. If another server takes the profile mid-session (ProfileStore signals this), that player is kicked at once so two servers never change one profile. Load and save failures are logged so a DataStore outage is noticed early.
+- **Receipts and purchases.** `receipts` stores each purchase as `{ at, result }` keyed by `PurchaseId`. `ProcessReceipt` looks the ID up first: if it is there the item is not granted again, and for a case the saved result is returned. If the profile is not loaded (just joining, or the player already left) the answer is "not processed yet" and Roblox retries later. Receipts are kept for 30 days or the last 100, whichever is more, and pruned on load. Order: the grant and the receipt entry are written together, then the forced save, then the receipt is confirmed to Roblox, then the case animation is sent to the client. A failure before the confirm loses nothing. `pendingReveals` holds case results the player has not watched, so a disconnect mid-animation shows the reveal on the next join. Support disputes use `receipts` plus the Roblox Creator Dashboard purchase records. No separate ledger in version 1.
+- **Testing without touching real data.** Studio uses ProfileStore Mock mode by default (data only in memory, so every playtest starts fresh). Tests that need real saving use a differently named store (for example `PlayerData_Studio`), and the live game uses `PlayerData` only, chosen from one switch in `Config` so they never mix. A reset command and a few ready-made profiles (floor 2 complete, floor 3 complete with Legends ready, season 3) exist only in Studio, not in a published server, and the check cannot be turned on from the client. Before launch, one full save, rejoin and migration test on the Studio store is a Step 8 checklist item. No automated unit tests for the save code: the shared formulas are checked in Studio with the MCP tools and the save path is mostly ProfileStore's own tested code.
+
 ## Decisions log
 | Topic | Decision |
 |---|---|
@@ -406,6 +444,6 @@ Forged price or ID (IDs only from `Config`), double tap or resent message (numbe
 3. Economy: drafted and tested with a simulation (needs real playtests)
 4. Retention and ethics review: agreed (needs playtest data)
 5. Architecture and security: agreed (roblox-architecture, roblox-security)
-6. Saving (roblox-data)
+6. Saving: agreed (roblox-data)
 7. Build and polish (roblox-building, roblox-gui, roblox-lighting)
 8. Launch (roblox-publish-checklist, roblox-monetization, roblox-growth-design)
