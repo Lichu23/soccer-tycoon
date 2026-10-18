@@ -200,6 +200,17 @@ Config.Boost = {
 	matchMultiplier = 2,
 }
 
+export type CaseReward = {
+	id: string,
+	kind: "cash" | "boost" | "tp",
+	label: string,
+	detail: string,
+	weight: number,
+	minutes: number?,
+	seconds: number?,
+	tp: number?,
+}
+
 Config.Daily = {
 	cooldownSeconds = 20 * 60 * 60,
 	penaltyKicks = 3,
@@ -217,10 +228,51 @@ Config.Daily = {
 		bottomCenter = 0.03,
 		bottomRight = 0.08,
 	} :: { [string]: number },
-	-- The free daily case: cash worth some minutes of income, or a x2 boost (never players).
-	caseCashMinutes = 5,
-	caseBoostSeconds = 300,
-	caseBoostChance = 0.5,
+	-- The free daily case: five small rewards (never players, never large amounts). `weight` is the
+	-- relative chance. Cash is worth `minutes` of normal income, a boost is x2 for `seconds`, `tp`
+	-- is a few training points. The roulette on screen spins through exactly these.
+	caseRewards = {
+		{
+			id = "cashSmall",
+			kind = "cash",
+			label = "Cash",
+			detail = "3 min of income",
+			minutes = 3,
+			weight = 35,
+		},
+		{
+			id = "boostShort",
+			kind = "boost",
+			label = "x2 boost",
+			detail = "3 minutes",
+			seconds = 180,
+			weight = 25,
+		},
+		{
+			id = "tpSmall",
+			kind = "tp",
+			label = "Training points",
+			detail = "+40 TP",
+			tp = 40,
+			weight = 20,
+		},
+		{
+			id = "boostLong",
+			kind = "boost",
+			label = "x2 boost",
+			detail = "8 minutes",
+			seconds = 480,
+			weight = 12,
+		},
+		{
+			id = "cashBig",
+			kind = "cash",
+			label = "Big cash",
+			detail = "8 min of income",
+			minutes = 8,
+			weight = 8,
+		},
+	} :: { CaseReward },
 }
 
 Config.Offline = {

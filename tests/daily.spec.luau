@@ -61,35 +61,70 @@ T.test("a refused claim changes nothing", function()
 	T.eq(data.daily.caseClaimedAt, claimedAt)
 end)
 
-T.test(
-	"the case pays cash worth 5 minutes of income, or a x2 boost, never anything else",
-	function()
-		local data = playing()
-		local cashBefore = data.cash
-		local prize = Daily.claimCase(data, T0, 0.99)
-		T.eq(prize.kind, "cash")
-		T.eq(data.cash - cashBefore, prize.amount)
-		T.eq(prize.amount, Daily.caseCash(playing()))
-		T.truthy(prize.amount > 0)
+-- Rolls that land on each reward of Config.Daily.caseRewards (weights 35 / 25 / 20 / 12 / 8).
+local ROLL = { cashSmall = 0, boostShort = 0.4, tpSmall = 0.7, boostLong = 0.85, cashBig = 0.99 }
 
-		local other = playing()
-		local boost = Daily.claimCase(other, T0, 0)
-		T.eq(boost.kind, "boost")
-		T.eq(boost.seconds, Config.Daily.caseBoostSeconds)
-		T.eq(other.boosts.stadiumBoostLeft, Config.Daily.caseBoostSeconds)
-		T.eq(other.cash, Config.StartingCash)
+T.test("the free case has five different small rewards and never a player", function()
+	T.eq(#Config.Daily.caseRewards, 5)
+	local kinds, ids = {}, {}
+	for _, reward in Config.Daily.caseRewards do
+		T.falsy(ids[reward.id], "duplicate id " .. reward.id)
+		ids[reward.id] = true
+		kinds[reward.kind] = true
+		T.truthy(reward.kind == "cash" or reward.kind == "boost" or reward.kind == "tp")
 	end
-)
+	T.truthy(kinds.cash and kinds.boost and kinds.tp, "cash, boosts and training points")
+end)
+
+T.test("each roll lands on its reward, by weight", function()
+	for id, roll in ROLL do
+		T.eq(Daily.pickReward(roll).id, id)
+	end
+	T.eq(Daily.pickReward(0.999999999).id, "cashBig")
+	T.eq(Daily.pickReward(-1).id, "cashSmall")
+end)
+
+T.test("cash rewards pay minutes of income, the big one pays more", function()
+	local small, big = playing(), playing()
+	local smallPrize = Daily.claimCase(small, T0, ROLL.cashSmall)
+	local bigPrize = Daily.claimCase(big, T0, ROLL.cashBig)
+	T.eq(smallPrize.kind, "cash")
+	T.eq(small.cash - Config.StartingCash, smallPrize.amount)
+	T.eq(smallPrize.amount, Daily.caseCash(playing(), 3))
+	T.truthy(bigPrize.amount > smallPrize.amount * 2)
+end)
+
+T.test("boost rewards set the x2 timer, tp reward adds training points", function()
+	local data = playing()
+	local boost = Daily.claimCase(data, T0, ROLL.boostShort)
+	T.eq(boost.kind, "boost")
+	T.eq(data.boosts.stadiumBoostLeft, 180)
+	local long = playing()
+	Daily.claimCase(long, T0, ROLL.boostLong)
+	T.eq(long.boosts.stadiumBoostLeft, 480)
+	local tp = playing()
+	local prize = Daily.claimCase(tp, T0, ROLL.tpSmall)
+	T.eq(prize.kind, "tp")
+	T.eq(tp.tp, 40)
+	T.eq(tp.cash, Config.StartingCash)
+end)
 
 T.test("a case boost keeps the longer timer instead of adding", function()
 	local data = playing()
 	data.boosts.stadiumBoostLeft = 1000
-	Daily.claimCase(data, T0, 0)
+	Daily.claimCase(data, T0, ROLL.boostShort)
 	T.eq(data.boosts.stadiumBoostLeft, 1000)
 	data.boosts.stadiumBoostLeft = 10
 	data.daily.caseClaimedAt = 0
-	Daily.claimCase(data, T0, 0)
-	T.eq(data.boosts.stadiumBoostLeft, Config.Daily.caseBoostSeconds)
+	Daily.claimCase(data, T0, ROLL.boostShort)
+	T.eq(data.boosts.stadiumBoostLeft, 180)
+end)
+
+T.test("a cash reward with no income yet becomes a boost", function()
+	local data = ProfileSchema.newProfile()
+	data.stadiumTier = Config.Daily.unlockTier
+	local prize = Daily.claimCase(data, T0, ROLL.cashSmall)
+	T.eq(prize.kind, "boost")
 end)
 
 T.test("three kicks, then nothing until 20 hours after the first kick", function()

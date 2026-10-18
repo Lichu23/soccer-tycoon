@@ -17,7 +17,10 @@ local Roster = require(ReplicatedStorage.Shared.Roster)
 
 type Profile = ProfileSchema.Profile
 
-export type CasePrize = { kind: "cash", amount: number } | { kind: "boost", seconds: number }
+export type CasePrize =
+	{ id: string, kind: "cash", amount: number }
+	| { id: string, kind: "boost", seconds: number }
+	| { id: string, kind: "tp", amount: number }
 
 export type KickResult = {
 	aim: string,
@@ -59,8 +62,8 @@ function Daily.caseReady(data: Profile, now: number): boolean
 	return Daily.unlocked(data) and now >= Daily.caseReadyAt(data)
 end
 
--- Cash worth `caseCashMinutes` of normal income at the current levels (no boosts, no momentum).
-function Daily.caseCash(data: Profile): number
+-- Cash worth `minutes` of normal income at the current levels (no boosts, no momentum).
+function Daily.caseCash(data: Profile, minutes: number): number
 	local fieldIncomes = Roster.fieldIncomes(data)
 	if #fieldIncomes == 0 then
 		return 0
@@ -70,12 +73,30 @@ function Daily.caseCash(data: Profile): number
 		cashUpgradeLevel = data.storeLevels.cashPerMatch,
 		season = data.season.number,
 	})
-	local matches = Config.Daily.caseCashMinutes * 60 / Progress.matchSeconds(data)
+	local matches = minutes * 60 / Progress.matchSeconds(data)
 	return math.max(1, math.floor(base * matches))
 end
 
--- Claims the free case. `roll` is a random number in [0, 1) that picks cash or the boost.
--- Returns the prize, or nil and why it was refused ("locked" or "notReady").
+-- The reward a roll in [0, 1) picks, by the weights of Config.Daily.caseRewards.
+function Daily.pickReward(roll: number): Config.CaseReward
+	local rewards = Config.Daily.caseRewards
+	local total = 0
+	for _, reward in rewards do
+		total += reward.weight
+	end
+	local point = math.clamp(roll, 0, 0.999999) * total
+	for _, reward in rewards do
+		point -= reward.weight
+		if point < 0 then
+			return reward
+		end
+	end
+	return rewards[#rewards]
+end
+
+-- Claims the free case. `roll` is a random number in [0, 1) that picks the reward. Returns the
+-- prize (with the reward id the roulette lands on), or nil and why it was refused ("locked" or
+-- "notReady"). A cash reward with no income yet turns into the first boost instead.
 function Daily.claimCase(data: Profile, now: number, roll: number): (CasePrize?, string?)
 	if not Daily.unlocked(data) then
 		return nil, "locked"
@@ -84,12 +105,20 @@ function Daily.claimCase(data: Profile, now: number, roll: number): (CasePrize?,
 		return nil, "notReady"
 	end
 	data.daily.caseClaimedAt = now
-	local cash = Daily.caseCash(data)
-	if cash <= 0 or roll < Config.Daily.caseBoostChance then
-		Boosts.addDouble(data, Config.Daily.caseBoostSeconds)
-		return { kind = "boost", seconds = Config.Daily.caseBoostSeconds }, nil
+	local reward = Daily.pickReward(roll)
+	if reward.kind == "cash" then
+		local cash = Daily.caseCash(data, reward.minutes or 0)
+		if cash > 0 then
+			return { id = reward.id, kind = "cash", amount = Economy.grant(data, cash) }, nil
+		end
+		reward = Config.Daily.caseRewards[2]
 	end
-	return { kind = "cash", amount = Economy.grant(data, cash) }, nil
+	if reward.kind == "tp" then
+		return { id = reward.id, kind = "tp", amount = Economy.grantTp(data, reward.tp or 0) }, nil
+	end
+	local seconds = reward.seconds or 0
+	Boosts.addDouble(data, seconds)
+	return { id = reward.id, kind = "boost", seconds = seconds }, nil
 end
 
 -- The penalty kicks --------------------------------------------------------------------------

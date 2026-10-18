@@ -11,6 +11,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Arrow = require(script.Parent.Arrow)
+local CaseModal = require(script.Parent.CaseModal)
 local DailyInfo = require(ReplicatedStorage.Shared.DailyInfo)
 local NumberFormat = require(ReplicatedStorage.Shared.NumberFormat)
 local Net = require(script.Parent.Net)
@@ -284,6 +285,7 @@ function DailyUi.init()
 
 	local caseIcon = buildIcon(gui, "CaseIcon", "CASE", 1)
 	local kickIcon = buildIcon(gui, "KickIcon", "KICK", 2)
+	CaseModal.init()
 	local toast = buildToast(gui)
 	local prize = buildPrize(gui)
 	local panel = buildPanel(gui)
@@ -459,8 +461,13 @@ function DailyUi.init()
 			showKickResult(info.result)
 		elseif info.kind == "caseResult" and type(info.prize) == "table" then
 			local won = info.prize
+			if CaseModal.onResult(won) then
+				return -- the cases screen shows it with its roulette
+			end
 			if won.kind == "cash" and type(won.amount) == "number" then
 				showPrize("Free case: +" .. NumberFormat.money(won.amount))
+			elseif won.kind == "tp" and type(won.amount) == "number" then
+				showPrize("Free case: +" .. won.amount .. " training points")
 			elseif won.kind == "boost" and type(won.seconds) == "number" then
 				showPrize(
 					string.format("Free case: x2 income for %d min", math.ceil(won.seconds / 60))
@@ -470,16 +477,9 @@ function DailyUi.init()
 	end)
 
 	-- Taps -------------------------------------------------------------------------------------
-	local lastClaim = 0
 	caseIcon.button.Activated:Connect(function()
-		if caseIcon.status == "ready" then
-			if os.clock() - lastClaim > 1 then
-				lastClaim = os.clock()
-				Net.fire("ClaimDaily", "case")
-			end
-		elseif caseIcon.status == "waiting" then
-			showToast(DailyInfo.waitText(readyAt("caseReadyAt") - Workspace:GetServerTimeNow()))
-		end
+		-- The icon opens the cases screen; it says when the free case is ready and opens it.
+		CaseModal.open()
 	end)
 	kickIcon.button.Activated:Connect(function()
 		if kickIcon.status == "ready" then

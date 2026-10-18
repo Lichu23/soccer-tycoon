@@ -28,6 +28,10 @@ local BUTTONS: { DevButton } = {
 	{ label = "Reset profile", command = "resetProfile", amount = 0 },
 }
 
+-- Two columns, so the panel stays low and never covers the daily icons at the top left.
+local COLUMNS = 2
+local ROWS = math.ceil(#BUTTONS / COLUMNS)
+
 function DevPanel.init()
 	if not RunService:IsStudio() then
 		return
@@ -43,7 +47,7 @@ function DevPanel.init()
 	-- Bottom left: below the daily icons at the top left, clear of the HUD column on the right.
 	frame.AnchorPoint = Vector2.new(0, 1)
 	frame.Position = UDim2.new(0, 6, 1, -6)
-	frame.Size = UDim2.fromOffset(122, 8 + #BUTTONS * 26)
+	frame.Size = UDim2.fromOffset(8 + COLUMNS * 118, 8 + ROWS * 26)
 	frame.BackgroundColor3 = Color3.fromRGB(20, 24, 35)
 	frame.BackgroundTransparency = 0.25
 	frame.Parent = gui
@@ -53,7 +57,8 @@ function DevPanel.init()
 
 	for index, entry in BUTTONS do
 		local button = Instance.new("TextButton")
-		button.Position = UDim2.fromOffset(4, 4 + (index - 1) * 26)
+		local column, row = (index - 1) // ROWS, (index - 1) % ROWS
+		button.Position = UDim2.fromOffset(4 + column * 118, 4 + row * 26)
 		button.Size = UDim2.fromOffset(114, 22)
 		button.BackgroundColor3 = Color3.fromRGB(60, 66, 90)
 		button.TextColor3 = Color3.fromRGB(255, 255, 255)
