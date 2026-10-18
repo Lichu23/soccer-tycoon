@@ -1,8 +1,9 @@
 --!strict
 -- The timing of the training drill (docs/PLAN.md, Step 4): a marker sweeps across a bar from left
 -- to right and a press counts when it is near the middle. A hit starts the sweep again at once; a
--- miss starts a short cooldown; a sweep that runs to the end unpressed (the player is away) stops
--- the drill. In both cases the bar stays red ("stopped") until the next press starts the marker.
+-- miss turns the bar red for a short cooldown and then the marker starts again by itself; a sweep
+-- that runs to the end unpressed simply starts the next one. The drill only begins "stopped" until
+-- it is first started (the server presses once when the player steps onto the field).
 -- The server keeps the state and judges every press; the client runs the same functions on the
 -- state it reads from the player's attributes, so the bar the player sees is the one judged.
 -- Pure, so it is unit tested.
@@ -18,14 +19,19 @@ function Drill.new(): State
 	return { phase = "stopped", startedAt = 0, cooldownUntil = 0 }
 end
 
--- Applies what time alone changes: a sweep that reached the end, or a finished cooldown, leaves the
--- drill stopped.
+-- Applies what time alone changes: a finished cooldown starts the marker again, and a sweep that
+-- reached the end starts the next sweep.
 function Drill.normalize(state: State, now: number)
-	local sweepOver = state.phase == "running"
-		and now - state.startedAt >= Config.Training.drillSweepSeconds - 1e-6
-	local cooldownOver = state.phase == "cooldown" and now >= state.cooldownUntil
-	if sweepOver or cooldownOver then
-		state.phase = "stopped"
+	local sweep = Config.Training.drillSweepSeconds
+	if state.phase == "cooldown" and now >= state.cooldownUntil then
+		state.phase = "running"
+		state.startedAt = state.cooldownUntil
+	end
+	if state.phase == "running" then
+		local elapsed = now - state.startedAt
+		if elapsed >= sweep - 1e-6 then
+			state.startedAt += math.floor((elapsed + 1e-6) / sweep) * sweep
+		end
 	end
 end
 
@@ -43,7 +49,7 @@ function Drill.isHit(position: number): boolean
 end
 
 -- A press at `now`. Returns what happened:
---   "start"   the drill was stopped: the marker starts, nothing is paid
+--   "start"   the drill was stopped (before its first start): the marker starts, nothing is paid
 --   "hit"     the marker was in the middle: it starts again at once
 --   "miss"    anywhere else: cooldown with a red bar
 --   "ignored" during the cooldown

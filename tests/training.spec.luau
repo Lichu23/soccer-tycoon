@@ -114,20 +114,16 @@ T.test("the drill starts stopped and the first press starts the marker without p
 	T.eq(Training.drillPay(data, carry, "start", 10), 0)
 end)
 
-T.test(
-	"the marker sweeps in the sweep time and then the drill stops (red until the next press)",
-	function()
-		local sweep = Config.Training.drillSweepSeconds
-		local state = runningDrill(100)
-		T.near(Drill.position(state, 100 + sweep / 2), 0.5, 1e-9)
-		Drill.normalize(state, 100 + sweep - 0.01)
-		T.eq(state.phase, "running")
-		Drill.normalize(state, 100 + sweep)
-		T.eq(state.phase, "stopped")
-		T.eq(Drill.position(state, 100 + sweep), nil)
-		T.eq(Drill.press(state, 105), "start") -- an away player just presses to start again
-	end
-)
+T.test("a sweep that reaches the end just starts the next one (no stop)", function()
+	local sweep = Config.Training.drillSweepSeconds
+	local state = runningDrill(100)
+	T.near(Drill.position(state, 100 + sweep / 2), 0.5, 1e-9)
+	Drill.normalize(state, 100 + sweep * 2.25)
+	T.eq(state.phase, "running")
+	T.near(Drill.position(state, 100 + sweep * 2.25), 0.25, 1e-6)
+	-- an away player is simply in the middle of some sweep when they come back
+	T.eq(Drill.press(state, 100 + sweep * 50.5), "hit")
+end)
 
 T.test("a press in the middle is a hit and the marker starts again at once", function()
 	local sweep = Config.Training.drillSweepSeconds
@@ -149,15 +145,23 @@ T.test("the window is the middle 30% of the bar", function()
 	T.eq(Drill.press(runningDrill(0), sweep * 0.05), "miss")
 end)
 
-T.test("a miss starts a cooldown: presses are ignored, then the bar waits for a press", function()
-	local cooldown = Config.Training.drillCooldownSeconds
-	local state = runningDrill(0)
-	T.eq(Drill.press(state, 0.1), "miss")
-	T.eq(state.phase, "cooldown")
-	T.eq(Drill.press(state, 0.1 + cooldown - 0.05), "ignored")
-	T.eq(Drill.press(state, 0.1 + cooldown + 0.05), "start")
-	T.eq(state.phase, "running")
-end)
+T.test(
+	"a miss starts a cooldown: presses are ignored, then the marker restarts by itself",
+	function()
+		local cooldown = Config.Training.drillCooldownSeconds
+		local state = runningDrill(0)
+		T.eq(Drill.press(state, 0.1), "miss")
+		T.eq(state.phase, "cooldown")
+		T.eq(Drill.press(state, 0.1 + cooldown - 0.05), "ignored")
+		Drill.normalize(state, 0.1 + cooldown + 0.3)
+		T.eq(state.phase, "running")
+		T.near(
+			Drill.position(state, 0.1 + cooldown + 0.3),
+			0.3 / Config.Training.drillSweepSeconds,
+			1e-6
+		)
+	end
+)
 
 T.test("a hit pays 1 TP plus 0.3 and a miss pays 1 TP", function()
 	local data, carry = fresh()
