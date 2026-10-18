@@ -36,8 +36,7 @@ Session.onLoaded(function(session)
 	-- Time away becomes cash first, so the first sync already has it. The client shows the message.
 	local earned, secondsAway = Offline.apply(session.data, os.time())
 	if earned > 0 then
-		session.player:SetAttribute("offlineSeconds", secondsAway)
-		session.player:SetAttribute("offlineEarned", earned)
+		Sync.offline(session.player, earned, secondsAway)
 		Analytics.event(session, "offline_earnings")
 	end
 	Sync.all(session)

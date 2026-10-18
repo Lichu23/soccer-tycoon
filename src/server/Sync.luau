@@ -41,6 +41,12 @@ function Sync.snapshot(session: Session.Session)
 	})
 end
 
+-- Tells the client how much it earned while away (the HUD shows it once).
+function Sync.offline(player: Player, earned: number, secondsAway: number)
+	player:SetAttribute("offlineSeconds", secondsAway)
+	player:SetAttribute("offlineEarned", earned)
+end
+
 function Sync.all(session: Session.Session)
 	Sync.scalars(session)
 	Sync.snapshot(session)

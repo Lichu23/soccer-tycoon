@@ -11,7 +11,7 @@ local Roster = require(ReplicatedStorage.Shared.Roster)
 
 local DevCommands = {}
 
-DevCommands.commands = { "grantFloor", "setCash", "resetProfile" }
+DevCommands.commands = { "grantFloor", "setCash", "resetProfile", "simulateAway" }
 
 -- Applies one command. Returns false for an unknown command.
 --   grantFloor n: owns every cash-floor player of floors 1 to n (Legends are never granted)
