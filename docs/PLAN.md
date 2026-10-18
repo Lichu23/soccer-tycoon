@@ -1,6 +1,6 @@
 # soccer-tycoon: design plan
 
-Status: steps 1 to 4 agreed (step 3 numbers are a draft to be playtested). Items marked *provisional* use defaults and can change. Steps 5 to 8 are still to do.
+Status: steps 1 to 5 agreed (step 3 numbers are a draft to be playtested). Items marked *provisional* use defaults and can change. Steps 6 to 8 are still to do.
 
 ## Step 1: core loop
 
@@ -303,6 +303,72 @@ Decision: the Robux player case ships in version 1 with the rules below, because
 - Check for harm: how many players buy cases repeatedly in one session, and refund requests. If a small group spends a lot, add a confirm showing a session total.
 - Questions to ask testers: "What made you stop?", "What did you want to do next?", "Was anything you bought not what you expected?"
 
+## Step 5: architecture and security (agreed)
+
+Principle: the server owns every game fact and the client only draws. No framework, event bus or ECS: direct module calls, one owner per piece of state. Every client message is a remote with a type check, bounds, an ID taken only from `Config`, a server cooldown and a rate limit. The module map is the structure to build; the items below were each discussed and agreed.
+
+### Module map
+- **Shared** (pure, no secrets): `Config` (players, prices, rarities, store levels, trophies, cosmetics, hold time, cooldowns) and `Formulas` (payout, star bonus, pad price, offline earnings), so the number on a pad is the number the server charges.
+- **Server:** `Session` (one in-memory record per player), `Economy` (the only place cash changes), `Plots`, `Match`, `Roster`, `Pads`, `Stadium`, `Store`, `Training`, `Daily`, `Cases`, `Season`, `Legends`, `Cosmetics`, `Purchases`. A small `Main.server.luau` starts them in an explicit order and fails visibly.
+- **Client:** `HUD`, `PadRing`, `MatchView`, `Reveal`, `StadiumCinematic`, `LockerRoom`, `CaseView`. None of them decides anything.
+
+### Decisions
+- **Pads are server-timed, not `ProximityPrompt`.** The player just stands on the pad. The server tracks who is on which pad and times the hold with its own clock (`Config` hold time, 1 second). The client draws the ring (it starts it right away and the server confirms). Only the plot owner can buy on their pads, and a visitor standing on a pad is ignored. Written and tested first, because every buy, level-up and stadium upgrade uses it. Edge cases to cover: respawn, two players on one pad, leaving mid-hold.
+
+- **HUD numbers travel as player attributes.** Single values (cash, TP, stamina, season number, boost multiplier and end time, boosted matches left, ready times for the daily case and penalties) are set by the server and replicate automatically, with no remote. Lists (owned players, levels, stars, cosmetics, trial progress) go once as a snapshot on join and then as small changes through one remote, since only the Locker room and Legend panels need them. The plot itself (capsules, pads, pitch) is built and changed by the server and replicates as parts. One server-to-client remote carries events (match result, reveal, upgrade cinematic). The HUD counter animation is separate from the real number, which is set at payout. Attributes are exact up to about 9 quadrillion, so `Config` has a maximum cash value as a safety net for many seasons. A client changing its own copy changes nothing, because the server never reads these values back.
+
+- **Ten client-to-server remotes. Actions in the world are pads, so they need no remote** (claim plot, buy and level a player, start the first player on the field, Store pads, stadium pad, training presence).
+
+| Remote | The client sends | The server checks |
+|---|---|---|
+| `ClientReady` | nothing | Sends the join snapshot, so it is never sent before the client listens |
+| `UpgradeStadium` | the tier the client saw | It is the next tier, affordable, nothing in progress |
+| `BuyStoreUpgrade` | an upgrade ID | The ID exists, unlocked, the next level, affordable |
+| `ClaimDaily` | which one (case) | 20 hours since the last claim |
+| `PenaltyKick` | an aim zone (small enum) | Kicks left, cooldown, the server rolls the result |
+| `SetCosmetic` | an option ID | Tier reached and the style is free or owned |
+| `StartNewSeason` | the season number the client saw | Floor 3 complete, number matches, then reset |
+| `TrainingDrillHit` | the press only | Drill active, 15 TP per minute cap, stamina |
+| `RequestPurchase` | a product key from `Config` | The server decides whether to show the Robux prompt (boost bank has room, case policy, floor 4 reached for a Legend) |
+| `AckReveal` (optional) | nothing | Marks a reveal as seen so it is not replayed after rejoin |
+
+- **Rules for every remote:** one shared module registers each remote with its payload shape. A wrong type, an out-of-range value or an unknown ID is dropped and logged. Rate limit per player per remote plus a server cooldown where the action has one. The client never sends cash, prices, quantities or player IDs it chose, only IDs from `Config`. Handlers never yield between "check" and "change", so two fast requests cannot both pass the check.
+
+- **Double-tap safety on big actions.** `StartNewSeason` and `UpgradeStadium` carry the season or tier number the client saw, and the server drops a request whose number is old (the first request already changed it). The check and the change happen in one step with no waiting in between, so two requests with the right number cannot both pass. A refused duplicate is silent. A real refusal (not enough cash) shows a short calm HUD message. Store upgrades use the same idea through the "next level" check. No server lock during the stadium cinematic: the server applies the upgrade at once and the cinematic is only presentation, so the client simply ignores buttons while the camera is locked.
+
+- **Robux purchases are started by the server and are idempotent** (`roblox-monetization`):
+  1. The client asks `RequestPurchase`; the server decides whether to show the prompt (boost bank has room, case policy, floor 4 reached for a Legend).
+  2. Every receipt is recorded by its `PurchaseId`. A resent receipt grants nothing a second time and, for a case, returns the saved result.
+  3. Cases: roll, save, then animate. The result is saved with the `PurchaseId` before the client plays the animation, so a disconnect mid-animation still leaves the player in the collection and the reveal shows on the next join.
+  4. The receipt is confirmed to Roblox only after the item is saved. If the save fails it stays unconfirmed so Roblox retries and nobody loses Robux.
+  5. The match boost is granted in full even if the bank is over 60 by the time the receipt arrives.
+  6. Cosmetics and Legends are ownership flags in the save and are never reset by New Season.
+  The receipt record must be part of the saved profile (Step 6).
+
+- **The training drill is bounded, not strictly validated.** The server never gives more than 15 TP per minute and the stamina cap ends the session, so the best a cheater gets equals a perfect honest player. The marker position depends on the server's time since the drill started, and a press is accepted with a small latency tolerance, so poor connections are not punished. Presses faster than a human could (many in one frame) are ignored and logged. Legend Trials stay tuned on the idle rate (10 TP per minute).
+
+- **All times come from the server.** Real-world times (the 20-hour cooldowns and offline earnings) use `os.time()` on the server, saved as timestamps in the profile, so changing the device date does nothing. Online-only timers (the 5-minute stadium boost, the stamina bar) count connected seconds and are saved as time left, pausing while offline. Offline earnings are computed at join: time since the last save, clamped to 4 hours, times the offline rate, and negative or very large gaps are clamped. HUD countdowns follow a server timestamp attribute, not the device clock. Small differences between servers (a few seconds) are accepted, no time-sync system.
+
+- **Cheaters: log and ignore, no automatic bans in version 1.** A bad request is dropped with no effect, and logged with the player ID, the remote and the reason. A player sending many bad requests in a short time gets that remote refused for a while. No kicks or bans from code (false positives, such as a laggy double tap, are likely, and bans are a product decision with appeals). Revisit after launch if the logs show a real pattern, starting with manual bans from a dashboard. A feature switch in `Config` (for example to turn off cases) lets us disable something after launch without a full republish.
+
+### Who may change what
+| State | Only changed by | Triggered by |
+|---|---|---|
+| Cash, TP | `Economy` | Match payout, pad buys, store, daily claim, receipts |
+| Owned players, levels, stars | `Roster` | Pad buys, training pad, case receipts |
+| Field lineup | `Roster` (top N by income) | Automatic after any roster change |
+| Stadium tier | `Stadium` | Stadium pad or `UpgradeStadium` |
+| Store levels | `Store` | Store pad or `BuyStoreUpgrade` |
+| Season, trophies, head start | `Season` | `StartNewSeason` |
+| Legend trial progress | `Legends` | Recomputed by the server from state |
+| Cooldowns, kicks | `Daily` | `ClaimDaily`, `PenaltyKick` |
+| Cosmetics owned and chosen | `Cosmetics` | `SetCosmetic`, receipts |
+| Plot ownership | `Plots` | Claim ring, join, leave |
+| Receipts | `Purchases` | `ProcessReceipt` |
+
+### Threats covered (summary)
+Forged price or ID (IDs only from `Config`), double tap or resent message (numbers seen, one-step check and change), double receipt (`PurchaseId` record), clock change (server clock), remote flooding (rate limits and cooldowns), standing on someone else's pad (owner check), teleport to a pad (all other rules still apply), training drill bots (rate and stamina cap), client-side value edits (server never reads them back).
+
 ## Decisions log
 | Topic | Decision |
 |---|---|
@@ -339,7 +405,7 @@ Decision: the Robux player case ships in version 1 with the rules below, because
 ## Steps still to do
 3. Economy: drafted and tested with a simulation (needs real playtests)
 4. Retention and ethics review: agreed (needs playtest data)
-5. Architecture and security (roblox-architecture, roblox-security)
+5. Architecture and security: agreed (roblox-architecture, roblox-security)
 6. Saving (roblox-data)
 7. Build and polish (roblox-building, roblox-gui, roblox-lighting)
 8. Launch (roblox-publish-checklist, roblox-monetization, roblox-growth-design)
