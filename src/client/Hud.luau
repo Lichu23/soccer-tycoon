@@ -1,8 +1,8 @@
 --!strict
--- The HUD (docs/PLAN.md, Step 7): the money label with the match loading bar, the one-line "Next
--- goal" row, the boost badge, and the VICTORY text with "+$N" after each match. Built in code for
--- the smallest landscape phone first, inside the safe area below the Roblox top bar. It only
--- shows what the server sent.
+-- The HUD (docs/PLAN.md, Step 7): one compact column at the top right with the money, the match
+-- bar, the "Next" goal card and the boost badge, plus the VICTORY text with "+$N" after each
+-- match. The middle of the screen stays clear. Built in code for the smallest landscape phone
+-- first, inside the safe area below the Roblox top bar. It only shows what the server sent.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -63,26 +63,27 @@ function Hud.build(parent: Instance): any
 		DisplayOrder = 1,
 	}, parent)
 
-	-- Top column: money row, then the goal row.
+	-- One compact column at the top right, so the middle of the screen stays clear: the money with
+	-- the match bar under it, then the goal card, then the boost badge.
 	local top = new("Frame", {
 		Name = "Top",
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 6),
-		Size = UDim2.fromOffset(300, 100),
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -10, 0, 6),
+		Size = UDim2.fromOffset(230, 146),
 		BackgroundTransparency = 1,
 	}, gui)
 
 	local moneyRow = new("Frame", {
 		Name = "MoneyRow",
-		Size = UDim2.new(1, 0, 0, 40),
+		Size = UDim2.new(1, 0, 0, 54),
 		BackgroundTransparency = 1,
 	}, top)
 	local money = new("TextLabel", {
 		Name = "Money",
-		Size = UDim2.new(0, 172, 1, 0),
+		Size = UDim2.new(1, 0, 0, 40),
 		BackgroundTransparency = 1,
 		Text = "$0",
-		TextXAlignment = Enum.TextXAlignment.Left,
+		TextXAlignment = Enum.TextXAlignment.Right,
 		Font = Style.font,
 		TextSize = 32,
 		TextColor3 = Style.ui.money,
@@ -91,12 +92,12 @@ function Hud.build(parent: Instance): any
 
 	local matchBar = new("Frame", {
 		Name = "MatchBar",
-		Position = UDim2.new(0, 178, 0.5, -6),
-		Size = UDim2.fromOffset(118, 12),
+		Position = UDim2.fromOffset(0, 42),
+		Size = UDim2.new(1, 0, 0, 10),
 		BackgroundColor3 = Style.ui.dark,
 		BackgroundTransparency = 0.2,
 	}, moneyRow)
-	rounded(matchBar, 6)
+	rounded(matchBar, 5)
 	stroke(matchBar, Style.ui.idle, 1)
 	local matchFill = new("Frame", {
 		Name = "Fill",
@@ -104,16 +105,17 @@ function Hud.build(parent: Instance): any
 		BackgroundColor3 = Style.ui.bar,
 		BorderSizePixel = 0,
 	}, matchBar)
-	rounded(matchFill, 6)
+	rounded(matchFill, 5)
 
+	-- "+$N" appears to the left of the money, so it never sits on top of the goal card.
 	local payout = new("TextLabel", {
 		Name = "Payout",
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.fromOffset(150, 98),
-		Size = UDim2.fromOffset(170, 26),
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.fromOffset(-8, 6),
+		Size = UDim2.fromOffset(120, 28),
 		BackgroundTransparency = 1,
 		Text = "",
-		TextXAlignment = Enum.TextXAlignment.Center,
+		TextXAlignment = Enum.TextXAlignment.Right,
 		Font = Style.font,
 		TextSize = 22,
 		TextColor3 = Style.ui.gold,
@@ -124,8 +126,8 @@ function Hud.build(parent: Instance): any
 
 	local goalRow = new("Frame", {
 		Name = "GoalRow",
-		Position = UDim2.fromOffset(0, 44),
-		Size = UDim2.new(1, 0, 0, 50),
+		Position = UDim2.fromOffset(0, 58),
+		Size = UDim2.new(1, 0, 0, 48),
 		BackgroundColor3 = Style.ui.panel,
 		BackgroundTransparency = 0.15,
 	}, top)
@@ -133,19 +135,20 @@ function Hud.build(parent: Instance): any
 	stroke(goalRow, Style.ui.idle, 1)
 	new("TextLabel", {
 		Name = "Label",
-		Position = UDim2.fromOffset(10, 4),
-		Size = UDim2.new(1, -20, 0, 20),
+		Position = UDim2.fromOffset(8, 4),
+		Size = UDim2.new(1, -16, 0, 20),
 		BackgroundTransparency = 1,
 		Text = "",
 		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
 		Font = Style.font,
-		TextSize = 15,
+		TextSize = 13,
 		TextColor3 = Style.ui.text,
 	}, goalRow)
 	local goalBar = new("Frame", {
 		Name = "Bar",
-		Position = UDim2.fromOffset(10, 31),
-		Size = UDim2.new(1, -104, 0, 10),
+		Position = UDim2.fromOffset(8, 30),
+		Size = UDim2.new(1, -100, 0, 9),
 		BackgroundColor3 = Style.ui.dark,
 		BorderSizePixel = 0,
 	}, goalRow)
@@ -159,8 +162,8 @@ function Hud.build(parent: Instance): any
 	rounded(goalFill, 5)
 	new("TextLabel", {
 		Name = "Amount",
-		Position = UDim2.new(1, -90, 0, 26),
-		Size = UDim2.fromOffset(80, 20),
+		Position = UDim2.new(1, -86, 0, 25),
+		Size = UDim2.fromOffset(78, 18),
 		BackgroundTransparency = 1,
 		Text = "",
 		TextXAlignment = Enum.TextXAlignment.Right,
@@ -169,20 +172,20 @@ function Hud.build(parent: Instance): any
 		TextColor3 = Style.ui.idle,
 	}, goalRow)
 
-	-- The boost badge sits at the right edge under the top bar.
+	-- The boost badge sits under the goal card, at the right edge of the column.
 	local boost = new("TextLabel", {
 		Name = "BoostBadge",
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -8, 0, 8),
-		Size = UDim2.fromOffset(96, 28),
+		Position = UDim2.new(1, 0, 0, 112),
+		Size = UDim2.fromOffset(96, 26),
 		BackgroundColor3 = Style.ui.panel,
 		BackgroundTransparency = 0.15,
 		Text = "x2 · 5:00",
 		Font = Style.font,
-		TextSize = 15,
+		TextSize = 14,
 		TextColor3 = Style.ui.gold,
 		Visible = false,
-	}, gui)
+	}, top)
 	rounded(boost, 8)
 
 	-- The big result text sits in the middle of the screen and does not take clicks.
@@ -213,7 +216,7 @@ function Hud.init()
 	local goalRow = top.GoalRow
 	local goalLabel, goalFill, goalAmount = goalRow.Label, goalRow.Bar.Fill, goalRow.Amount
 	local goalStroke = goalRow.UIStroke
-	local boost, banner = gui.BoostBadge, gui.Banner
+	local boost, banner = top.BoostBadge, gui.Banner
 
 	-- Money counts up towards the real value; the real value is never delayed.
 	local shownCash = State.data.cash
@@ -231,9 +234,9 @@ function Hud.init()
 		if goal.kind == "stadium" and affordable then
 			goalLabel.Text = "Stadium upgrade available!"
 		elseif affordable then
-			goalLabel.Text = "Next goal: " .. goal.label .. " - ready!"
+			goalLabel.Text = "Next: " .. goal.label .. " - ready!"
 		else
-			goalLabel.Text = "Next goal: " .. goal.label
+			goalLabel.Text = "Next: " .. goal.label
 		end
 		if goal.cost then
 			goalFill.Size = UDim2.fromScale(math.clamp(State.data.cash / goal.cost, 0, 1), 1)
@@ -293,11 +296,11 @@ function Hud.init()
 
 		payout.Text = "+" .. NumberFormat.money(info.payout)
 		payout.TextTransparency = 0
-		payout.Position = UDim2.fromOffset(150, 98)
+		payout.Position = UDim2.fromOffset(-8, 6)
 		TweenService
 			:Create(payout, TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 				TextTransparency = 1,
-				Position = UDim2.fromOffset(150, 110),
+				Position = UDim2.fromOffset(-8, -12),
 			})
 			:Play()
 	end)
