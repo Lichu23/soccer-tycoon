@@ -1,11 +1,15 @@
 --!strict
 -- Server bootstrap: starts each module in an explicit order and fails visibly.
 
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Actions = require(script.Parent.Actions)
 local Analytics = require(script.Parent.Analytics)
 local DailyActions = require(script.Parent.DailyActions)
 local DevTools = require(script.Parent.DevTools)
 local Match = require(script.Parent.Match)
+local Config = require(ReplicatedStorage.Shared.Config)
 local Offline = require(script.Parent.Offline)
 local Pads = require(script.Parent.Pads)
 local Plots = require(script.Parent.Plots)
@@ -39,6 +43,24 @@ Actions.onChange = function(session, what, _id)
 	elseif what == "store" then
 		Analytics.milestone(session, "first_upgrade")
 	end
+end
+
+-- Everyone walks faster than the Roblox default (the plots are large).
+local function setWalkSpeed(character: Model)
+	local humanoid = character:WaitForChild("Humanoid", 10)
+	if humanoid and humanoid:IsA("Humanoid") then
+		humanoid.WalkSpeed = Config.Player.walkSpeed
+	end
+end
+local function watchCharacters(player: Player)
+	player.CharacterAdded:Connect(setWalkSpeed)
+	if player.Character then
+		task.spawn(setWalkSpeed, player.Character)
+	end
+end
+Players.PlayerAdded:Connect(watchCharacters)
+for _, player in Players:GetPlayers() do
+	watchCharacters(player)
 end
 
 Session.onLoaded(function(session)

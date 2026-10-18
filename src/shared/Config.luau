@@ -173,6 +173,10 @@ Config.Pad = {
 	holdSeconds = 1, -- one value for every pad (purchase, level-up, stadium, claim)
 }
 
+Config.Player = {
+	walkSpeed = 26, -- studs per second (Roblox default is 16); every player gets it on spawn
+}
+
 Config.Match = {
 	seconds = 10, -- base time between matches, before the match speed upgrade
 	firstMatchSeconds = 5, -- the very first match is shorter (Step 2)
