@@ -32,6 +32,7 @@ function Sync.scalars(session: Session.Session)
 	player:SetAttribute("dailyUnlocked", Daily.unlocked(data))
 	player:SetAttribute("caseReadyAt", Daily.caseReadyAt(data))
 	player:SetAttribute("penaltyReadyAt", Daily.penaltyReadyAt(data, os.time()))
+	player:SetAttribute("penaltyKicksLeft", Daily.kicksLeft(data, os.time()))
 end
 
 -- The progress subset the HUD, the pads and the goal row need.

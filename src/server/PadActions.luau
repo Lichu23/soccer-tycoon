@@ -5,7 +5,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Actions = require(script.Parent.Actions)
-local DailyActions = require(script.Parent.DailyActions)
 local Pads = require(script.Parent.Pads)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Roster = require(ReplicatedStorage.Shared.Roster)
@@ -56,13 +55,6 @@ local builders: { [string]: Builder } = {
 			return Progress.storeStatus(session.data, id)
 		end, function()
 			Actions.buyStore(session, id, nil)
-		end
-	end,
-	penalty = function(session, _part, _padId)
-		return function()
-			return DailyActions.penaltyStatus(session)
-		end, function()
-			DailyActions.openPenalty(session)
 		end
 	end,
 	stadium = function(session, _part, _padId)

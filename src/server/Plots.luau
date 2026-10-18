@@ -11,7 +11,6 @@ local Workspace = game:GetService("Workspace")
 
 local Analytics = require(script.Parent.Analytics)
 local Config = require(ReplicatedStorage.Shared.Config)
-local Daily = require(script.Parent.Daily)
 local Mannequin = require(ReplicatedStorage.Shared.Mannequin)
 local PadActions = require(script.Parent.PadActions)
 local Pads = require(script.Parent.Pads)
@@ -23,7 +22,6 @@ local Sync = require(script.Parent.Sync)
 
 local SLOT_COUNT = 8
 local RING_COLOR = Color3.fromRGB(255, 220, 60)
-local PAD_TRANSPARENCY = 0.4 -- the template markers are built with this
 
 local plotsFolder: Folder
 local rings: { [number]: Part } = {}
@@ -106,13 +104,6 @@ function Plots.refresh(session: Session.Session)
 		end
 	end
 
-	-- The penalty pad appears with the first stadium upgrade (it is invisible and unusable before).
-	local markers = plot:FindFirstChild("Markers")
-	local penalty = markers and markers:FindFirstChild("Penalty")
-	if penalty and penalty:IsA("BasePart") then
-		penalty.Transparency = if Daily.unlocked(session.data) then PAD_TRANSPARENCY else 1
-	end
-
 	local capsules = plot:FindFirstChild("Capsules")
 	if capsules == nil then
 		return
@@ -169,6 +160,11 @@ function Plots.assign(session: Session.Session, slotIndex: number?): boolean
 	-- The template's origin is the middle of the gate, one stud above the ground reference.
 	plot:PivotTo(slotAnchor(index).CFrame * CFrame.new(0, 1, 0))
 	-- The claim ring part replaced the template's Claim marker while the slot was free.
+	-- The penalty kicks open from the HUD icon, so the old penalty marker is not needed.
+	local penaltyMarker = plot.Markers:FindFirstChild("Penalty")
+	if penaltyMarker then
+		penaltyMarker:Destroy()
+	end
 	local claimMarker = plot.Markers:FindFirstChild("Claim")
 	if claimMarker then
 		claimMarker:Destroy()

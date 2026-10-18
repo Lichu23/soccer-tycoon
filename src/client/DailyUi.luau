@@ -10,7 +10,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local Arrow = require(script.Parent.Arrow)
 local CaseModal = require(script.Parent.CaseModal)
 local DailyInfo = require(ReplicatedStorage.Shared.DailyInfo)
 local NumberFormat = require(ReplicatedStorage.Shared.NumberFormat)
@@ -25,7 +24,6 @@ local ICON_GAP = 8
 local GLOW_SECONDS = 4 -- how long a newly ready icon pulses
 local TOAST_SECONDS = 2.5
 local PRIZE_SECONDS = 4
-local GUIDE_SECONDS = 15
 
 local DailyUi = {}
 
@@ -208,9 +206,7 @@ function DailyUi.init()
 		if type(info) ~= "table" then
 			return
 		end
-		if info.kind == "penaltyOpen" and type(info.kicksLeft) == "number" then
-			PenaltyUi.open(info.kicksLeft)
-		elseif info.kind == "penaltyResult" then
+		if info.kind == "penaltyResult" then
 			PenaltyUi.onResult(info.result)
 		elseif info.kind == "caseResult" and type(info.prize) == "table" then
 			local won = info.prize
@@ -236,8 +232,9 @@ function DailyUi.init()
 	end)
 	kickIcon.button.Activated:Connect(function()
 		if kickIcon.status == "ready" then
-			Arrow.guide("penalty", GUIDE_SECONDS, "Penalty kicks")
-			showToast("Walk to the red spot on the pitch")
+			-- The icon opens the kick screen with the kicks left today.
+			local kicks = player:GetAttribute("penaltyKicksLeft")
+			PenaltyUi.open(if type(kicks) == "number" and kicks > 0 then kicks else 3)
 		elseif kickIcon.status == "waiting" then
 			showToast(DailyInfo.waitText(readyAt("penaltyReadyAt") - Workspace:GetServerTimeNow()))
 		end
