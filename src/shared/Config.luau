@@ -177,7 +177,7 @@ Config.Pad = {
 Config.Plot = { width = 280, depth = 300 }
 
 Config.Player = {
-	walkSpeed = 26, -- studs per second (Roblox default is 16); every player gets it on spawn
+	walkSpeed = 32, -- studs per second (Roblox default is 16); every player gets it on spawn
 }
 
 Config.Match = {
@@ -222,11 +222,10 @@ Config.Daily = {
 	-- are riskier than the middle; the keeper then dives to a random zone.
 	zoneMissChance = {
 		topLeft = 0.2,
-		topCenter = 0.1,
 		topRight = 0.2,
 		bottomLeft = 0.08,
-		bottomCenter = 0.03,
 		bottomRight = 0.08,
+		center = 0.03,
 	} :: { [string]: number },
 	-- The free daily case: five small rewards (never players, never large amounts). `weight` is the
 	-- relative chance. Cash is worth `minutes` of normal income, a boost is x2 for `seconds`, `tp`

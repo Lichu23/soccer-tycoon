@@ -28,14 +28,13 @@ table.sort(storeIds)
 
 local RemoteSpec = {}
 
--- Provisional aim zones for the daily penalty kick (Step 7 decides the final layout).
+-- The five aim targets of the daily penalty kick: the four corners of the goal and the middle.
 RemoteSpec.aimZones = {
 	"topLeft",
-	"topCenter",
 	"topRight",
 	"bottomLeft",
-	"bottomCenter",
 	"bottomRight",
+	"center",
 } :: { string }
 
 local ID_FIELD: FieldSchema = { kind = "string", maxLength = 40 }

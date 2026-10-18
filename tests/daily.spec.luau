@@ -163,7 +163,7 @@ T.test("a kick is a goal unless the keeper dives to the same zone or the shot go
 	T.eq(saved.keeper, "topLeft")
 	T.eq(saved.goal, false)
 	T.eq(saved.wide, false)
-	local scored = Daily.kick(data, T0, "bottomCenter", GOAL_ROLLS)
+	local scored = Daily.kick(data, T0, "center", GOAL_ROLLS)
 	T.eq(scored.goal, true)
 	local wide = Daily.kick(data, T0, "topRight", { miss = 0, keeper = 0 })
 	T.eq(wide.goal, false)
@@ -174,8 +174,8 @@ T.test("the penalty boost totals 3 / 5 / 10 minutes for 1 / 2 / 3 goals", functi
 	for goals = 0, 3 do
 		local data = playing()
 		for kick = 1, 3 do
-			-- The keeper always dives topLeft: bottomCenter scores, topLeft is saved.
-			Daily.kick(data, T0, if kick <= goals then "bottomCenter" else "topLeft", GOAL_ROLLS)
+			-- The keeper always dives topLeft: center scores, topLeft is saved.
+			Daily.kick(data, T0, if kick <= goals then "center" else "topLeft", GOAL_ROLLS)
 		end
 		T.eq(data.daily.goals, goals)
 		T.eq(data.boosts.penaltyBoostLeft, Config.Daily.penaltyBoostSeconds[goals])
@@ -184,12 +184,12 @@ end)
 
 T.test("the boost is paid goal by goal, so leaving after one kick keeps what was scored", function()
 	local data = playing()
-	local first = Daily.kick(data, T0, "bottomCenter", GOAL_ROLLS)
+	local first = Daily.kick(data, T0, "center", GOAL_ROLLS)
 	T.eq(first.boostSeconds, 180)
 	T.eq(data.boosts.penaltyBoostLeft, 180)
-	local second = Daily.kick(data, T0, "bottomCenter", GOAL_ROLLS)
+	local second = Daily.kick(data, T0, "center", GOAL_ROLLS)
 	T.eq(second.boostSeconds, 120)
-	local third = Daily.kick(data, T0, "bottomCenter", GOAL_ROLLS)
+	local third = Daily.kick(data, T0, "center", GOAL_ROLLS)
 	T.eq(third.boostSeconds, 300)
 	T.eq(third.kicksLeft, 0)
 end)
