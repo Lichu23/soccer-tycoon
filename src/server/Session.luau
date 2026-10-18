@@ -8,15 +8,27 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local LoadPolicy = require(script.Parent.LoadPolicy)
 local ProfileSchema = require(script.Parent.ProfileSchema)
 local ProfileStore = require(script.Parent.vendor.ProfileStore)
 local Config = require(ReplicatedStorage.Shared.Config)
+
+-- State that lives only while the player is in this server and is never saved.
+export type Runtime = {
+	plot: Model?, -- the player's plot while they have one
+	slotIndex: number?,
+	matchesInRow: number, -- momentum: matches played this session
+	matchesPlayed: number,
+	nextMatchAt: number, -- os.clock() when the next match ends, 0 when none is scheduled
+}
 
 export type Session = {
 	player: Player,
 	profile: any, -- the ProfileStore profile
 	data: ProfileSchema.Profile, -- the same table as profile.Data
-	loadedAt: number,
+	loadedAt: number, -- os.clock()
+	joinedAt: number, -- os.time(), for the analytics timing
+	runtime: Runtime,
 }
 
 local KICK_LOAD_FAILED =
@@ -38,7 +50,11 @@ local function startOne(player: Player): Session?
 	-- give up. The lock is never stolen: that could erase progress from the other server.
 	local profile = store:StartSessionAsync(key, {
 		Cancel = function()
-			return player.Parent ~= Players or os.clock() - began > Config.Data.loadTimeoutSeconds
+			return LoadPolicy.shouldCancel(
+				os.clock() - began,
+				Config.Data.loadTimeoutSeconds,
+				player.Parent == Players
+			)
 		end,
 	})
 	if profile == nil then
@@ -97,6 +113,14 @@ local function startOne(player: Player): Session?
 		profile = profile,
 		data = profile.Data,
 		loadedAt = os.clock(),
+		joinedAt = os.time(),
+		runtime = {
+			plot = nil,
+			slotIndex = nil,
+			matchesInRow = 0,
+			matchesPlayed = 0,
+			nextMatchAt = 0,
+		},
 	}
 	sessions[player] = session
 	return session
@@ -104,17 +128,13 @@ end
 
 local function onPlayerAdded(player: Player)
 	local session = startOne(player)
-	if session == nil then
-		if player.Parent == Players then
-			warn(
-				string.format(
-					"[Session] could not load %s (%d), kicking",
-					player.Name,
-					player.UserId
-				)
-			)
-			player:Kick(KICK_LOAD_FAILED)
-		end
+	local outcome = LoadPolicy.outcome(session ~= nil, player.Parent == Players)
+	if outcome == "kick" then
+		warn(string.format("[Session] could not load %s (%d), kicking", player.Name, player.UserId))
+		player:Kick(KICK_LOAD_FAILED)
+		return
+	end
+	if outcome ~= "play" or session == nil then
 		return
 	end
 	for _, callback in loadedCallbacks do
