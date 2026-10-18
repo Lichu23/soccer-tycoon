@@ -96,68 +96,95 @@ T.test("the fraction of a TP is carried, so slow steps lose nothing", function()
 	T.eq(data.tp, 10)
 end)
 
-T.test("the drill lifts the rate to 15 TP per minute when every round is hit", function()
+local Drill = T.load("shared/Drill")
+
+local function runningDrill(now)
+	local state = Drill.new()
+	Drill.press(state, now) -- the first press starts the marker
+	return state
+end
+
+T.test("the drill starts stopped and the first press starts the marker without paying", function()
+	local state = Drill.new()
+	T.eq(state.phase, "stopped")
+	T.eq(Drill.press(state, 10), "start")
+	T.eq(state.phase, "running")
+	T.eq(Drill.position(state, 10), 0)
 	local data, carry = fresh()
-	local round = Config.Training.drillRoundSeconds
-	local hits = 60 / round
-	local paid = train(data, carry, 60, true)
-	for _ = 1, hits do
-		paid += Training.addDrillHit(data, carry)
-	end
-	T.eq(paid, 15)
-	T.eq(data.tp, 15)
+	T.eq(Training.drillPay(data, carry, "start", 10), 0)
 end)
 
-T.test("the drill never pays more than the maximum rate", function()
-	local data, carry = fresh()
-	local paid = 0
-	-- Even if hits arrived every round for a full stamina session the total stays under 15/min.
-	paid += train(data, carry, MAX, true)
-	for _ = 1, MAX / Config.Training.drillRoundSeconds do
-		paid += Training.addDrillHit(data, carry)
+T.test(
+	"the marker sweeps in the sweep time and then the drill stops (red until the next press)",
+	function()
+		local sweep = Config.Training.drillSweepSeconds
+		local state = runningDrill(100)
+		T.near(Drill.position(state, 100 + sweep / 2), 0.5, 1e-9)
+		Drill.normalize(state, 100 + sweep - 0.01)
+		T.eq(state.phase, "running")
+		Drill.normalize(state, 100 + sweep)
+		T.eq(state.phase, "stopped")
+		T.eq(Drill.position(state, 100 + sweep), nil)
+		T.eq(Drill.press(state, 105), "start") -- an away player just presses to start again
 	end
-	T.truthy(paid <= Config.Training.drillTpPerMinuteMax * MAX / 60)
+)
+
+T.test("a press in the middle is a hit and the marker starts again at once", function()
+	local sweep = Config.Training.drillSweepSeconds
+	local state = runningDrill(0)
+	T.eq(Drill.press(state, sweep * 0.5), "hit")
+	T.eq(state.phase, "running")
+	T.eq(state.startedAt, sweep * 0.5)
+	T.eq(Drill.position(state, sweep * 0.5), 0)
+	-- and a second hit one sweep-half later, without waiting for the end of the bar
+	T.eq(Drill.press(state, sweep * 0.5 + sweep * 0.5), "hit")
 end)
 
-T.test("a drill hit pays nothing without stamina", function()
+T.test("the window is the middle 30% of the bar", function()
+	local sweep = Config.Training.drillSweepSeconds
+	local edge = Config.Training.drillWindow
+	T.eq(Drill.press(runningDrill(0), sweep * (0.5 + edge - 0.01)), "hit")
+	T.eq(Drill.press(runningDrill(0), sweep * (0.5 - edge + 0.01)), "hit")
+	T.eq(Drill.press(runningDrill(0), sweep * (0.5 + edge + 0.02)), "miss")
+	T.eq(Drill.press(runningDrill(0), sweep * 0.05), "miss")
+end)
+
+T.test("a miss starts a cooldown: presses are ignored, then the bar waits for a press", function()
+	local cooldown = Config.Training.drillCooldownSeconds
+	local state = runningDrill(0)
+	T.eq(Drill.press(state, 0.1), "miss")
+	T.eq(state.phase, "cooldown")
+	T.eq(Drill.press(state, 0.1 + cooldown - 0.05), "ignored")
+	T.eq(Drill.press(state, 0.1 + cooldown + 0.05), "start")
+	T.eq(state.phase, "running")
+end)
+
+T.test("a hit pays 1 TP plus 0.3 and a miss pays 1 TP", function()
+	local data, carry = fresh()
+	T.near(Training.drillPay(data, carry, "hit", 0), 1.3, 1e-9)
+	T.near(Training.drillPay(data, carry, "miss", 1), 1, 1e-9)
+	T.eq(Training.drillPay(data, carry, "ignored", 2), 0)
+	T.eq(data.tp, 2) -- 2.3 TP so far: 2 whole points, 0.3 carried
+	T.near(carry.fraction, 0.3, 1e-9)
+end)
+
+T.test("the drill pays nothing without stamina", function()
 	local data, carry = fresh()
 	data.staminaLeft = 0
-	T.eq(Training.addDrillHit(data, carry), 0)
+	T.eq(Training.drillPay(data, carry, "hit", 0), 0)
 	T.eq(data.tp, 0)
 end)
 
-T.test("the drill marker sweeps once per round and is judged on the same clock", function()
-	local round = Config.Training.drillRoundSeconds
-	local r0, p0 = Training.drillPosition(100, 100)
-	T.eq(r0, 0)
-	T.eq(p0, 0)
-	local r1, p1 = Training.drillPosition(100, 100 + round * 1.5)
-	T.eq(r1, 1)
-	T.near(p1, 0.5, 1e-9)
-	local rEarly = Training.drillPosition(100, 90) -- a clock that is behind never goes negative
-	T.eq(rEarly, 0)
-end)
-
-T.test("a press in the middle of the bar hits, near the ends it misses", function()
-	local round = Config.Training.drillRoundSeconds
-	local hit = Training.judgeHit(0, round * 0.5, -1)
-	T.eq(hit, true)
-	local edge = Config.Training.drillWindow
-	T.eq((Training.judgeHit(0, round * (0.5 + edge - 0.01), -1)), true)
-	T.eq((Training.judgeHit(0, round * (0.5 + edge + 0.02), -1)), false)
-	T.eq((Training.judgeHit(0, round * 0.05, -1)), false)
-	T.eq((Training.judgeHit(0, round * 0.95, -1)), false)
-end)
-
-T.test("only one press per round counts, hit or miss", function()
-	local round = Config.Training.drillRoundSeconds
-	local hit, number = Training.judgeHit(0, round * 0.2, -1) -- early press: a miss
-	T.eq(hit, false)
-	T.eq(number, 0)
-	local second = Training.judgeHit(0, round * 0.5, number) -- same round: ignored
-	T.eq(second, nil)
-	local next = Training.judgeHit(0, round * 1.5, number) -- next round: counts
-	T.eq(next, true)
+T.test("the drill part of the rate is capped per minute, and room comes back later", function()
+	local data, carry = fresh()
+	local room = Config.Training.drillTpPerMinuteMax - Config.Training.idleTpPerMinute
+	local paid = 0
+	for index = 1, 100 do
+		paid += Training.drillPay(data, carry, "hit", index * 0.1) -- 100 hits in 10 seconds
+	end
+	T.near(paid, room, 1e-9)
+	T.eq(Training.drillPay(data, carry, "hit", 11), 0)
+	T.truthy(Training.drillPay(data, carry, "hit", 75) > 0, "a minute later the cap has room again")
 end)
 
 T.test("level costs: base x level x rarity factor, 600 TP for a Common to level 5", function()

@@ -8,6 +8,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local Drill = require(ReplicatedStorage.Shared.Drill)
 local Economy = require(script.Parent.Economy)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Remotes = require(script.Parent.Remotes)
@@ -17,10 +18,8 @@ local Training = require(script.Parent.Training)
 
 local TICK_SECONDS = 0.25
 
-type Drill = { startedAt: number, lastRound: number }
-
 local carries: { [Player]: Training.Carry } = {}
-local drills: { [Player]: Drill } = {}
+local drills: { [Player]: Drill.State } = {}
 local training: { [Player]: boolean } = {} -- on the pad with stamina left, as of the last tick
 local started = false
 
@@ -32,6 +31,17 @@ local function onPad(session: Session.Session): boolean
 		return false
 	end
 	return session.player:GetAttribute("padKey") == plot.Name .. ":Training"
+end
+
+-- The drill state as player attributes, so the client draws the same bar the server judges.
+local function publishDrill(player: Player)
+	local drill = drills[player]
+	if drill then
+		Drill.normalize(drill, Workspace:GetServerTimeNow())
+	end
+	player:SetAttribute("drillPhase", if drill then drill.phase else "off")
+	player:SetAttribute("drillStart", if drill then drill.startedAt else 0)
+	player:SetAttribute("drillCooldownUntil", if drill then drill.cooldownUntil else 0)
 end
 
 local function step(session: Session.Session, dt: number)
@@ -47,15 +57,14 @@ local function step(session: Session.Session, dt: number)
 	local active = standing and Training.hasStamina(data)
 	training[player] = active
 
-	-- The drill starts when the player steps onto the pad and ends when they leave it.
+	-- The drill exists while the player stands on the pad. It starts stopped (a red bar) and the
+	-- first press starts the marker.
 	if standing and drills[player] == nil then
-		drills[player] = { startedAt = Workspace:GetServerTimeNow(), lastRound = -1 }
+		drills[player] = Drill.new()
 	elseif not standing then
 		drills[player] = nil
 	end
-
-	local drill = drills[player]
-	player:SetAttribute("drillStart", if drill then drill.startedAt else 0)
+	publishDrill(player)
 	player:SetAttribute("training", active)
 	player:SetAttribute("staminaLeft", math.floor(data.staminaLeft * 10) / 10)
 	if paid > 0 then
@@ -63,30 +72,33 @@ local function step(session: Session.Session, dt: number)
 	end
 end
 
--- A press of the drill button: judged on the server clock, one press per round counts.
+-- A press of the drill button, judged on the server clock (see Drill for the rules).
 local function drillHit(player: Player)
 	local session = Session.get(player)
 	local drill = drills[player]
 	if session == nil or drill == nil or not training[player] then
 		return
 	end
-	local hit, round =
-		Training.judgeHit(drill.startedAt, Workspace:GetServerTimeNow(), drill.lastRound)
-	if hit == nil then
-		return -- this round was already used
+	local now = Workspace:GetServerTimeNow()
+	local outcome = Drill.press(drill, now)
+	if outcome == "ignored" then
+		return
 	end
-	drill.lastRound = round
 	local paid = 0
-	if hit then
-		local carry = carries[player]
-		if carry then
-			paid = Training.addDrillHit(session.data, carry)
-		end
+	local carry = carries[player]
+	if carry then
+		paid = Training.drillPay(session.data, carry, outcome, now)
 		if paid > 0 then
 			Economy.publish(player, session.data)
 		end
 	end
-	Remotes.fireClient("Notice", player, { kind = "drillResult", hit = hit, round = round })
+	publishDrill(player)
+	Remotes.fireClient("Notice", player, {
+		kind = "drillResult",
+		outcome = outcome,
+		paid = paid,
+		capped = (outcome == "hit" or outcome == "miss") and paid <= 0,
+	})
 end
 
 -- Call once, after Remotes.init and Session.init.

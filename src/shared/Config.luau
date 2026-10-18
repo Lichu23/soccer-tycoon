@@ -287,14 +287,20 @@ Config.Training = {
 	bonusPerLevel = 0.03,
 	levelCostBase = 40, -- cost of level L = base x L x rarity cost factor
 	idleTpPerMinute = 10,
-	drillTpPerMinuteMax = 15,
 	staminaSeconds = 300,
 	staminaRefillSeconds = 300, -- time away to refill from empty
-	-- The timing drill: a marker sweeps across a bar once per round and one press per round counts.
-	-- A press in the middle `drillWindow` (a fraction either side of the centre) pays the extra TP
-	-- that lifts the idle rate to the drill maximum if every round is hit.
-	drillRoundSeconds = 4,
+	-- The timing drill: a marker sweeps across the bar in `drillSweepSeconds`. A press in the middle
+	-- `drillWindow` (a fraction either side of the centre) is a hit: it pays the base TP plus the
+	-- bonus and the marker starts again at once. A press outside it is a miss: the base TP only, then
+	-- a short cooldown with a red bar. A marker that runs to the end unpressed also leaves the bar red
+	-- until the next press. The drill TP per minute is capped so that idle + drill never pass
+	-- `drillTpPerMinuteMax` in total.
+	drillTpPerMinuteMax = 30,
+	drillSweepSeconds = 1.8,
 	drillWindow = 0.15,
+	drillCooldownSeconds = 1.2,
+	drillBaseTp = 1,
+	drillHitBonusTp = 0.3,
 }
 
 Config.Season = {

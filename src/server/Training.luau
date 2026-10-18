@@ -1,7 +1,7 @@
 --!strict
 -- The training ground rules (docs/PLAN.md, Steps 1, 3 and 4). Standing on the training pad earns
 -- 10 TP per minute while the stamina lasts; the stamina refills while the player is away from the
--- pad (and while offline). A timing drill raises the rate towards 15 TP per minute for as long as
+-- pad (and while offline). A timing drill pays extra TP (up to the per-minute cap) for as long as
 -- the player keeps hitting it. TP are whole numbers in the profile, so the fraction that has not
 -- reached a whole point yet is carried in memory (lost on leaving, less than 1 TP). Pure and unit
 -- tested; TrainingActions wires it to the pad and the remote.
@@ -9,19 +9,18 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
-local Drill = require(ReplicatedStorage.Shared.Drill)
 local Economy = require(script.Parent.Economy)
 local ProfileSchema = require(script.Parent.ProfileSchema)
 
 type Profile = ProfileSchema.Profile
 
 -- The part of a TP point not paid yet.
-export type Carry = { fraction: number }
+export type Carry = { fraction: number, drillLog: { { at: number, amount: number } } }
 
 local Training = {}
 
 function Training.newCarry(): Carry
-	return { fraction = 0 }
+	return { fraction = 0, drillLog = {} }
 end
 
 -- Stamina seconds restored per second spent away from the pad.
@@ -81,25 +80,42 @@ end
 
 -- The drill ----------------------------------------------------------------------------------
 
--- Extra TP one hit pays, so that a hit in every round lifts the rate from the idle rate to the
--- drill maximum.
-function Training.drillBonusPerHit(): number
-	local extraPerMinute = Config.Training.drillTpPerMinuteMax - Config.Training.idleTpPerMinute
-	return extraPerMinute * Config.Training.drillRoundSeconds / 60
+local WINDOW_SECONDS = 60
+
+-- TP the drill may still pay now: the drill part of the per-minute cap (the maximum rate minus the
+-- idle rate) minus what it paid in the last minute.
+function Training.drillRoomLeft(carry: Carry, now: number): number
+	local log = carry.drillLog
+	while #log > 0 and now - log[1].at > WINDOW_SECONDS do
+		table.remove(log, 1)
+	end
+	local paid = 0
+	for _, entry in log do
+		paid += entry.amount
+	end
+	local cap = Config.Training.drillTpPerMinuteMax - Config.Training.idleTpPerMinute
+	return math.max(cap - paid, 0)
 end
 
--- The marker and the judging are shared with the client (Drill), kept here for the callers.
-Training.drillPosition = Drill.position
-Training.judgeHit = Drill.judge
-
--- Pays a drill hit (as a fraction of TP), only while the player is training with stamina left.
--- Returns the whole TP paid.
-function Training.addDrillHit(data: Profile, carry: Carry): number
-	if data.staminaLeft <= 0 then
+-- Pays the drill result of a press: "hit" is the base TP plus the bonus, "miss" the base TP only,
+-- the others nothing. Only while the player is training with stamina left and under the rate cap.
+-- Returns the TP paid (a fraction), which can be less than asked when the cap is reached.
+function Training.drillPay(data: Profile, carry: Carry, outcome: string, now: number): number
+	if data.staminaLeft <= 0 or (outcome ~= "hit" and outcome ~= "miss") then
 		return 0
 	end
-	carry.fraction += Training.drillBonusPerHit()
-	return payWhole(data, carry)
+	local wanted = Config.Training.drillBaseTp
+	if outcome == "hit" then
+		wanted += Config.Training.drillHitBonusTp
+	end
+	local paid = math.min(wanted, Training.drillRoomLeft(carry, now))
+	if paid <= 0 then
+		return 0
+	end
+	table.insert(carry.drillLog, { at = now, amount = paid })
+	carry.fraction += paid
+	payWhole(data, carry)
+	return paid
 end
 
 return Training

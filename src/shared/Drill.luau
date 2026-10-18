@@ -1,34 +1,69 @@
 --!strict
--- The timing of the training drill (docs/PLAN.md, Step 4): a marker sweeps across a bar once per
--- round, and a press counts when it is near the middle. The server and the client both work out the
--- marker from the drill's start time on the server clock, so the bar the player sees is the one the
--- server judges. Pure, so it is unit tested.
+-- The timing of the training drill (docs/PLAN.md, Step 4): a marker sweeps across a bar from left
+-- to right and a press counts when it is near the middle. A hit starts the sweep again at once; a
+-- miss starts a short cooldown; a sweep that runs to the end unpressed (the player is away) stops
+-- the drill. In both cases the bar stays red ("stopped") until the next press starts the marker.
+-- The server keeps the state and judges every press; the client runs the same functions on the
+-- state it reads from the player's attributes, so the bar the player sees is the one judged.
+-- Pure, so it is unit tested.
 
 local Config = require(script.Parent.Config)
 
+export type Phase = "running" | "cooldown" | "stopped"
+export type State = { phase: Phase, startedAt: number, cooldownUntil: number }
+
 local Drill = {}
 
--- The round the drill is in at `now` and where the marker is (0 left, 1 right, 0.5 the middle).
-function Drill.position(startedAt: number, now: number): (number, number)
-	local length = Config.Training.drillRoundSeconds
-	local elapsed = math.max(now - startedAt, 0)
-	local round = math.floor(elapsed / length)
-	return round, (elapsed - round * length) / length
+function Drill.new(): State
+	return { phase = "stopped", startedAt = 0, cooldownUntil = 0 }
 end
 
--- Whether a marker position counts as a hit.
+-- Applies what time alone changes: a sweep that reached the end, or a finished cooldown, leaves the
+-- drill stopped.
+function Drill.normalize(state: State, now: number)
+	local sweepOver = state.phase == "running"
+		and now - state.startedAt >= Config.Training.drillSweepSeconds - 1e-6
+	local cooldownOver = state.phase == "cooldown" and now >= state.cooldownUntil
+	if sweepOver or cooldownOver then
+		state.phase = "stopped"
+	end
+end
+
+-- Where the marker is (0 left, 1 right) while the drill runs, else nil.
+function Drill.position(state: State, now: number): number?
+	if state.phase ~= "running" then
+		return nil
+	end
+	return math.clamp((now - state.startedAt) / Config.Training.drillSweepSeconds, 0, 1)
+end
+
+-- Whether a marker position counts as a hit (the middle of the bar).
 function Drill.isHit(position: number): boolean
 	return math.abs(position - 0.5) <= Config.Training.drillWindow
 end
 
--- Judges a press at `now`. One press per round counts, hit or miss: the first value is nil when
--- this round was already used (or the clock is before the first round), else whether it was a hit.
-function Drill.judge(startedAt: number, now: number, lastRound: number): (boolean?, number)
-	local round, position = Drill.position(startedAt, now)
-	if round <= lastRound then
-		return nil, round
+-- A press at `now`. Returns what happened:
+--   "start"   the drill was stopped: the marker starts, nothing is paid
+--   "hit"     the marker was in the middle: it starts again at once
+--   "miss"    anywhere else: cooldown with a red bar
+--   "ignored" during the cooldown
+function Drill.press(state: State, now: number): string
+	Drill.normalize(state, now)
+	if state.phase == "cooldown" then
+		return "ignored"
+	elseif state.phase == "stopped" then
+		state.phase = "running"
+		state.startedAt = now
+		return "start"
 	end
-	return Drill.isHit(position), round
+	local position = Drill.position(state, now) or 0
+	if Drill.isHit(position) then
+		state.startedAt = now
+		return "hit"
+	end
+	state.phase = "cooldown"
+	state.cooldownUntil = now + Config.Training.drillCooldownSeconds
+	return "miss"
 end
 
 return Drill
