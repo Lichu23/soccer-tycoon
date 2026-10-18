@@ -297,7 +297,11 @@ Config.Training = {
 	-- `drillTpPerMinuteMax` in total.
 	drillTpPerMinuteMax = 30,
 	drillSweepSeconds = 1.8,
-	drillWindow = 0.15,
+	drillWindow = 0.08, -- half the width of the green zone, as a fraction of the bar
+	-- The green zone drifts left and right (centre = 0.5 +- drillZoneAmplitude) and never touches the
+	-- sides of the bar: amplitude + window stays under 0.5.
+	drillZoneAmplitude = 0.36,
+	drillZonePeriodSeconds = 3.5,
 	drillCooldownSeconds = 1.2,
 	drillBaseTp = 1,
 	drillHitBonusTp = 0.3,

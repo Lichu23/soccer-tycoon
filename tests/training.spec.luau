@@ -122,27 +122,57 @@ T.test("a sweep that reaches the end just starts the next one (no stop)", functi
 	T.eq(state.phase, "running")
 	T.near(Drill.position(state, 100 + sweep * 2.25), 0.25, 1e-6)
 	-- an away player is simply in the middle of some sweep when they come back
-	T.eq(Drill.press(state, 100 + sweep * 50.5), "hit")
+	T.truthy(Drill.press(state, 100 + sweep * 50.5) ~= "ignored")
 end)
 
-T.test("a press in the middle is a hit and the marker starts again at once", function()
-	local sweep = Config.Training.drillSweepSeconds
-	local state = runningDrill(0)
-	T.eq(Drill.press(state, sweep * 0.5), "hit")
+-- A running drill whose marker is at `fraction` of the bar at time `now`.
+local function markerAt(now, fraction)
+	local state = Drill.new()
+	state.phase = "running"
+	state.startedAt = now - Config.Training.drillSweepSeconds * fraction
+	return state
+end
+
+-- A time when the green zone is exactly in the middle of the bar.
+local CENTERED = Config.Training.drillZonePeriodSeconds * 4
+
+T.test("a press inside the green zone is a hit and the marker starts again at once", function()
+	local state = markerAt(CENTERED, 0.5)
+	T.eq(Drill.press(state, CENTERED), "hit")
 	T.eq(state.phase, "running")
-	T.eq(state.startedAt, sweep * 0.5)
-	T.eq(Drill.position(state, sweep * 0.5), 0)
-	-- and a second hit one sweep-half later, without waiting for the end of the bar
-	T.eq(Drill.press(state, sweep * 0.5 + sweep * 0.5), "hit")
+	T.eq(state.startedAt, CENTERED)
+	T.eq(Drill.position(state, CENTERED), 0)
+	-- and a second hit half a sweep later, without waiting for the end of the bar
+	local later = CENTERED + Config.Training.drillSweepSeconds * 0.5
+	T.near(Drill.position(state, later), 0.5, 1e-9)
 end)
 
-T.test("the window is the middle 30% of the bar", function()
-	local sweep = Config.Training.drillSweepSeconds
+T.test("the green zone is small and a press outside it is a miss", function()
 	local edge = Config.Training.drillWindow
-	T.eq(Drill.press(runningDrill(0), sweep * (0.5 + edge - 0.01)), "hit")
-	T.eq(Drill.press(runningDrill(0), sweep * (0.5 - edge + 0.01)), "hit")
-	T.eq(Drill.press(runningDrill(0), sweep * (0.5 + edge + 0.02)), "miss")
-	T.eq(Drill.press(runningDrill(0), sweep * 0.05), "miss")
+	T.truthy(edge <= 0.1, "the zone is at most 20% of the bar")
+	T.eq(Drill.press(markerAt(CENTERED, 0.5 + edge - 0.01), CENTERED), "hit")
+	T.eq(Drill.press(markerAt(CENTERED, 0.5 - edge + 0.01), CENTERED), "hit")
+	T.eq(Drill.press(markerAt(CENTERED, 0.5 + edge + 0.02), CENTERED), "miss")
+	T.eq(Drill.press(markerAt(CENTERED, 0.05), CENTERED), "miss")
+end)
+
+T.test("the green zone drifts along the bar and never touches its sides", function()
+	local edge = Config.Training.drillWindow
+	local period = Config.Training.drillZonePeriodSeconds
+	local lowest, highest = 1, 0
+	for step = 0, 400 do
+		local centre = Drill.zoneCenter(step * period / 100)
+		lowest = math.min(lowest, centre - edge)
+		highest = math.max(highest, centre + edge)
+	end
+	T.truthy(lowest > 0.03, "the zone stays off the left side")
+	T.truthy(highest < 0.97, "the zone stays off the right side")
+	T.truthy(highest - lowest > 0.6, "and it really moves")
+	-- a marker in the middle of the bar misses when the zone has drifted away
+	local drifted = CENTERED + period / 4 -- the zone is far to one side
+	T.eq(Drill.press(markerAt(drifted, 0.5), drifted), "miss")
+	-- but the same marker hits when it is where the zone is
+	T.eq(Drill.press(markerAt(drifted, Drill.zoneCenter(drifted)), drifted), "hit")
 end)
 
 T.test(

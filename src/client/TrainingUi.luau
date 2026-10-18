@@ -326,13 +326,15 @@ function TrainingUi.init()
 		if barStroke then
 			barStroke.Color = if running then Style.ui.idle else Style.ui.bad
 		end
-		barText.Text = if drill.phase == "stopped"
-			then "Press HIT to start"
-			elseif drill.phase == "cooldown" then "Wait..."
-			else ""
-		button.Text = if running then "HIT" elseif drill.phase == "stopped" then "START" else "..."
-		button.BackgroundTransparency = if drill.phase == "cooldown" then 0.6 else 0
+		barText.Text = if drill.phase == "running" then "" else "Wait..."
+		-- The button always says HIT; it goes grey while the bar waits to start again.
+		local waiting = drill.phase ~= "running"
+		button.Text = "HIT"
+		button.BackgroundColor3 = if waiting then Color3.fromRGB(95, 100, 115) else Style.ui.good
+		button.TextColor3 = if waiting then Color3.fromRGB(170, 175, 190) else Style.ui.dark
 		zone.Visible = running
+		-- The small green zone drifts along the bar (it follows the same clock the server judges with).
+		zone.Position = UDim2.fromScale(Drill.zoneCenter(now), 0)
 		if flashUntil > os.clock() then
 			zone.BackgroundColor3 = Style.ui.good
 			zone.BackgroundTransparency = 0

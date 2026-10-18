@@ -1,6 +1,6 @@
 --!strict
 -- The timing of the training drill (docs/PLAN.md, Step 4): a marker sweeps across a bar from left
--- to right and a press counts when it is near the middle. A hit starts the sweep again at once; a
+-- to right and a press counts when it is inside the green zone, which drifts along the bar. A hit starts the sweep again at once; a
 -- miss turns the bar red for a short cooldown and then the marker starts again by itself; a sweep
 -- that runs to the end unpressed simply starts the next one. The drill only begins "stopped" until
 -- it is first started (the server presses once when the player steps onto the field).
@@ -43,14 +43,23 @@ function Drill.position(state: State, now: number): number?
 	return math.clamp((now - state.startedAt) / Config.Training.drillSweepSeconds, 0, 1)
 end
 
--- Whether a marker position counts as a hit (the middle of the bar).
-function Drill.isHit(position: number): boolean
-	return math.abs(position - 0.5) <= Config.Training.drillWindow
+-- Where the green zone is at `now` (0 left, 1 right): it drifts back and forth on the clock, so the
+-- server and the client agree without any message.
+function Drill.zoneCenter(now: number): number
+	local training = Config.Training
+	return 0.5
+		+ training.drillZoneAmplitude
+			* math.sin(now * 2 * math.pi / training.drillZonePeriodSeconds)
+end
+
+-- Whether a marker position counts as a hit: inside the green zone at `now`.
+function Drill.isHit(position: number, now: number): boolean
+	return math.abs(position - Drill.zoneCenter(now)) <= Config.Training.drillWindow
 end
 
 -- A press at `now`. Returns what happened:
 --   "start"   the drill was stopped (before its first start): the marker starts, nothing is paid
---   "hit"     the marker was in the middle: it starts again at once
+--   "hit"     the marker was in the green zone: it starts again at once
 --   "miss"    anywhere else: cooldown with a red bar
 --   "ignored" during the cooldown
 function Drill.press(state: State, now: number): string
@@ -63,7 +72,7 @@ function Drill.press(state: State, now: number): string
 		return "start"
 	end
 	local position = Drill.position(state, now) or 0
-	if Drill.isHit(position) then
+	if Drill.isHit(position, now) then
 		state.startedAt = now
 		return "hit"
 	end
