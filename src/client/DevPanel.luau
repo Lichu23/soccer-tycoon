@@ -40,9 +40,9 @@ function DevPanel.init()
 	gui.Parent = player:WaitForChild("PlayerGui")
 
 	local frame = Instance.new("Frame")
-	-- Bottom right: the left edge belongs to the daily icons, the top right to the HUD column.
-	frame.AnchorPoint = Vector2.new(1, 1)
-	frame.Position = UDim2.new(1, -6, 1, -6)
+	-- Bottom left: below the daily icons at the top left, clear of the HUD column on the right.
+	frame.AnchorPoint = Vector2.new(0, 1)
+	frame.Position = UDim2.new(0, 6, 1, -6)
 	frame.Size = UDim2.fromOffset(122, 8 + #BUTTONS * 26)
 	frame.BackgroundColor3 = Color3.fromRGB(20, 24, 35)
 	frame.BackgroundTransparency = 0.25
