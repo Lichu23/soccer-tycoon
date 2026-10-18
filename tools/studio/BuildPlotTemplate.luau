@@ -15,8 +15,8 @@
 --   * the stairs in the back-left corner are three flights going up and back (a switchback): flight 1
 --     (floor 1 to 2) rises along lane A toward the wall, a landing joins both lanes, flight 2 (floor 2
 --     to 3) rises along lane B away from the wall, flight 3 (floor 3 to 4) rises along lane A again.
---   * a glass gate (Gate_Floor2, Gate_Floor3, Gate_Floor4) closes the bottom of each flight until the
---     floor before is complete; the server opens it.
+--   * an invisible, non-blocking marker (Gate_Floor2, Gate_Floor3, Gate_Floor4) at the bottom of each flight
+--     carries the floor label; the stairs are always walkable.
 
 local ServerStorage = game:GetService("ServerStorage")
 
@@ -272,11 +272,12 @@ addBox(stairs, "Rail_Floor2", xFar - 0.3, xFar + 0.3, floorTop(2), floorTop(2) +
 addBox(stairs, "Rail_Floor3", xLanding - 0.3, xLanding + 0.3, floorTop(3), floorTop(3) + St.Railing, lanes.B.z0, lanes.B.z1, COLORS.wall)
 addBox(stairs, "Rail_Floor4", xFar - 0.3, xFar + 0.3, floorTop(4), floorTop(4) + St.Railing, lanes.A.z0, lanes.A.z1, COLORS.wall)
 
--- Gates: a glass pane across the bottom of each flight, opened by the server.
+-- Gates: an invisible marker at the bottom of each flight that only carries the floor label.
 local function gatePane(floorNumber: number, laneName: string, x0: number, x1: number, y0: number)
 	local lane = lanes[laneName]
 	local pane = addBox(stairs, "Gate_Floor" .. floorNumber, x0, x1, y0, y0 + St.GateHeight, lane.z0, lane.z1, COLORS.gate, Enum.Material.Glass)
-	pane.Transparency = 0.45
+	pane.Transparency = 1
+	pane.CanCollide = false
 	pane:SetAttribute("Floor", floorNumber)
 	return pane
 end

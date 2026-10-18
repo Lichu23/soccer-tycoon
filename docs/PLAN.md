@@ -31,7 +31,7 @@ Players are physical displays in the world (glass capsules on pedestals, like a 
 - 35 players in total. Rarity tiers: Common, Rare, Very Rare, Epic, Legend.
 - Each capsule is one specific named player with a fixed price and income.
 - **Purchase pad:** each capsule has a pad on the floor in front of it showing the name and price. The player buys by standing on the pad for **1 second** while a **circular loading ring** fills (it is not an instant buy, which avoids accidental purchases). The ring is drawn clockwise around the price on the pad, large enough to read on mobile, so the player understands they are paying. When it completes it flashes and plays a short pop sound, then the player appears. Stepping off cancels it, the ring drains back, and nothing is charged. If the player cannot afford it, the ring is red, shows the missing amount and does not fill. Every pad uses the same 1-second ring: player purchases, level-ups (including repeats while still standing) and the stadium upgrade pad. The hold time is one value in `Config` so it can be tuned in playtests. If they cannot afford it, the pad shows the missing amount. The server decides the purchase and checks proximity.
-- **A floor opens when the previous floor is complete** (all its players owned). Players won from cases count as owned for completion. Nobody is ever replaced or removed.
+- **Buying on a floor opens when the previous floor is complete** (all its players owned). Players won from cases count as owned for completion. Nobody is ever replaced or removed. **The stairs are never blocked** (owner decision, 2026-10-18): everyone can walk all floors from the start and see which players are coming, with their price and "Finish floor N first" on the pad.
 - A player won from a case on a floor the player has not reached is owned. Their capsule is shown lit behind a glass barrier on the locked floor (a teaser). The rest of that floor stays dark and cannot be bought until the floor opens.
 - The capsule order (around the walls) leads the player through the buying order. The guide only covers the first steps (see Step 2); after that the player decides.
 
@@ -516,7 +516,7 @@ Step 7 is the whole implementation: the map, the scripts and the UI. Studio hold
 | Training | One training ground, stamina bar cap (provisional) |
 | Stadium tier cost | Cash only, taken on purchase |
 | Goal guidance | No "Next goal" card. A guide for the first steps only (free plot, first player, one-time Store hint); pad rings show price and "Need $X more"; buy by standing on the pad |
-| Floors | Open when the previous floor is complete |
+| Floors | Always walkable; buying opens when the previous floor is complete |
 | Cases and floors | Cases can give higher-floor players, at minimum chances |
 | Trading | Out of version 1 |
 | Roulette | Replaced by cases (free daily, Robux player case) |

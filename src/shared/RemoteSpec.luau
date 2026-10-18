@@ -109,7 +109,7 @@ RemoteSpec.remotes = {
 	DevCommand = {
 		direction = "toServer",
 		args = {
-			{ kind = "enum", values = { "grantFloor", "setCash", "resetProfile", "openStairs" } },
+			{ kind = "enum", values = { "grantFloor", "setCash", "resetProfile" } },
 			{ kind = "number", min = 0, max = 1e15 },
 		},
 		ratePerSecond = 5,

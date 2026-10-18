@@ -14,7 +14,6 @@ local DevPanel = {}
 type DevButton = { label: string, command: string, amount: number }
 
 local BUTTONS: { DevButton } = {
-	{ label = "Open stairs", command = "openStairs", amount = 0 },
 	{ label = "Floor 1 done", command = "grantFloor", amount = 1 },
 	{ label = "Floor 2 done", command = "grantFloor", amount = 2 },
 	{ label = "Floor 3 done", command = "grantFloor", amount = 3 },

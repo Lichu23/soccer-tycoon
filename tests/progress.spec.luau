@@ -5,6 +5,7 @@ local Goals = T.load("shared/Goals")
 local PadInfo = T.load("shared/PadInfo")
 local Roster = T.load("shared/Roster")
 local Config = T.load("shared/Config")
+local NumberFormat = T.load("shared/NumberFormat")
 local ProfileSchema = T.load("server/ProfileSchema")
 
 local function newData()
@@ -179,7 +180,8 @@ T.test("the claim ring and player pads: name above, price in the ring, note belo
 
 	local locked = PadInfo.describe("player", "lautaro", data)
 	T.eq(locked.state, "locked")
-	T.eq(locked.price, "LOCKED")
+	T.eq(locked.price, NumberFormat.money(Config.PlayersById.lautaro.price))
+	T.eq(locked.note, "Finish floor " .. (Config.PlayersById.lautaro.floor - 1) .. " first")
 
 	Roster.add(data, "rashford")
 	local owned = PadInfo.describe("player", "rashford", data)

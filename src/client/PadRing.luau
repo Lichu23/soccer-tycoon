@@ -153,9 +153,10 @@ local function refresh(entry: Entry)
 	entry.note.TextColor3 = if info.state == "cannotAfford" then Style.ui.bad else Style.ui.idle
 	-- The claim rings of free plots only matter to a player who has no plot yet.
 	-- Locked Store pads stay hidden until they unlock, so the middle of the room is not cluttered.
-	-- Players on a floor that is not open yet stay hidden too.
+	-- Players on a floor that is not open yet stay visible (price and what to finish first), so
+	-- the stairs are worth climbing to see what is coming.
 	local hidden = (entry.kind == "claim" and State.hasPlot())
-		or ((entry.kind == "store" or entry.kind == "player") and info.state == "locked")
+		or (entry.kind == "store" and info.state == "locked")
 	entry.billboard.Enabled = not hidden
 	if entry.filled == 0 then
 		entry.color = ringColor(info.state)

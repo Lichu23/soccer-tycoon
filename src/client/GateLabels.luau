@@ -1,7 +1,8 @@
 --!strict
--- A label above each stair gate ("Floor 2": locked, or open), drawn on top of walls so the stairs
--- are easy to find from across the building. The server tags each gate "FloorGate" and keeps its
--- Open attribute up to date (docs/PLAN.md, Step 1: a floor opens when the one before is complete).
+-- A label above each stair marker ("Floor 2": can buy yet or not), drawn on top of walls so the
+-- stairs are easy to find from across the building. The stairs are never blocked. The server tags
+-- each marker "FloorGate" and keeps its Open attribute up to date (docs/PLAN.md, Step 1: players of
+-- a floor can be bought when the one before is complete).
 
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -18,10 +19,10 @@ local function refresh(gate: BasePart, title: TextLabel, note: TextLabel)
 	local floorNumber = if type(floor) == "number" then floor else 0
 	title.Text = "FLOOR " .. floorNumber
 	if open then
-		note.Text = "Open: go up"
+		note.Text = "Players open to buy"
 		note.TextColor3 = Style.ui.good
 	else
-		note.Text = "Locked: finish floor " .. math.max(floorNumber - 1, 1)
+		note.Text = "Look around. Buy after floor " .. math.max(floorNumber - 1, 1)
 		note.TextColor3 = Style.ui.bad
 	end
 end

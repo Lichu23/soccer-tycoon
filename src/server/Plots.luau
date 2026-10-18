@@ -87,18 +87,17 @@ function Plots.refresh(session: Session.Session)
 		return
 	end
 
-	-- The glass gate at the bottom of each flight of stairs opens when the floor before is complete.
+	-- The stairs are always walkable (the owner wants to see every floor). The gate marker at the
+	-- bottom of each flight only carries the label; Open says whether buying there is unlocked.
 	local stairs = plot:FindFirstChild("Stairs")
 	if stairs then
 		for _, gate in stairs:GetChildren() do
 			local floor = gate:GetAttribute("Floor")
 			if gate:IsA("BasePart") and type(floor) == "number" then
-				local open = Roster.floorUnlocked(session.data, floor)
-					or session.runtime.devOpenGates
 				CollectionService:AddTag(gate, "FloorGate") -- the client labels it
-				gate.CanCollide = not open
-				gate.Transparency = if open then 1 else 0.45
-				gate:SetAttribute("Open", open)
+				gate.CanCollide = false
+				gate.Transparency = 1
+				gate:SetAttribute("Open", Roster.floorUnlocked(session.data, floor))
 			end
 		end
 	end

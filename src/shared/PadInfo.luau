@@ -49,8 +49,8 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 		elseif status == "locked" then
 			return {
 				title = def.name,
-				price = "LOCKED",
-				note = "Finish the floor before",
+				price = NumberFormat.money(def.price),
+				note = "Finish floor " .. math.max(def.floor - 1, 1) .. " first",
 				state = "locked",
 			}
 		elseif status == "cannotAfford" then
