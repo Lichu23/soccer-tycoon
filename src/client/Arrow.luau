@@ -1,6 +1,8 @@
 --!strict
--- The guide arrow (docs/PLAN.md, Step 2): a beam from the player to the next thing to do. It points
--- at a free plot first, then follows the "Next goal" path, and hides when the player is there.
+-- The guide arrow (docs/PLAN.md, Step 2): a beam from the player to the next thing to do.
+-- It only guides the first steps: to a free plot, then to the first player's pad. After the first
+-- purchase it disappears. Then it shows once, for a short time, towards the Store pad, only so the
+-- player knows the Store exists, and never again. Later goals are shown by the goal row alone.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -8,31 +10,24 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Goals = require(ReplicatedStorage.Shared.Goals)
+local Roster = require(ReplicatedStorage.Shared.Roster)
 local State = require(script.Parent.State)
 
 local player = Players.LocalPlayer
 
 local ARRIVED_DISTANCE = 7
 local UPDATE_SECONDS = 0.25
+local STORE_HINT_SECONDS = 20 -- how long the Store hint can show at most
+local STORE_HINT_NEAR = 14 -- the hint ends when the player gets this close to the Store pad
+
+local lastOwned: number? = nil -- players owned at the last state change (nil before the first)
+local storeHintStartedAt: number? = nil
+local storeHintDone = false
 
 local Arrow = {}
 
--- The pad part the player should go to next, or nil.
-local function targetPart(root: BasePart): BasePart?
-	local goal = Goals.next(State.data, State.hasPlot())
-	local wantKind: string, wantId: string? = "", nil
-	if goal.kind == "claim" then
-		wantKind = "claim"
-	elseif goal.kind == "player" then
-		wantKind, wantId = "player", goal.id
-	elseif goal.kind == "store" then
-		wantKind, wantId = "store", goal.id
-	elseif goal.kind == "stadium" then
-		wantKind = "stadium"
-	else
-		return nil
-	end
-
+-- The nearest pad part of this kind (and pad id) the player may use.
+local function nearestPad(root: BasePart, wantKind: string, wantId: string?): BasePart?
 	local best: BasePart? = nil
 	local bestDistance = math.huge
 	for _, part in CollectionService:GetTagged("Pad") do
@@ -51,7 +46,47 @@ local function targetPart(root: BasePart): BasePart?
 	return best
 end
 
+-- The pad part the arrow should point at right now, or nil for no arrow.
+local function targetPart(root: BasePart): BasePart?
+	local goal = Goals.next(State.data, State.hasPlot())
+	if goal.kind == "claim" then
+		return nearestPad(root, "claim", nil)
+	end
+	-- Before the first purchase: the first player's pad.
+	if goal.kind == "player" and Roster.ownedCount(State.data) == 0 then
+		return nearestPad(root, "player", goal.id)
+	end
+
+	-- After it: the Store hint, once and for a short time.
+	local startedAt = storeHintStartedAt
+	if startedAt ~= nil and not storeHintDone then
+		local store = nearestPad(root, "store", "cashPerMatch")
+		local expired = os.clock() - startedAt > STORE_HINT_SECONDS
+		local bought = State.data.storeLevels.cashPerMatch > 0
+		local near = store ~= nil and (store.Position - root.Position).Magnitude < STORE_HINT_NEAR
+		if expired or bought or near or store == nil then
+			storeHintDone = true
+			return nil
+		end
+		return store
+	end
+	return nil
+end
+
 function Arrow.init()
+	-- The Store hint starts when the first player is bought during this session. A returning
+	-- player who already owns players never sees it.
+	State.onChange(function()
+		if not State.loaded then
+			return
+		end
+		local owned = Roster.ownedCount(State.data)
+		if lastOwned == 0 and owned >= 1 and not storeHintDone and storeHintStartedAt == nil then
+			storeHintStartedAt = os.clock()
+		end
+		lastOwned = owned
+	end)
+
 	local beam = Instance.new("Beam")
 	beam.Name = "GuideArrow"
 	beam.Color = ColorSequence.new(Color3.fromRGB(255, 220, 60))

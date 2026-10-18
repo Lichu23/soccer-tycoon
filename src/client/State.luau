@@ -21,6 +21,9 @@ State.data = {
 	players = {},
 } :: Types.ProgressData
 
+-- True once the first snapshot from the server has arrived (before it the data is empty).
+State.loaded = false
+
 -- Calls `listener` after any change of the cash, the snapshot or the plot.
 function State.onChange(listener: () -> ())
 	table.insert(listeners, listener)
@@ -60,6 +63,7 @@ local function applySnapshot(snapshot: any)
 	if type(snapshot.players) == "table" then
 		data.players = snapshot.players
 	end
+	State.loaded = true
 end
 
 -- Starts listening, then asks the server for the first snapshot.
