@@ -59,6 +59,7 @@ local function finishMatch(session: Session.Session)
 			ownerUserId = session.player.UserId,
 			payout = result.payout,
 			hatTrick = result.hatTrick,
+			stadiumTier = session.data.stadiumTier,
 			goalsFor = result.goalsFor,
 			goalsAgainst = result.goalsAgainst,
 			fieldIds = result.fieldIds,

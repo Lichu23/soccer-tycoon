@@ -10,6 +10,7 @@ local Pads = require(script.Parent.Pads)
 local Plots = require(script.Parent.Plots)
 local Remotes = require(script.Parent.Remotes)
 local Session = require(script.Parent.Session)
+local Stadium = require(script.Parent.Stadium)
 local Sync = require(script.Parent.Sync)
 
 Remotes.init()
@@ -22,13 +23,16 @@ Match.start()
 -- Whatever a player buys: tell their client, redraw their capsules and log the funnel.
 Actions.onChange = function(session, what, _id)
 	Sync.all(session)
+	if what == "stadium" then
+		-- Before the refresh, so the refresh waits for the new pitch instead of building it at once.
+		local first = Analytics.milestone(session, "first_stadium_upgrade")
+		Stadium.upgraded(session, first)
+	end
 	Plots.refresh(session)
 	if what == "player" then
 		Analytics.milestone(session, "first_purchase")
 	elseif what == "store" then
 		Analytics.milestone(session, "first_upgrade")
-	elseif what == "stadium" then
-		Analytics.milestone(session, "first_stadium_upgrade")
 	end
 end
 

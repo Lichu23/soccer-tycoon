@@ -20,6 +20,7 @@ local BUTTONS: { DevButton } = {
 	{ label = "Cash $1M", command = "setCash", amount = 1_000_000 },
 	{ label = "Cash $1B", command = "setCash", amount = 1_000_000_000 },
 	{ label = "Cash $1T", command = "setCash", amount = 1_000_000_000_000 },
+	{ label = "Stadium tier +1", command = "stadiumUp", amount = 0 },
 	{ label = "Away 1 hour", command = "simulateAway", amount = 1 },
 	{ label = "Away 8 hours", command = "simulateAway", amount = 8 },
 	{ label = "Reset profile", command = "resetProfile", amount = 0 },

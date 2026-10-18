@@ -17,6 +17,7 @@ local Pads = require(script.Parent.Pads)
 local Roster = require(ReplicatedStorage.Shared.Roster)
 local Session = require(script.Parent.Session)
 local Style = require(ReplicatedStorage.Shared.Style)
+local Stadium = require(script.Parent.Stadium)
 local Sync = require(script.Parent.Sync)
 
 local SLOT_COUNT = 8
@@ -86,6 +87,7 @@ function Plots.refresh(session: Session.Session)
 	if plot == nil then
 		return
 	end
+	Stadium.ensure(session)
 
 	-- The stairs are always walkable (the owner wants to see every floor). The gate marker at the
 	-- bottom of each flight only carries the label; Open says whether buying there is unlocked.

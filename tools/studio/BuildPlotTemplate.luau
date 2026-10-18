@@ -170,27 +170,9 @@ fencePart("Back", -half, half, Def.Plot.Depth - ft, Def.Plot.Depth)
 fencePart("Left", -half, -half + ft, 0, Def.Plot.Depth)
 fencePart("Right", half - ft, half, 0, Def.Plot.Depth)
 
-local court = folder("Court_T1")
+-- The pitch itself (surface, lines, goals, stands...) is not stored in the template: the server
+-- builds it for the tier from src/shared/CourtPlan.luau (server/Stadium.luau).
 local c = Def.Court
-local cx0, cx1 = -c.Length / 2, c.Length / 2
-local cz0, cz1 = c.CenterZ - c.Width / 2, c.CenterZ + c.Width / 2
-addBox(court, "Surface", cx0, cx1, FLOOR - 0.2, FLOOR, cz0, cz1, COLORS.court, Enum.Material.SmoothPlastic)
-local lineY0, lineY1 = FLOOR, FLOOR + 0.05
-local lt = 0.5
-addBox(court, "LineNear", cx0, cx1, lineY0, lineY1, cz0, cz0 + lt, COLORS.line)
-addBox(court, "LineFar", cx0, cx1, lineY0, lineY1, cz1 - lt, cz1, COLORS.line)
-addBox(court, "LineLeft", cx0, cx0 + lt, lineY0, lineY1, cz0, cz1, COLORS.line)
-addBox(court, "LineRight", cx1 - lt, cx1, lineY0, lineY1, cz0, cz1, COLORS.line)
-addBox(court, "LineCenter", -lt / 2, lt / 2, lineY0, lineY1, cz0, cz1, COLORS.line)
-for _, side in { -1, 1 } do
-	local gx = side * (c.Length / 2)
-	local gz = c.CenterZ
-	local post = 0.5
-	local goalHeight = 6
-	addBox(court, "GoalPostA", gx - post / 2, gx + post / 2, FLOOR, FLOOR + goalHeight, gz - 5, gz - 5 + post, COLORS.goal)
-	addBox(court, "GoalPostB", gx - post / 2, gx + post / 2, FLOOR, FLOOR + goalHeight, gz + 5 - post, gz + 5, COLORS.goal)
-	addBox(court, "GoalBar", gx - post / 2, gx + post / 2, FLOOR + goalHeight - post, FLOOR + goalHeight, gz - 5, gz + 5, COLORS.goal)
-end
 
 -- Building shell -----------------------------------------------------------------------------
 local building = folder("Building")

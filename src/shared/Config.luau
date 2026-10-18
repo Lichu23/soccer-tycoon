@@ -253,6 +253,14 @@ Config.Store = {
 	},
 } :: { [StoreUpgradeId]: StoreUpgradeDef }
 
+-- The upgrade cinematic (docs/PLAN.md, Step 7). The server builds the new pitch after
+-- buildDelaySeconds, when the camera has arrived. The client unlocks by itself after maxSeconds.
+Config.Cinematic = {
+	seconds = 6.5,
+	maxSeconds = 9,
+	buildDelaySeconds = 1.8,
+}
+
 Config.StadiumTiers = {
 	{ tier = 1, price = 0, field = 4, courtLength = 60, courtWidth = 36 },
 	{ tier = 2, price = 250, field = 5, courtLength = 70, courtWidth = 42 },

@@ -111,7 +111,7 @@ local function buildTeam(plot: Model, fieldIds: { string }, tier: Config.Stadium
 	local team: Team = {
 		plot = plot,
 		gate = gate,
-		key = table.concat(fieldIds, ","),
+		key = table.concat(fieldIds, ",") .. "|" .. tier.tier,
 		runners = {},
 		length = tier.courtLength,
 		width = tier.courtWidth,
@@ -158,7 +158,7 @@ end
 -- The team of a plot, rebuilt when the players on the field changed.
 local function ensureTeam(plot: Model, fieldIds: { string }, tier: Config.StadiumTierDef): Team?
 	local existing = teams[plot]
-	local key = table.concat(fieldIds, ",")
+	local key = table.concat(fieldIds, ",") .. "|" .. tier.tier
 	if existing and existing.key == key then
 		existing.lastUsed = os.clock()
 		return existing
@@ -182,7 +182,11 @@ local function playResult(plot: Model, info: any)
 	if type(fieldIds) ~= "table" or #fieldIds == 0 then
 		return
 	end
-	local team = ensureTeam(plot, fieldIds, tierFor(#fieldIds))
+	local tierNumber = info.stadiumTier
+	local tier = if type(tierNumber) == "number" and Config.StadiumTiers[tierNumber]
+		then Config.StadiumTiers[tierNumber]
+		else tierFor(#fieldIds)
+	local team = ensureTeam(plot, fieldIds, tier)
 	if team == nil or not nearCamera(team) then
 		return
 	end
