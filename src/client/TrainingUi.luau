@@ -66,6 +66,49 @@ function TrainingUi.init()
 	}, gui)
 	new("UIStroke", { Color = Style.ui.dark, Thickness = 2 }, hint)
 
+	-- The title says which field this is.
+	local title = new("TextLabel", {
+		Name = "Title",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -176),
+		Size = UDim2.fromOffset(BAR_WIDTH + 40, 28),
+		BackgroundTransparency = 1,
+		Text = "",
+		Font = Style.font,
+		TextSize = 24,
+		TextColor3 = Style.ui.gold,
+	}, gui)
+	new("UIStroke", { Color = Style.ui.dark, Thickness = 2 }, title)
+
+	-- The AFK farm bar: it fills towards the next whole TP, so the passive gain is visible.
+	local afkBar = new("Frame", {
+		Name = "AfkBar",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -118),
+		Size = UDim2.fromOffset(BAR_WIDTH, BAR_HEIGHT),
+		BackgroundColor3 = Style.ui.dark,
+		BackgroundTransparency = 0.2,
+		Visible = false,
+	}, gui)
+	rounded(afkBar, 8)
+	new("UIStroke", { Color = Style.ui.idle, Thickness = 1 }, afkBar)
+	local afkFill = new("Frame", {
+		Name = "Fill",
+		Size = UDim2.fromScale(0, 1),
+		BackgroundColor3 = Style.ui.bar,
+		BorderSizePixel = 0,
+	}, afkBar)
+	rounded(afkFill, 8)
+	new("TextLabel", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Text = "Training... next TP",
+		Font = Style.font,
+		TextSize = 15,
+		TextColor3 = Style.ui.text,
+		ZIndex = 3,
+	}, afkBar)
+
 	local bar = new("Frame", {
 		Name = "Bar",
 		AnchorPoint = Vector2.new(0.5, 1),
@@ -208,6 +251,19 @@ function TrainingUi.init()
 		end
 	end)
 
+	-- On the AFK field each whole TP that arrives shows as a temporary "+N TP".
+	local lastTp = 0
+	player:GetAttributeChangedSignal("tp"):Connect(function()
+		local tp = player:GetAttribute("tp")
+		if type(tp) ~= "number" then
+			return
+		end
+		if player:GetAttribute("trainingField") == "afk" and tp > lastTp and lastTp > 0 then
+			popFeedback(string.format("+%d TP", tp - lastTp), Style.ui.bar)
+		end
+		lastTp = tp
+	end)
+
 	Net.on("Notice", function(info: any)
 		if type(info) ~= "table" or info.kind ~= "drillResult" then
 			return
@@ -229,8 +285,9 @@ function TrainingUi.init()
 	end)
 
 	RunService.RenderStepped:Connect(function()
+		local field = player:GetAttribute("trainingField")
 		local active = player:GetAttribute("training") == true
-			and player:GetAttribute("drillPhase") ~= "off"
+			and (field == "afk" or field == "active")
 		gui.Enabled = active
 		if not active then
 			wasActive = false
@@ -239,6 +296,22 @@ function TrainingUi.init()
 		if not wasActive then
 			wasActive = true
 			streak = 0
+		end
+		local isActive = field == "active"
+		title.Text = if isActive then "ACTIVE FARM" else "AFK FARM"
+		hint.Text = if isActive
+			then "Hit the green for extra TP. Standing here also earns 10 TP/min."
+			else "Just stand here: 10 TP per minute. Want more? Try the active farm!"
+		afkBar.Visible = not isActive
+		bar.Visible = isActive
+		button.Visible = isActive
+		if not isActive then
+			local fraction = player:GetAttribute("tpFraction")
+			afkFill.Size = UDim2.fromScale(
+				math.clamp(if type(fraction) == "number" then fraction else 0, 0, 1),
+				1
+			)
+			return
 		end
 		local now = Workspace:GetServerTimeNow()
 		Drill.normalize(drill, now)

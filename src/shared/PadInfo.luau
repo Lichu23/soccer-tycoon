@@ -124,20 +124,15 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 		end
 		return { title = title, price = NumberFormat.money(price), note = "", state = status }
 	elseif kind == "training" then
+		local active = padId == "trainingActive"
+		local title = if active then "Active farm" else "AFK farm"
 		if not Progress.trainingUnlocked(data) then
-			return {
-				title = "Training ground",
-				price = "",
-				note = "Finish floor 1 first",
-				state = "locked",
-			}
+			return { title = title, price = "", note = "Finish floor 1 first", state = "locked" }
 		end
-		return {
-			title = "Training ground",
-			price = "TP",
-			note = "Stand here to train",
-			state = "info",
-		}
+		local note = if active
+			then "Play the drill for extra TP"
+			else "Stand here: 10 TP per minute"
+		return { title = title, price = "TP", note = note, state = "info" }
 	elseif kind == "penalty" then
 		-- Whether kicks are left today is the server's call (the client shows the wait time).
 		if data.stadiumTier < Config.Daily.unlockTier then

@@ -25,12 +25,20 @@ local started = false
 
 local TrainingActions = {}
 
-local function onPad(session: Session.Session): boolean
+-- Which training field the player stands on: "afk" (stand and earn), "active" (play the drill) or
+-- nil. The pad system publishes each player's padKey, which ends with the marker's name.
+local function fieldOf(session: Session.Session): string?
 	local plot = session.runtime.plot
 	if plot == nil or not Progress.trainingUnlocked(session.data) then
-		return false
+		return nil
 	end
-	return session.player:GetAttribute("padKey") == plot.Name .. ":Training"
+	local key = session.player:GetAttribute("padKey")
+	if key == plot.Name .. ":TrainingAfk" then
+		return "afk"
+	elseif key == plot.Name .. ":TrainingActive" then
+		return "active"
+	end
+	return nil
 end
 
 -- The drill state as player attributes, so the client draws the same bar the server judges.
@@ -52,18 +60,21 @@ local function step(session: Session.Session, dt: number)
 		carries[player] = carry
 	end
 
-	local standing = onPad(session)
+	local field = fieldOf(session)
+	local standing = field ~= nil
 	local paid = Training.step(data, carry, dt, standing)
 	local active = standing and Training.hasStamina(data)
 	training[player] = active
 
-	-- The drill exists while the player stands on the pad. It starts stopped (a red bar) and the
-	-- first press starts the marker.
-	if standing and drills[player] == nil then
+	-- The drill exists only on the active field. It starts stopped (a red bar) and the first press
+	-- starts the marker. On the AFK field there is none.
+	if field == "active" and drills[player] == nil then
 		drills[player] = Drill.new()
-	elseif not standing then
+	elseif field ~= "active" then
 		drills[player] = nil
 	end
+	player:SetAttribute("trainingField", field or "off")
+	player:SetAttribute("tpFraction", carry.fraction)
 	publishDrill(player)
 	player:SetAttribute("training", active)
 	player:SetAttribute("staminaLeft", math.floor(data.staminaLeft * 10) / 10)

@@ -357,14 +357,53 @@ addBox(land, "WalkwayBuilding", PH, doorX, Def.GroundTop, pathTop, doorZ - doorH
 local trainingMidZ = (TR.Z0 + TR.Z1) / 2
 addBox(land, "WalkwayTraining", TR.X1, -PH, Def.GroundTop, pathTop, trainingMidZ - TR.WalkHalf, trainingMidZ + TR.WalkHalf, COLORS.path, Enum.Material.Concrete)
 -- The yard: a floor, low walls on three sides and an opening towards the path, a few cones.
-addBox(land, "TrainingFloor", TR.X0, TR.X1, Def.GroundTop, pathTop, TR.Z0, TR.Z1, COLORS.yard, Enum.Material.SmoothPlastic)
+-- Two mini fields: the AFK farm (stand and earn) and the active farm (play the timing drill).
+COLORS.afkField = Color3.fromRGB(140, 185, 215)
+COLORS.activeField = Color3.fromRGB(230, 185, 130)
+addBox(land, "TrainingFloorAfk", TR.X0, TR.X1, Def.GroundTop, pathTop, TR.Z0, trainingMidZ - 1, COLORS.afkField, Enum.Material.SmoothPlastic)
+addBox(land, "TrainingFloorActive", TR.X0, TR.X1, Def.GroundTop, pathTop, trainingMidZ + 1, TR.Z1, COLORS.activeField, Enum.Material.SmoothPlastic)
+addBox(land, "TrainingDivider", TR.X0, TR.X1, pathTop, pathTop + 0.05, trainingMidZ - 1, trainingMidZ + 1, COLORS.line)
+-- A big sign over each field (a billboard that always faces the player).
+local function fieldSign(parent: Instance, name: string, title: string, sub: string, zMid: number, color: Color3)
+	local part = addBox(parent, name, (TR.X0 + TR.X1) / 2 - 13, (TR.X0 + TR.X1) / 2 - 11, 9, 11, zMid - 1, zMid + 1, COLORS.line)
+	part.Transparency = 1
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromOffset(190, 56)
+	gui.MaxDistance = 90
+	gui.LightInfluence = 0
+	gui.Parent = part
+	local top = Instance.new("TextLabel")
+	top.Size = UDim2.new(1, 0, 0.6, 0)
+	top.BackgroundTransparency = 1
+	top.Text = title
+	top.Font = Enum.Font.GothamBold
+	top.TextScaled = true
+	top.TextColor3 = color
+	top.TextStrokeTransparency = 0
+	top.Parent = gui
+	local bottom = Instance.new("TextLabel")
+	bottom.Position = UDim2.fromScale(0, 0.6)
+	bottom.Size = UDim2.new(1, 0, 0.4, 0)
+	bottom.BackgroundTransparency = 1
+	bottom.Text = sub
+	bottom.Font = Enum.Font.GothamBold
+	bottom.TextScaled = true
+	bottom.TextColor3 = Color3.fromRGB(255, 255, 255)
+	bottom.TextStrokeTransparency = 0
+	bottom.Parent = gui
+end
+fieldSign(land, "SignAfk", "AFK FARM", "Stand here: 10 TP per minute", (TR.Z0 + trainingMidZ) / 2, Color3.fromRGB(140, 200, 255))
+fieldSign(land, "SignActive", "ACTIVE FARM", "Play the drill for extra TP", (trainingMidZ + TR.Z1) / 2, Color3.fromRGB(255, 190, 110))
 local wallTop = FLOOR + 3
 addBox(land, "TrainingWallBack", TR.X0, TR.X0 + 1, Def.GroundTop, wallTop, TR.Z0, TR.Z1, COLORS.wall)
 addBox(land, "TrainingWallNear", TR.X0, TR.X1, Def.GroundTop, wallTop, TR.Z0, TR.Z0 + 1, COLORS.wall)
 addBox(land, "TrainingWallFar", TR.X0, TR.X1, Def.GroundTop, wallTop, TR.Z1 - 1, TR.Z1, COLORS.wall)
 addBox(land, "TrainingWallFrontA", TR.X1 - 1, TR.X1, Def.GroundTop, wallTop, TR.Z0, trainingMidZ - TR.WalkHalf, COLORS.wall)
 addBox(land, "TrainingWallFrontB", TR.X1 - 1, TR.X1, Def.GroundTop, wallTop, trainingMidZ + TR.WalkHalf, TR.Z1, COLORS.wall)
-for index, offset in { { 12, -16 }, { 12, 16 }, { 28, -16 }, { 28, 16 } } do
+for index, offset in { { 12, -32 }, { 12, 32 }, { 28, -32 }, { 28, 32 } } do
 	local cone = addBox(land, "Cone" .. index, TR.X1 - 21.2 - offset[1], TR.X1 - 20 - offset[1], pathTop, pathTop + 1.5, trainingMidZ + offset[2], trainingMidZ + offset[2] + 1.2, Color3.fromRGB(255, 140, 40))
 	cone.CanCollide = false
 end
@@ -376,7 +415,8 @@ marker("Claim", "claim", "claim", Vector3.new(0, PAD_Y, 8), Vector3.new(14, 0.2,
 -- The stadium pad stands on the path, just in front of the stadium.
 marker("Stadium", "stadium", "stadium", Vector3.new(0, PAD_Y, Def.Path.Length + 6), Vector3.new(12, 0.2, 7))
 marker("Penalty", "penalty", "penalty", Vector3.new(c.Length / 2 - 9, PAD_Y, cz), PAD)
-marker("Training", "training", "training", Vector3.new((TR.X0 + TR.X1) / 2, PAD_Y, trainingMidZ), Vector3.new(14, 0.2, 14))
+marker("TrainingAfk", "trainingAfk", "training", Vector3.new((TR.X0 + TR.X1) / 2 + 12, PAD_Y, (TR.Z0 + trainingMidZ) / 2), Vector3.new(14, 0.2, 14))
+marker("TrainingActive", "trainingActive", "training", Vector3.new((TR.X0 + TR.X1) / 2 + 12, PAD_Y, (trainingMidZ + TR.Z1) / 2), Vector3.new(14, 0.2, 14))
 marker("LockerSpotMarker", "locker", "spot", Vector3.new(33, PAD_Y, innerZ1 - 10), Vector3.new(4, 0.2, 4))
 
 local ours = { { -20, -8 }, { -20, 8 }, { -8, -8 }, { -8, 8 } }
