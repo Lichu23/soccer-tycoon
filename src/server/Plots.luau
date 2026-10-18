@@ -3,6 +3,7 @@
 -- hold time clones the plot template there, so two players cannot claim the same slot. When the
 -- owner leaves, the plot is removed and the ring comes back.
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -93,6 +94,8 @@ function Plots.refresh(session: Session.Session)
 			local floor = gate:GetAttribute("Floor")
 			if gate:IsA("BasePart") and type(floor) == "number" then
 				local open = Roster.floorUnlocked(session.data, floor)
+					or session.runtime.devOpenGates
+				CollectionService:AddTag(gate, "FloorGate") -- the client labels it
 				gate.CanCollide = not open
 				gate.Transparency = if open then 1 else 0.45
 				gate:SetAttribute("Open", open)

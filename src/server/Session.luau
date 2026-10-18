@@ -20,6 +20,7 @@ export type Runtime = {
 	matchesInRow: number, -- momentum: matches played this session
 	matchesPlayed: number,
 	nextMatchAt: number, -- os.clock() when the next match ends, 0 when none is scheduled
+	devOpenGates: boolean, -- Studio test shortcut: every stair gate open
 }
 
 export type Session = {
@@ -120,6 +121,7 @@ local function startOne(player: Player): Session?
 			matchesInRow = 0,
 			matchesPlayed = 0,
 			nextMatchAt = 0,
+			devOpenGates = false,
 		},
 	}
 	sessions[player] = session

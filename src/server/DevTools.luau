@@ -21,7 +21,18 @@ function DevTools.start()
 		if session == nil then
 			return
 		end
-		if DevCommands.apply(session.data, command, amount) then
+		if command == "openStairs" then
+			-- Opens every stair gate (or closes them again) without granting any player.
+			session.runtime.devOpenGates = not session.runtime.devOpenGates
+			Actions.onChange(session, "dev", nil)
+			print(
+				string.format(
+					"[DevTools] %s: stairs open = %s",
+					player.Name,
+					tostring(session.runtime.devOpenGates)
+				)
+			)
+		elseif DevCommands.apply(session.data, command, amount) then
 			session.runtime.nextMatchAt = 0
 			Actions.onChange(session, "dev", nil)
 			print(string.format("[DevTools] %s: %s %s", player.Name, command, tostring(amount)))

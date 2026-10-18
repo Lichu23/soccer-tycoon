@@ -4,6 +4,7 @@
 
 local Arrow = require(script.Parent.Arrow)
 local DevPanel = require(script.Parent.DevPanel)
+local GateLabels = require(script.Parent.GateLabels)
 local Hud = require(script.Parent.Hud)
 local MatchView = require(script.Parent.MatchView)
 local PadRing = require(script.Parent.PadRing)
@@ -14,6 +15,7 @@ Hud.init()
 PadRing.init()
 MatchView.init()
 Arrow.init()
+GateLabels.init()
 DevPanel.init()
 
 print("soccer-tycoon client started")
