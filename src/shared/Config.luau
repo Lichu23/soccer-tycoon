@@ -38,6 +38,8 @@ export type StadiumTierDef = {
 	tier: number,
 	price: number,
 	field: number, -- players on the field
+	courtLength: number, -- the pitch of this tier, in studs
+	courtWidth: number,
 }
 
 local function player(
@@ -175,6 +177,9 @@ Config.Match = {
 	seconds = 10, -- base time between matches, before the match speed upgrade
 	firstMatchSeconds = 5, -- the very first match is shorter (Step 2)
 	hatTrickMultiplier = 2,
+	-- The first hat-trick is scripted once (Step 2): it happens on this match of the session,
+	-- about minute 4, unless a natural one already came. Afterwards the real odds apply.
+	scriptedHatTrickMatch = 22,
 	momentumPerMatch = 0.01,
 	momentumCap = 0.25,
 }
@@ -249,11 +254,11 @@ Config.Store = {
 } :: { [StoreUpgradeId]: StoreUpgradeDef }
 
 Config.StadiumTiers = {
-	{ tier = 1, price = 0, field = 4 },
-	{ tier = 2, price = 250, field = 5 },
-	{ tier = 3, price = 25_000, field = 6 },
-	{ tier = 4, price = 750_000, field = 8 },
-	{ tier = 5, price = 45_000_000, field = 11 },
+	{ tier = 1, price = 0, field = 4, courtLength = 60, courtWidth = 36 },
+	{ tier = 2, price = 250, field = 5, courtLength = 70, courtWidth = 42 },
+	{ tier = 3, price = 25_000, field = 6, courtLength = 84, courtWidth = 50 },
+	{ tier = 4, price = 750_000, field = 8, courtLength = 100, courtWidth = 60 },
+	{ tier = 5, price = 45_000_000, field = 11, courtLength = 120, courtWidth = 72 },
 } :: { StadiumTierDef }
 
 -- Saving (Step 6). Studio uses ProfileStore's Mock store (memory only) unless useRealStoreInStudio

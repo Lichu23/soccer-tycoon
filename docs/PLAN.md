@@ -33,12 +33,12 @@ Players are physical displays in the world (glass capsules on pedestals, like a 
 - **Purchase pad:** each capsule has a pad on the floor in front of it showing the name and price. The player buys by standing on the pad for **1 second** while a **circular loading ring** fills (it is not an instant buy, which avoids accidental purchases). The ring is drawn clockwise around the price on the pad, large enough to read on mobile, so the player understands they are paying. When it completes it flashes and plays a short pop sound, then the player appears. Stepping off cancels it, the ring drains back, and nothing is charged. If the player cannot afford it, the ring is red, shows the missing amount and does not fill. Every pad uses the same 1-second ring: player purchases, level-ups (including repeats while still standing) and the stadium upgrade pad. The hold time is one value in `Config` so it can be tuned in playtests. If they cannot afford it, the pad shows the missing amount. The server decides the purchase and checks proximity.
 - **A floor opens when the previous floor is complete** (all its players owned). Players won from cases count as owned for completion. Nobody is ever replaced or removed.
 - A player won from a case on a floor the player has not reached is owned. Their capsule is shown lit behind a glass barrier on the locked floor (a teaser). The rest of that floor stays dark and cannot be bought until the floor opens.
-- Capsule order and the guide arrow lead the player through the buying order.
+- The capsule order (around the walls) leads the player through the buying order. The guide only covers the first steps (see Step 2); after that the player decides.
 
 ### Field and lineup
 - Only the players on the field earn. The field is **always filled automatically with the owned players with the highest income** (top N, N set by the stadium tier). There is no manual swapping, no lineup board and no capsule prompts.
 - Owned players beyond the capacity wait on the bench in their capsules and are never removed.
-- **The first player is added with a button in the stadium** (pitch), which starts the match loop. After that, new players go to the field automatically when they rank in the top N.
+- **The first player goes onto the field automatically when bought** and the match loop starts at once (changed after the first playtest: the "Start the game" pad on the pitch was confusing and overlapped the capsule pads, so there is no button). After that, new players go to the field automatically when they rank in the top N.
 - Positions or set bonuses can be added later if the economy needs more depth (step 3).
 
 ### Cases and stars
@@ -85,9 +85,9 @@ There is no separate expensive cash route: everyone pays the cash price and comp
 
 - **Each stadium upgrade gives a free x2 income boost for 5 minutes.** The timer counts only while the player is online (it waits if they leave), and a HUD badge shows the time left ("x2 · 4:32"). A new upgrade resets the timer, it does not add up. It stacks with other boosts inside the total x4 cap. It is free, never a Robux item, and repeats each New Season when the tiers are bought again.
 - The stadium tier costs cash only. Floors and stadium tier are two separate tracks (floors by completion, tier by cash). The price is taken from the player's cash, and the server charges and applies the upgrade in one step.
-- **"Next goal" HUD row:** a small row under the money label shows one goal at a time ("Next goal: Stadium upgrade", progress bar, "$120 / $200"). It follows the buying path (first player, start the game, first upgrade, next players, stadium upgrade). It is not a list of every upgrade.
-- When the goal becomes affordable, the row **glows brightly** and reads "Stadium upgrade available!", and the guide arrow points to the pad. The glow pulses a few times and then stays steady. No sound and no nagging.
-- **Upgrades can be bought from the HUD row** with a button (stadium tiers and Store upgrades), as well as by standing on the pad in the world. Because it is a big spend, the HUD button asks for a second tap to confirm. Players are still bought only on the capsule pads.
+- **No "Next goal" card (removed after the owner's phone test: the player should decide what to do, and the guide covers the first steps).** What tells a player what is affordable is the pad itself: its ring shows the price and "Need $X more" in red when it costs too much, and the match income shows in the money. The `Goals` rules stay in the code only to drive the first-step guide.
+- A pad whose price is affordable simply shows its price in green with its ring ready; nothing glows or pops up on the HUD, and there is no sound and no nagging.
+- **Upgrades are bought on the pad in the world** (stadium tiers and Store upgrades), and players on the capsule pads. A HUD buy button is not built: with no goal card there is no row to hold it.
 - **Upgrade animation:** the server confirms the purchase, that player's controls are locked and the camera moves to a cinematic view for about 5 to 8 s while the pitch transforms, then the new capacity shows and controls unlock. Beats (about 6 s): pay and lock, camera to the court, shake and dust while field players step aside, fences and stand rise and floodlights switch on one by one, "STADIUM UPGRADED", "Field 4 to 5" and "x2 for 5 minutes" text, the next-best bench players run onto the new spots, controls unlock and the HUD goal switches. It works wherever the player bought it (the camera goes to the court). The first upgrade cannot be skipped; from the second upgrade a tap skips to the end. Later tiers get bigger versions (tier 2 to 3: fences and a small stand; tier 3 to 4: floodlights and a bigger stand; tier 4 to 5: roof, crowd, scoreboard, fireworks). No fast flashes, mobile friendly. It has a time limit (so nobody gets stuck), affects only that player, and the server finishes the upgrade even if the player leaves.
 
 ### World and plots
@@ -137,15 +137,15 @@ Principles: value in the first 30 s, teach by doing (no popups), one new idea pe
 | 0:00 | The player spawns in the shared area outside. An arrow points to the nearest free plot. | One obvious action |
 | 0:10 | They step on a free plot's Claim ring. The plot is theirs and the building appears with a build animation. They hold $15. | Ownership moment |
 | 0:20 | The arrow points at the first capsule's pad. They stand on it and buy the first Common player for $10. | First purchase in about 20 s |
-| 0:25 | A new arrow guides them to the stadium (the street court). They click the button on the pitch: the player runs onto the court and the match loop starts. | Teaches that the field is where the game plays |
+| 0:25 | The moment the purchase completes the player runs onto the street court (visible through the glass front) and the match loop starts. | The field is where the game plays, with no extra step |
 | 0:30 | First match with the loading bar (about 5 s for this one). "VICTORY" appears, then "+$N" lands on the money label. | First reward, loop understood |
-| 0:40 to 1:00 | A match every ~10 s keeps paying. The Store pad glows when an upgrade is affordable and the arrow points to it. | Guide without a menu |
+| 0:40 to 1:00 | A match every ~10 s keeps paying. Right after the first purchase a short arrow points to the Store pad, only so the player knows the Store exists (once, at most 20 s, then never again). The Store pad ring shows when an upgrade is affordable. | Guide without a menu |
 | 1:00 | First upgrade (Cash per match, $15). Next matches pay visibly more. | Spending makes numbers go up |
-| 1:30 to 3:00 | The next capsule lights up with the arrow. They buy the 2nd and 3rd players, who join the field automatically (the court shows 2, then 3 players). | The buying order is the tutorial, and each purchase visibly changes the court |
+| 1:30 to 3:00 | The pad rings show which capsule is affordable (no arrow, no goal card). They buy the 2nd and 3rd players, who join the field automatically (the court shows 2, then 3 players). | The buying order is the tutorial, and each purchase visibly changes the court |
 | 3:30 | The 3rd player is bought with a small reveal animation (name, number, nationality). | Small peak |
 | 4:00 to 4:30 | First hat-trick, scripted once (afterwards real odds apply). The text reads "HAT-TRICK x2". | Surprise before the main peak |
 | 4:30 | They buy the 4th player. The court shows "Field 4/4" and the stadium upgrade pad shows its price ($250) and a progress bar fed by match income. | Creates the next goal |
-| 5:00 | **Peak:** once they can afford the upgrade, a short message says "Stadium upgrade available!" and the arrow points to the pad (it never fires on its own and never nags). They pay by standing on the pad or by pressing the glowing HUD button. Controls lock, the camera moves, the street court becomes a walled court with proper lines, the new capacity shows ("Field 4 to 5") and a x2 income boost starts for 5 minutes. | Main peak and transition |
+| 5:00 | **Peak:** once they can afford the upgrade, the stadium pad ring turns ready (there is no message, no arrow and no goal card, and it never nags). They pay by standing on the pad or by pressing the glowing HUD button. Controls lock, the camera moves, the street court becomes a walled court with proper lines, the new capacity shows ("Field 4 to 5") and a x2 income boost starts for 5 minutes. | Main peak and transition |
 | After 5:00 | The daily penalty pad appears with a short clear prompt. More Store options appear gradually. | Loop established |
 
 Not in the first 5 minutes: training ground, cases, Robux shop, notifications, leaderboard, New Season. They open later, one at a time.
@@ -205,6 +205,7 @@ Income is cash per match for a player on the field. Prices rise faster than inco
 
 ### Simulated pacing
 - First 5 minutes: first purchase 0:23, first upgrade 1:06, player 2 at 2:06, player 3 at 3:36, player 4 at 4:16, stadium tier 2 at 5:16. This matches the Step 2 script.
+- **Measured in the real game (Phase 3, an optimal bot that is always on the right pad):** plot claimed 0:08, first purchase 0:19, first upgrade 0:54, player 2 at 1:45, player 3 at 2:36, player 4 at 3:27, stadium tier 2 at 3:57. That is within 5 to 20 s of the simulation for the first upgrade and player 2, and 50 to 80 s faster from player 3 on (the 5 s first match, rounding of small payouts and the scripted hat-trick at about 3:35 all favour the player). A real player is slower by roughly 25 to 30%, which lands the first stadium upgrade at about 5:00 (the Step 2 peak). The economy numbers stay; re-check with real players and raise the tier 2 price if most reach it before minute 4. `tests/pacing.spec.luau` keeps this timeline in range.
 - Floor 1 complete at about 11 min, floor 2 at about 40 min, floor 3 in about 2.7 hours of play (day 2 for an efficient player, around day 4 for a 30-minute-a-day player). First Legend after about 3 weeks of casual free play.
 - Spenders save time but not a lot. Boosts roughly equal playing twice as long, and a free player can catch up with time. **Cases are the strongest shortcut** (a regular spender skipped much of floor 3), so watch the 70 / 25 / 5 case pool in playtests and lower it (for example to 90 / 9 / 1) if players skip floors.
 
@@ -218,7 +219,7 @@ Method: the retention stack (core loop, hour-to-hour meta-game, day-to-day progr
 ### Why a player comes back
 | Window | Reason to return | Where it comes from |
 |---|---|---|
-| Same session | The next player or upgrade is always one or two minutes away | Step 3 pacing, "Next goal" row |
+| Same session | The next player or upgrade is always one or two minutes away | Step 3 pacing and the price on every pad |
 | Day 1 | Offline earnings waiting, free daily case, daily penalty kicks, floor 2 in progress (about 40 min) | Offline cap 4 h, no streak |
 | Days 2 to 4 | Floor 3 complete, first New Season (a visible fresh start with x1.5) | Step 1 New Season |
 | Weeks 1 to 3 | Climb floor 3, TP levelling, stars from duplicates, first Legend (about 3 weeks) | Legends route, collection |
@@ -275,7 +276,7 @@ Each stadium tier unlocks a new thing to customise, so a tier is more than a big
 - The icon opens the **free** case only (cash or a boost, never players). The Robux case lives in the Store from floor 2 and never shows a "ready" glow, because nothing free is pending there.
 - **Cooldown: 20 hours from claiming**, for the case and for the penalties (the 3 kicks refill together 20 hours after the first kick of a batch). A player who claims at 6 pm finds it ready again at 2 pm the next day, so a daily player never meets "not ready yet". It cannot be claimed twice in a day, and the ready time drifts earlier, so a changing schedule loses nothing. A fixed midnight reset was rejected: someone could claim at 11:59 pm and again at 12:01 am, and it feels unfair across timezones. Judged by the server clock.
 - No streak, nothing lost by skipping, and the icons never block anything.
-- HUD layout (*to check in the GUI pass, `roblox-gui`*): icons at least 44 px, inside the safe area, not overlapping the money label, the season badge or the "Next goal" row. This is the busiest part of the HUD.
+- HUD layout (*to check in the GUI pass, `roblox-gui`*): icons at least 44 px, inside the safe area, not overlapping the money column or the season badge. This is the busiest part of the HUD.
 - The free case opens at minute 5 as a small cash prize (about 5 minutes of income), so the Step 3 cash numbers for the first session need a quick recheck.
 
 ### Notifications (opt-in only)
@@ -301,7 +302,7 @@ Each stadium tier unlocks a new thing to customise, so a tier is more than a big
 - The **first time a player owns a player of a rarity** (first Common, first Rare, first Very Rare, first Epic, first Legend), a short reveal plays: a background colour for that rarity, the player's name and number, and the player doing a ball trick (juggle, flick, or a celebration).
 - Rarity colours (*provisional*): Common grey or white, Rare blue, Very Rare purple, Epic gold, Legend a rainbow or red-gold. The rarity name is always written as text too, so the colour is not the only signal.
 - About 3 s, a tap skips it, no fast flashes, readable on mobile. It plays for purchases, case wins and free unlocks alike. Later players of a known rarity get only the small reveal from Step 2 (name, number, nationality).
-- **The first Common reveal is the first purchase (about 0:23)**, so it is shorter (about 2 s) and does not lock movement: the guide arrow to the stadium shows as soon as it ends or is skipped, to keep the 30 s first-match target of Step 2.
+- **The first Common reveal is the first purchase (about 0:23)**, so it is shorter (about 2 s) and does not lock movement: the player can move at once (the reveal never delays them), to keep the 30 s first-match target of Step 2.
 - **Every player won from a case gets a reveal**, whether or not the rarity is new. A duplicate shows the same reveal plus the star it adds ("+1 star, 3/5"). It plays after the result is final, and it never replaces the odds strip or hints at a better result than the one won.
 - The first Rare player arrives early in floor 1, so the player gets the second reveal in the first 10 minutes.
 
@@ -448,7 +449,7 @@ Step 7 is the whole implementation: the map, the scripts and the UI. Studio hold
 ### Decisions
 1. **Work order: a vertical slice first.** Phase 0 setup (Rojo, folders, `Config`, `Formulas`). Phase 1 greybox: one plot with floor 1, tier-1 court, the plaza. Phase 2 scripts for the first 5 minutes (claim, pad module, economy, roster, match, field button, first Store upgrade, stadium tier 2 without the cinematic, basic HUD, saving in Mock mode). Phase 3 playtest the slice on a phone-size simulator and time it against Step 2. Phase 4 expand in this order: floors 2 to 4 and gates, tiers 3 to 5 and the upgrade cinematic, training ground and drill, daily icons, penalties and free case, New Season and trophies, cases and Robux products, Legends hall and trials, Locker room and cosmetics, reveals. Phase 5 polish: art, lighting, sound, icons, accessibility, the worst-case stress test. One commit per finished phase, and the map file is committed only at phase boundaries.
 2. **One plot template, cloned for each owner.** The template (a model in `ServerStorage`) is built once in Studio and saved in `Place3.rbxl`. The server clones it into one of 8 fixed slots when a plot is claimed. The file holds one plot, not eight.
-3. **The template carries markers, not coordinates.** Invisible named parts with a `PadId` attribute from `Config`: `Claim`, `Player_<id>` (35, serving as both the buy pad and the level-up pad), `Field`, `Store_<id>`, `Stadium`, `Training`, `Penalty`, plus field and opponent slot positions. The server reads markers; no script contains a world coordinate.
+3. **The template carries markers, not coordinates.** Invisible named parts with a `PadId` attribute from `Config`: `Claim`, `Player_<id>` (35, serving as both the buy pad and the level-up pad), `Store_<id>`, `Stadium`, `Training`, `Penalty`, plus field and opponent slot positions. The server reads markers; no script contains a world coordinate.
 4. **Layout: a plaza street with 4 plots on each side**, facing the plaza. Spawn is in the middle so the farthest plot is about 20 s away and the nearest about 6 s. Each plot, from the plaza: the gate with the claim ring, then the pitch zone, then the building at the back, with the training yard at the side.
 
 ```
@@ -462,23 +463,23 @@ Step 7 is the whole implementation: the map, the scripts and the UI. Studio hold
    +---------+---------+---------+---------+
               S: plots 5-8 (each faces north)
 
-   one plot, about 160 wide by 180 deep (provisional):
+   one plot, about 200 wide by 210 deep (provisional, enlarged after the first playtest):
    [ gate + claim ring ]            <- plaza edge
-   [ pitch zone 160 x 112 ]         <- tier 1 court 60x36 in the centre,
+   [ pitch zone 200 x 112 ]         <- tier 1 court 60x36 in the centre,
                                        tier 5 pitch 120x72 with stands
-   [ building 120 wide, 50 deep ][training yard 40 wide]
+   [ building 140 wide, 80 deep ][training yard 60 wide]
 ```
 
    Pitch sizes by tier (provisional): 60x36 (4 players), 70x42 (5), 84x50 (6), 100x60 (8), 120x72 (11). Every tier grows in place from the centre inside the same pitch zone, so an upgrade never moves a neighbour. Lower tiers leave the zone as a plain lawn.
-5. **The building: 4 floors around a central atrium, floor 1 at ground level.** Floor height 16 studs, capsules about 12 studs apart along the glass front facing the pitch, so matches can be watched from the pads. The ground floor holds floor 1's capsules, the Store counter, the Locker room and the trophy shelf (the entrance hall) in one open space, so the first purchase is near the gate. Floors 2 to 4 are above, reached by wide stairs around the atrium. A locked floor has a glass gate at the stairs that the server opens when the previous floor is complete (the teaser capsule shows behind it). The Legends hall is at the top of the atrium behind glass, so it can be seen from floor 2.
+5. **The building: 4 floors around a central atrium, floor 1 at ground level.** Floor height 16 studs. **Floor layout (changed after the first playtest, from the owner's sketch):** the entrance is a clear 12-stud gap in the middle of the front wall (the glass front faces the pitch, so matches can be watched from inside), and nothing stands near it. Capsules stand against the walls facing an open middle, in buying order: the first player just left of the entrance, then along the front wall away from it, up the left wall, across the back wall, down the right wall and the last one next to the entrance again. Each capsule's pad is 6 studs into the room, and every pad is at least 12 studs from the doorway centre so a player standing on a pad never blocks it. The stairs to the next floor are in the back-left corner. The Store pads sit in the open middle with the counter behind them, and the locker and trophy shelf are on the back wall. Floors 2 to 4 repeat the same wall layout. The ground floor holds floor 1's capsules, the Store counter, the Locker room and the trophy shelf in one open space, so the first purchase is near the gate. Floors 2 to 4 are above, reached by wide stairs around the atrium. A locked floor has a glass gate at the stairs that the server opens when the previous floor is complete (the teaser capsule shows behind it). The Legends hall is at the top of the atrium behind glass, so it can be seen from floor 2.
 6. **Plots are private; the plaza is public.** The plot's perimeter is a low see-through fence with a gate. Only the owner can pass: each plot has one collision group for its fence (`Fence_N`) and one for its owner's character (`Owner_N`), 16 groups in total. Visitors see the pitch, the building front and the trophies over the fence, as Step 1 promised, and cannot block pads or the claim ring. This is convenience and anti-griefing only: authority stays on the server (owner check on every pad), because an exploiter can ignore a fence. An unclaimed plot's gate is open. The character group must be reapplied on respawn and when accessories are added.
 7. **Players are mannequins, not full characters.** A simple blocky figure built from parts: kit colour, number on the back, name above, no faces, badges or logos (Naming risk). Capsules hold a static figure only when the player is owned (unowned capsules are dark glass with a "?" and no model).
 8. **Matches are drawn by the client.** The server sends the result event (plot, payout, goals, hat-trick) and each nearby client plays the match with local mannequins (22 per plot, cloned locally). Movement is a scripted path with tweened CFrames and a procedural limb swing, so there are no uploaded animations and no server-replicated moving models. Which players are on the field comes from a plot attribute (a list of IDs). Clients only play it for plots that are streamed in and near.
 9. **Streaming is on.** The player's own plot model is persistent. Client scripts never assume a far plot exists, and bound every `WaitForChild`. Pad billboards (name, price, ring) are created on the client only for pads within about 40 studs and drawn from `Formulas` and the snapshot, so 280 pads cost nothing until near.
 10. **HUD (phone first, `CoreUISafeInsets`, placement measured, not hard-coded).**
-    - Top centre, under the Roblox bar: money label with the match loading bar beside it, and a one-line "Next goal" row with its progress bar below.
+    - **Top right, one compact column (changed after the owner's phone test so the middle of the screen stays clear):** the money (right aligned) with the match loading bar under it, then the boost badge ("x2 · 4:32"). The "+$N" after a match floats to the left of the money. The season badge and, once the training ground is open, the TP and stamina bars go in the same column under the boost badge.
     - Left edge below the top bar: the two daily icons (free case, penalties), 44 px or larger. Tapping the case icon opens the case screen. Tapping the penalty icon when ready shows the guide arrow to the penalty spot on the pitch.
-    - Right edge below the top bar: the season badge, the boost badge ("x2 · 4:32") and, once the training ground is open, the TP and stamina bars.
+    - (The right edge is now the main HUD column above, so the season badge and the TP and stamina bars stack under the boost badge.)
     - Centre: "VICTORY" / "HAT-TRICK x2" text, non-interactive and brief.
     - Free: the lower left (thumbstick) and lower right (jump), and the bottom centre.
     - Screens (case, Locker room, New Season, stadium confirm): one at a time, a close button, fitted to the usable area, tap targets at least 44 px. The Locker room is a world object in the hall that opens its screen, and a short HUD note appears when new options unlock.
@@ -511,10 +512,10 @@ Step 7 is the whole implementation: the map, the scripts and the UI. Studio hold
 | Stadium | 4 floors of capsules, 10 + 10 + 10 + 5 players (35) |
 | Buying | Stand on the pad in front of the capsule |
 | Duplicates | Add a star (income bonus, capped) |
-| Field | Auto-filled with top-N income players, no swapping, first player added by a stadium button |
+| Field | Auto-filled with top-N income players, no swapping, the first purchase puts the first player on the field and starts the matches (no button) |
 | Training | One training ground, stamina bar cap (provisional) |
 | Stadium tier cost | Cash only, taken on purchase |
-| Goal guidance | HUD "Next goal" row, glows when affordable, buy from HUD (with confirm) or the pad |
+| Goal guidance | No "Next goal" card. A guide for the first steps only (free plot, first player, one-time Store hint); pad rings show price and "Need $X more"; buy by standing on the pad |
 | Floors | Open when the previous floor is complete |
 | Cases and floors | Cases can give higher-floor players, at minimum chances |
 | Trading | Out of version 1 |

@@ -179,6 +179,25 @@ T.test("stadium tiers", function()
 	for index, def in tiers do
 		T.eq(def.tier, index)
 	end
+	-- the pitch grows with every tier and stays inside the 160 x 112 pitch zone
+	T.deepEq({
+		tiers[1].courtLength,
+		tiers[2].courtLength,
+		tiers[3].courtLength,
+		tiers[4].courtLength,
+		tiers[5].courtLength,
+	}, { 60, 70, 84, 100, 120 })
+	T.deepEq({
+		tiers[1].courtWidth,
+		tiers[2].courtWidth,
+		tiers[3].courtWidth,
+		tiers[4].courtWidth,
+		tiers[5].courtWidth,
+	}, { 36, 42, 50, 60, 72 })
+	for index = 2, #tiers do
+		T.truthy(tiers[index].courtLength > tiers[index - 1].courtLength)
+		T.truthy(tiers[index].courtWidth > tiers[index - 1].courtWidth)
+	end
 end)
 
 T.test("stars, training and season constants", function()

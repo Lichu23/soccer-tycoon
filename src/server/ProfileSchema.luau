@@ -35,7 +35,12 @@ export type Profile = {
 	receipts: { [string]: Receipt },
 	pendingReveals: { PendingReveal },
 	seenRarities: { [string]: boolean },
-	flags: { firstHatTrickDone: boolean, notificationAsked: boolean },
+	flags: {
+		firstHatTrickDone: boolean,
+		notificationAsked: boolean,
+		hasClaimedPlot: boolean, -- a returning player gets a plot at once, without the claim ring
+		milestones: { [string]: number }, -- first_purchase, first_match... -> os.time() when first reached
+	},
 }
 
 local ProfileSchema = {}
@@ -66,7 +71,12 @@ function ProfileSchema.newProfile(): Profile
 		receipts = {},
 		pendingReveals = {},
 		seenRarities = {},
-		flags = { firstHatTrickDone = false, notificationAsked = false },
+		flags = {
+			firstHatTrickDone = false,
+			notificationAsked = false,
+			hasClaimedPlot = false,
+			milestones = {},
+		},
 	}
 end
 
