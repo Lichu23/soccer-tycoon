@@ -32,6 +32,7 @@ local SHOWN_KINDS = {
 	training = true,
 }
 local MAX_DISTANCE = 30
+local STADIUM_MAX_DISTANCE = 140
 
 type Entry = {
 	part: BasePart,
@@ -204,6 +205,9 @@ local function track(part: Instance)
 		return
 	end
 	local billboard, segments, title, price, note = buildBillboard(part)
+	if kind == "stadium" then
+		billboard.MaxDistance = STADIUM_MAX_DISTANCE -- it stands far from the pitch, so show it from afar
+	end
 	local entry: Entry = {
 		part = part,
 		billboard = billboard,
