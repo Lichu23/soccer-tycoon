@@ -68,6 +68,15 @@ function Roster.floorsComplete(data: ProgressData): number
 	return count
 end
 
+-- Whether the stairs and gate to a floor are open: floor 1 always, any later floor once the
+-- floor before it is complete (docs/PLAN.md, Step 1).
+function Roster.floorUnlocked(data: ProgressData, floor: number): boolean
+	if floor <= 1 then
+		return true
+	end
+	return Roster.floorsComplete(data) >= floor - 1
+end
+
 -- Why a player cannot be bought from a pad: "unknown", "owned", "legend" (Legends are earned
 -- through the Legend Trials) or "locked" (an earlier floor is not complete).
 function Roster.canBuy(data: ProgressData, id: string): (boolean, string?)

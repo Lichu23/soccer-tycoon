@@ -3,6 +3,7 @@
 
 local Actions = require(script.Parent.Actions)
 local Analytics = require(script.Parent.Analytics)
+local DevTools = require(script.Parent.DevTools)
 local Match = require(script.Parent.Match)
 local Pads = require(script.Parent.Pads)
 local Plots = require(script.Parent.Plots)
@@ -11,6 +12,7 @@ local Session = require(script.Parent.Session)
 local Sync = require(script.Parent.Sync)
 
 Remotes.init()
+DevTools.start()
 Session.init()
 Pads.start()
 Plots.init()

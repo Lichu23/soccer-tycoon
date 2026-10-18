@@ -82,7 +82,25 @@ end
 -- ones that are no longer owned.
 function Plots.refresh(session: Session.Session)
 	local plot = session.runtime.plot
-	local capsules = plot and plot:FindFirstChild("Capsules")
+	if plot == nil then
+		return
+	end
+
+	-- The glass gate at the bottom of each flight of stairs opens when the floor before is complete.
+	local stairs = plot:FindFirstChild("Stairs")
+	if stairs then
+		for _, gate in stairs:GetChildren() do
+			local floor = gate:GetAttribute("Floor")
+			if gate:IsA("BasePart") and type(floor) == "number" then
+				local open = Roster.floorUnlocked(session.data, floor)
+				gate.CanCollide = not open
+				gate.Transparency = if open then 1 else 0.45
+				gate:SetAttribute("Open", open)
+			end
+		end
+	end
+
+	local capsules = plot:FindFirstChild("Capsules")
 	if capsules == nil then
 		return
 	end

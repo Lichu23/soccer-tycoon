@@ -104,6 +104,17 @@ RemoteSpec.remotes = {
 		ratePerSecond = 0.5,
 		burst = 2,
 	},
+	-- Test shortcuts for Studio playtests (grant floors, set cash, reset). The server registers a
+	-- handler only while running in Studio, so this does nothing in a published game.
+	DevCommand = {
+		direction = "toServer",
+		args = {
+			{ kind = "enum", values = { "grantFloor", "setCash", "resetProfile" } },
+			{ kind = "number", min = 0, max = 1e15 },
+		},
+		ratePerSecond = 5,
+		burst = 5,
+	},
 	AckReveal = {
 		direction = "toServer",
 		args = { ID_FIELD },
