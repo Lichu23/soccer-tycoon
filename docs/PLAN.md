@@ -113,7 +113,20 @@ There is no separate expensive cash route: everyone pays the cash price and comp
 ### Naming
 - **Decision (made by the project owner):** use real player names. Known risk: names, and any faces, club badges or logos, are covered by image, publicity and trademark rights, and a rights holder can request a takedown or take legal action. Faces, club badges and logos have not been checked against Roblox policy.
 - Safeguard: every player's name, nationality, number and description live in one `Config` table (not in code or models), so names can be swapped in minutes if a notice arrives or the decision changes.
-- Keep real names away from paid features where possible.
+- Keep real names away from paid features where possible. The two Robux cases show real names in their results, so they raise the exposure; this is accepted, and it is another reason all names stay in `Config`.
+- **The 35 players (draft, fame is subjective, check each name's current status before locking).** Rule: the more famous or better the player, the higher the slot, and the slot sets the price and income from the Step 3 curve. `Config` stores only name, nationality, shirt number, rarity, floor and slot. Active stars are never Legends; Legends are famous retired players.
+
+| Floor | Rarity | Players, cheapest to most expensive |
+|---|---|---|
+| 1 | Common (4) | Rashford, Grealish, Sterling, João Félix |
+| 1 | Rare (6) | Son, Saka, Griezmann, Pedri, Trent Alexander-Arnold, Gavi |
+| 2 | Rare (4) | Lautaro Martínez, Rafael Leão, Florian Wirtz, Jamal Musiala |
+| 2 | Very Rare (6) | Lewandowski, Benzema, Modrić, Kane, De Bruyne, Rodri |
+| 3 | Very Rare (4) | Foden, Vinícius Jr, Bellingham, Lamine Yamal |
+| 3 | Epic (6) | Salah, Neymar, Haaland, Mbappé, Cristiano Ronaldo, Lionel Messi |
+| 4 | Legend (5) | Ronaldinho, Zidane, Ronaldo Nazário, Maradona, Pelé |
+
+  Total: 4 Common, 10 Rare, 10 Very Rare, 6 Epic, 5 Legend. Pelé and Maradona have died: using a deceased person's name in a paid game can involve their estate, with rules that differ by country, so add them to the rights check.
 
 ## Step 2: first 5 minutes
 
@@ -127,7 +140,7 @@ Principles: value in the first 30 s, teach by doing (no popups), one new idea pe
 | 0:25 | A new arrow guides them to the stadium (the street court). They click the button on the pitch: the player runs onto the court and the match loop starts. | Teaches that the field is where the game plays |
 | 0:30 | First match with the loading bar (about 5 s for this one). "VICTORY" appears, then "+$N" lands on the money label. | First reward, loop understood |
 | 0:40 to 1:00 | A match every ~10 s keeps paying. The Store pad glows when an upgrade is affordable and the arrow points to it. | Guide without a menu |
-| 1:00 | First upgrade (Cash per match, about $20). Next matches pay visibly more. | Spending makes numbers go up |
+| 1:00 | First upgrade (Cash per match, $15). Next matches pay visibly more. | Spending makes numbers go up |
 | 1:30 to 3:00 | The next capsule lights up with the arrow. They buy the 2nd and 3rd players, who join the field automatically (the court shows 2, then 3 players). | The buying order is the tutorial, and each purchase visibly changes the court |
 | 3:30 | The 3rd player is bought with a small reveal animation (name, number, nationality). | Small peak |
 | 4:00 to 4:30 | First hat-trick, scripted once (afterwards real odds apply). The text reads "HAT-TRICK x2". | Surprise before the main peak |
@@ -175,7 +188,17 @@ Income is cash per match for a player on the field. Prices rise faster than inco
 - **Training points (TP):** stamina session of 5 minutes, refilling in about 5 minutes away. Placeholder rate 10 TP per minute (50 TP per session). Each level adds **+3% income**. Level caps: Common 5, Rare 10, Very Rare 15, Epic 20, Legend 25. Cost of level L = 40 x L x rarity factor (Common 1, Rare 2, Very Rare 3, Epic 4, Legend 5). A Common player reaches level 5 in about 1 hour of training (600 TP, about 12 sessions). A Legend at level 25 is a very long-term goal (about 65,000 TP).
 - **Momentum:** +1% per match in a row this session, maximum +25%. Resets on join.
 - **Daily penalties:** x1.5 income for up to 10 minutes.
-- **Case (Robux):** 49 Robux. Pool: 70% players from floors you have reached, 25% from the next floor, 5% from further floors. A Legend has a 0.5% chance (inside the 5%). Duplicates add a star. All odds, including the chance of a duplicate, are shown before purchase.
+- **Cases (Robux): two cases**, named Standard Case and Elite Case (neutral names, nothing that hints at luck).
+
+| | Standard Case | Elite Case |
+|---|---|---|
+| Price (placeholder, set in Step 8) | 49 Robux | about 149 Robux |
+| Unlocks | Floor 2 started | Floor 2 complete |
+| Player from floors you have reached | 70% | 40% |
+| From the next floor | 25% | 40% |
+| From further floors | 5% (Legend 0.5% inside it) | 20% (Legend 2% inside it) |
+
+  Within a floor, cheaper players are more likely (start at about 30% less likely for each step up the slot order, tune in the simulation). A new player is owned at once; a duplicate adds a star. All odds, including the chance of a duplicate, are shown before purchase on both cases. The Elite Case unlocks later because it is the bigger spend per tap. The 2% Legend chance in the Elite Case weakens the Legend Trials and the direct Robux price (another way to reach a Legend), so re-check it in the first playtests.
 - **Free daily case:** a mixed prize, either cash worth about 5 minutes of the player's income or a x2 boost for 5 minutes. Never players, never large amounts.
 - **Robux boost:** next 30 matches x2, banked up to 60, about 25 to 49 Robux. A 5-match pack was too small to feel worth buying (a 30-minute session has about 180 matches). Total boost never above x4.
 - **New Season:** the button appears when floor 3 is complete (no extra cash threshold). Each season adds +50% to the permanent multiplier (season 2 = x1.5, season 3 = x2.0, season 4 = x2.5).
@@ -218,7 +241,8 @@ Return triggers are all **pull, not push**: a reason that is true (cash is waiti
 | About 5 min | Daily penalties, free daily case, their two HUD icons, stadium tier 2 |
 | Floor 1 complete (about 11 min) | Hat-trick and offline upgrades, training ground, the notification opt-in (below) |
 | Stadium tier 2 | Match speed |
-| Floor 2 started | The Robux player case, in the Store (not before, so the first 30 minutes are about the loop). The Legends hall becomes visible through glass |
+| Floor 2 started | The Standard Case, in the Store (not before, so the first 30 minutes are about the loop). The Legends hall becomes visible through glass |
+| Floor 2 complete | The Elite Case |
 | Floor 3 reached | New Season button appears locked, with the explainer |
 | Floor 3 complete | New Season can be started |
 | Floor 4 reached | Legends hall and the direct Robux Legend |
