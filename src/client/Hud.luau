@@ -1,7 +1,8 @@
 --!strict
 -- The HUD (docs/PLAN.md, Step 7): one compact column at the top right with the money, the match
--- bar, the "Next" goal card and the boost badge, plus the VICTORY text with "+$N" after each
--- match. The middle of the screen stays clear. Built in code for the smallest landscape phone
+-- loading bar and the boost badge, plus the VICTORY text near the top and "+$N" next to the money
+-- after each match. There is no goal card: the guide covers the first steps and the player decides
+-- the rest. The middle of the screen stays clear. Built in code for the smallest landscape phone
 -- first, inside the safe area below the Roblox top bar. It only shows what the server sent.
 
 local Players = game:GetService("Players")
@@ -10,13 +11,16 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
-local Goals = require(ReplicatedStorage.Shared.Goals)
 local Net = require(script.Parent.Net)
 local NumberFormat = require(ReplicatedStorage.Shared.NumberFormat)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
+
+local COLUMN_WIDTH = 230
+local RESULT_HOLD_SECONDS = 0.65 -- the result texts are fully visible for this long...
+local RESULT_FADE_SECONDS = 0.35 -- ...then fade out: 1 second in total, then they are hidden
 
 local Hud = {}
 
@@ -35,16 +39,11 @@ local function rounded(parent: Instance, radius: number)
 	new("UICorner", { CornerRadius = UDim.new(0, radius) }, parent)
 end
 
-local function stroke(
-	parent: Instance,
-	color: Color3,
-	thickness: number,
-	transparency: number?
-): any
+local function stroke(parent: Instance, color: Color3, thickness: number): any
 	return new("UIStroke", {
+		Name = "Outline",
 		Color = color,
 		Thickness = thickness,
-		Transparency = transparency or 0,
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
 	}, parent)
 end
@@ -52,6 +51,20 @@ end
 local function clockText(seconds: number): string
 	local whole = math.max(0, math.floor(seconds))
 	return string.format("%d:%02d", whole // 60, whole % 60)
+end
+
+-- A text label with an outline that can be faded out completely. A label's outline (UIStroke) is
+-- a separate object: fading only the text leaves the outline on screen, so both are driven here.
+local function fadeIn(label: any)
+	label.Visible = true
+	label.TextTransparency = 0
+	label.Outline.Transparency = 0
+end
+
+local function fadeOut(label: any)
+	local info = TweenInfo.new(RESULT_FADE_SECONDS)
+	TweenService:Create(label, info, { TextTransparency = 1 }):Play()
+	TweenService:Create(label.Outline, info, { Transparency = 1 }):Play()
 end
 
 -- Builds the interface. Returns the root ScreenGui (also used by the layout previews).
@@ -63,13 +76,13 @@ function Hud.build(parent: Instance): any
 		DisplayOrder = 1,
 	}, parent)
 
-	-- One compact column at the top right, so the middle of the screen stays clear: the money with
-	-- the match bar under it, then the goal card, then the boost badge.
+	-- One compact column at the top right: the money with the match bar under it, then the boost
+	-- badge.
 	local top = new("Frame", {
 		Name = "Top",
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -10, 0, 6),
-		Size = UDim2.fromOffset(230, 146),
+		Size = UDim2.fromOffset(COLUMN_WIDTH, 92),
 		BackgroundTransparency = 1,
 	}, gui)
 
@@ -107,76 +120,28 @@ function Hud.build(parent: Instance): any
 	}, matchBar)
 	rounded(matchFill, 5)
 
-	-- "+$N" appears to the left of the money, so it never sits on top of the goal card.
+	-- "+$N" sits right next to the money amount (its position is set from the money text width).
 	local payout = new("TextLabel", {
 		Name = "Payout",
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.fromOffset(-8, 6),
-		Size = UDim2.fromOffset(120, 28),
+		Position = UDim2.fromOffset(COLUMN_WIDTH - 90, 6),
+		Size = UDim2.fromOffset(110, 28),
 		BackgroundTransparency = 1,
 		Text = "",
 		TextXAlignment = Enum.TextXAlignment.Right,
 		Font = Style.font,
 		TextSize = 22,
 		TextColor3 = Style.ui.gold,
-		TextTransparency = 1,
+		Visible = false,
 		ZIndex = 3,
 	}, top)
 	stroke(payout, Style.ui.dark, 2)
 
-	local goalRow = new("Frame", {
-		Name = "GoalRow",
-		Position = UDim2.fromOffset(0, 58),
-		Size = UDim2.new(1, 0, 0, 48),
-		BackgroundColor3 = Style.ui.panel,
-		BackgroundTransparency = 0.15,
-	}, top)
-	rounded(goalRow, 8)
-	stroke(goalRow, Style.ui.idle, 1)
-	new("TextLabel", {
-		Name = "Label",
-		Position = UDim2.fromOffset(8, 4),
-		Size = UDim2.new(1, -16, 0, 20),
-		BackgroundTransparency = 1,
-		Text = "",
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextTruncate = Enum.TextTruncate.AtEnd,
-		Font = Style.font,
-		TextSize = 13,
-		TextColor3 = Style.ui.text,
-	}, goalRow)
-	local goalBar = new("Frame", {
-		Name = "Bar",
-		Position = UDim2.fromOffset(8, 30),
-		Size = UDim2.new(1, -100, 0, 9),
-		BackgroundColor3 = Style.ui.dark,
-		BorderSizePixel = 0,
-	}, goalRow)
-	rounded(goalBar, 5)
-	local goalFill = new("Frame", {
-		Name = "Fill",
-		Size = UDim2.fromScale(0, 1),
-		BackgroundColor3 = Style.ui.money,
-		BorderSizePixel = 0,
-	}, goalBar)
-	rounded(goalFill, 5)
-	new("TextLabel", {
-		Name = "Amount",
-		Position = UDim2.new(1, -86, 0, 25),
-		Size = UDim2.fromOffset(78, 18),
-		BackgroundTransparency = 1,
-		Text = "",
-		TextXAlignment = Enum.TextXAlignment.Right,
-		Font = Style.font,
-		TextSize = 13,
-		TextColor3 = Style.ui.idle,
-	}, goalRow)
-
-	-- The boost badge sits under the goal card, at the right edge of the column.
+	-- The boost badge sits under the match bar, at the right edge of the column.
 	local boost = new("TextLabel", {
 		Name = "BoostBadge",
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, 0, 0, 112),
+		Position = UDim2.new(1, 0, 0, 60),
 		Size = UDim2.fromOffset(96, 26),
 		BackgroundColor3 = Style.ui.panel,
 		BackgroundTransparency = 0.15,
@@ -188,18 +153,18 @@ function Hud.build(parent: Instance): any
 	}, top)
 	rounded(boost, 8)
 
-	-- The big result text sits in the middle of the screen and does not take clicks.
+	-- The result text sits near the top of the screen, in the middle, and does not take clicks.
 	local banner = new("TextLabel", {
 		Name = "Banner",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.36),
-		Size = UDim2.fromOffset(520, 80),
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 10),
+		Size = UDim2.fromOffset(420, 54),
 		BackgroundTransparency = 1,
 		Text = "",
 		Font = Style.font,
-		TextSize = 56,
+		TextSize = 44,
 		TextColor3 = Style.ui.good,
-		TextTransparency = 1,
+		Visible = false,
 		Active = false,
 	}, gui)
 	stroke(banner, Style.ui.dark, 3)
@@ -213,9 +178,6 @@ function Hud.init()
 	local gui = Hud.build(playerGui)
 	local top = gui.Top
 	local money, matchFill, payout = top.MoneyRow.Money, top.MoneyRow.MatchBar.Fill, top.Payout
-	local goalRow = top.GoalRow
-	local goalLabel, goalFill, goalAmount = goalRow.Label, goalRow.Bar.Fill, goalRow.Amount
-	local goalStroke = goalRow.UIStroke
 	local boost, banner = top.BoostBadge, gui.Banner
 
 	-- Money counts up towards the real value; the real value is never delayed.
@@ -225,84 +187,37 @@ function Hud.init()
 	end
 	setMoney()
 
-	-- The goal row ----------------------------------------------------------------------
-	local wasAffordable = false
-	local pulseToken = 0
-	local function refreshGoal()
-		local goal = Goals.next(State.data, State.hasPlot())
-		local affordable = goal.cost ~= nil and State.data.cash >= goal.cost
-		if goal.kind == "stadium" and affordable then
-			goalLabel.Text = "Stadium upgrade available!"
-		elseif affordable then
-			goalLabel.Text = "Next: " .. goal.label .. " - ready!"
-		else
-			goalLabel.Text = "Next: " .. goal.label
-		end
-		if goal.cost then
-			goalFill.Size = UDim2.fromScale(math.clamp(State.data.cash / goal.cost, 0, 1), 1)
-			goalAmount.Text = NumberFormat.money(State.data.cash)
-				.. " / "
-				.. NumberFormat.money(goal.cost)
-		else
-			goalFill.Size = UDim2.fromScale(0, 1)
-			goalAmount.Text = ""
-		end
-		goalFill.BackgroundColor3 = if affordable then Style.ui.good else Style.ui.money
-
-		-- It glows brightly when it becomes affordable: a few pulses, then steady, no sound.
-		if affordable and not wasAffordable then
-			pulseToken += 1
-			local token = pulseToken
-			goalStroke.Color = Style.ui.good
-			task.spawn(function()
-				for _ = 1, 3 do
-					if token ~= pulseToken then
-						return
-					end
-					TweenService:Create(goalStroke, TweenInfo.new(0.35), { Thickness = 5 }):Play()
-					task.wait(0.4)
-					TweenService:Create(goalStroke, TweenInfo.new(0.35), { Thickness = 2 }):Play()
-					task.wait(0.4)
-				end
-				goalStroke.Thickness = 3
-			end)
-		elseif not affordable then
-			pulseToken += 1
-			goalStroke.Color = Style.ui.idle
-			goalStroke.Thickness = 1
-		end
-		wasAffordable = affordable
-	end
-	State.onChange(function()
-		refreshGoal()
-	end)
-	refreshGoal()
-
-	-- The result: VICTORY or HAT-TRICK, and +$N under the money label ---------------------
+	-- The result: VICTORY near the top and +$N next to the money, shown for 1 second ----------
+	local resultToken = 0
 	Net.on("MatchResult", function(_plot: any, info: any)
 		if type(info) ~= "table" or info.ownerUserId ~= player.UserId then
 			return
 		end
+		resultToken += 1
+		local token = resultToken
+
 		banner.Text = if info.hatTrick then "HAT-TRICK x2" else "VICTORY"
 		banner.TextColor3 = if info.hatTrick then Style.ui.gold else Style.ui.good
-		banner.TextTransparency = 0
-		banner.Position = UDim2.fromScale(0.5, 0.36)
-		TweenService
-			:Create(banner, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-				TextTransparency = 1,
-				Position = UDim2.fromScale(0.5, 0.3),
-			})
-			:Play()
+		fadeIn(banner)
 
 		payout.Text = "+" .. NumberFormat.money(info.payout)
-		payout.TextTransparency = 0
-		payout.Position = UDim2.fromOffset(-8, 6)
-		TweenService
-			:Create(payout, TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-				TextTransparency = 1,
-				Position = UDim2.fromOffset(-8, -12),
-			})
-			:Play()
+		-- Right next to the money text, which is right aligned in the column.
+		payout.Position = UDim2.fromOffset(COLUMN_WIDTH - money.TextBounds.X - 8, 6)
+		fadeIn(payout)
+
+		task.delay(RESULT_HOLD_SECONDS, function()
+			if token ~= resultToken then
+				return -- a newer result is showing
+			end
+			fadeOut(banner)
+			fadeOut(payout)
+			task.delay(RESULT_FADE_SECONDS + 0.05, function()
+				if token == resultToken then
+					banner.Visible = false
+					payout.Visible = false
+				end
+			end)
+		end)
 	end)
 
 	-- Every frame: the money counter, the match bar and the boost badge ------------------
