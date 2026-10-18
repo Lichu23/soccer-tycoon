@@ -6,3 +6,8 @@ sourcemap.json
 scripts/
 CLAUDE.md
 roblox.yml
+.env
+.env.*
+*.log
+Thumbs.db
+.DS_Store
