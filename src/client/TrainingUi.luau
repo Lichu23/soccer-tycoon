@@ -102,7 +102,7 @@ function TrainingUi.init()
 	new("TextLabel", {
 		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
-		Text = "Training... next TP",
+		Text = "Training...",
 		Font = Style.font,
 		TextSize = 15,
 		TextColor3 = Style.ui.text,

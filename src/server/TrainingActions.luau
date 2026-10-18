@@ -66,10 +66,13 @@ local function step(session: Session.Session, dt: number)
 	local active = standing and Training.hasStamina(data)
 	training[player] = active
 
-	-- The drill exists only on the active field. It starts stopped (a red bar) and the first press
-	-- starts the marker. On the AFK field there is none.
+	-- The drill exists only on the active field. Stepping onto the field starts the marker at once;
+	-- after a miss, or when the marker runs out, the bar is red until the next press starts it.
+	-- On the AFK field there is no drill.
 	if field == "active" and drills[player] == nil then
-		drills[player] = Drill.new()
+		local fresh = Drill.new()
+		Drill.press(fresh, Workspace:GetServerTimeNow()) -- stepping on the field starts the marker
+		drills[player] = fresh
 	elseif field ~= "active" then
 		drills[player] = nil
 	end
