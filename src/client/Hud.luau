@@ -83,7 +83,7 @@ function Hud.build(parent: Instance): any
 		Name = "Top",
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -10, 0, 6),
-		Size = UDim2.fromOffset(COLUMN_WIDTH, 92),
+		Size = UDim2.fromOffset(COLUMN_WIDTH, 124),
 		BackgroundTransparency = 1,
 	}, gui)
 
@@ -154,6 +154,40 @@ function Hud.build(parent: Instance): any
 	}, top)
 	rounded(boost, 8)
 
+	-- Training points and the stamina bar, under the boost badge. They show once training is open.
+	local tp = new("TextLabel", {
+		Name = "Tp",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, 0, 0, 92),
+		Size = UDim2.fromOffset(96, 26),
+		BackgroundColor3 = Style.ui.panel,
+		BackgroundTransparency = 0.15,
+		Text = "TP 0",
+		Font = Style.font,
+		TextSize = 14,
+		TextColor3 = Style.ui.bar,
+		Visible = false,
+	}, top)
+	rounded(tp, 8)
+	local stamina = new("Frame", {
+		Name = "Stamina",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -104, 0, 100),
+		Size = UDim2.fromOffset(100, 10),
+		BackgroundColor3 = Style.ui.dark,
+		BackgroundTransparency = 0.2,
+		Visible = false,
+	}, top)
+	rounded(stamina, 5)
+	stroke(stamina, Style.ui.idle, 1)
+	local staminaFill = new("Frame", {
+		Name = "Fill",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = Style.ui.bar,
+		BorderSizePixel = 0,
+	}, stamina)
+	rounded(staminaFill, 5)
+
 	-- The result text sits near the top of the screen, in the middle, and does not take clicks.
 	local banner = new("TextLabel", {
 		Name = "Banner",
@@ -196,6 +230,8 @@ function Hud.init()
 	local top = gui.Top
 	local money, matchFill, payout = top.MoneyRow.Money, top.MoneyRow.MatchBar.Fill, top.Payout
 	local boost, banner = top.BoostBadge, gui.Banner
+	local tp, stamina = top.Tp, top.Stamina
+	local staminaFill = stamina.Fill
 
 	-- Money counts up towards the real value; the real value is never delayed.
 	local shownCash = State.data.cash
@@ -289,6 +325,22 @@ function Hud.init()
 			matchFill.Size = UDim2.fromScale(math.clamp(1 - (endsAt - now) / duration, 0, 1), 1)
 		else
 			matchFill.Size = UDim2.fromScale(0, 1)
+		end
+
+		-- TP and stamina (the bar is blue while training, grey while it refills).
+		local trainingOpen = player:GetAttribute("trainingUnlocked") == true
+		tp.Visible = trainingOpen
+		stamina.Visible = trainingOpen
+		if trainingOpen then
+			tp.Text = "TP " .. NumberFormat.short(State.data.tp)
+			local left = player:GetAttribute("staminaLeft")
+			local most = player:GetAttribute("staminaMax")
+			if type(left) == "number" and type(most) == "number" and most > 0 then
+				staminaFill.Size = UDim2.fromScale(math.clamp(left / most, 0, 1), 1)
+			end
+			staminaFill.BackgroundColor3 = if player:GetAttribute("training") == true
+				then Style.ui.bar
+				else Style.ui.idle
 		end
 
 		local boostEnds = player:GetAttribute("boostEndsAt")

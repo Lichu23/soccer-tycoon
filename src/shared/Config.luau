@@ -232,6 +232,11 @@ Config.Training = {
 	drillTpPerMinuteMax = 15,
 	staminaSeconds = 300,
 	staminaRefillSeconds = 300, -- time away to refill from empty
+	-- The timing drill: a marker sweeps across a bar once per round and one press per round counts.
+	-- A press in the middle `drillWindow` (a fraction either side of the centre) pays the extra TP
+	-- that lifts the idle rate to the drill maximum if every round is hit.
+	drillRoundSeconds = 4,
+	drillWindow = 0.15,
 }
 
 Config.Season = {

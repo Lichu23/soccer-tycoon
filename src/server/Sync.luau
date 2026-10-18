@@ -8,7 +8,9 @@ local Workspace = game:GetService("Workspace")
 local Boosts = require(script.Parent.Boosts)
 local Daily = require(script.Parent.Daily)
 local Economy = require(script.Parent.Economy)
+local Config = require(ReplicatedStorage.Shared.Config)
 local Formulas = require(ReplicatedStorage.Shared.Formulas)
+local Progress = require(ReplicatedStorage.Shared.Progress)
 local Remotes = require(script.Parent.Remotes)
 local Session = require(script.Parent.Session)
 
@@ -24,6 +26,8 @@ function Sync.scalars(session: Session.Session)
 	local left = Boosts.nextEnd(data)
 	player:SetAttribute("boostEndsAt", if left > 0 then Workspace:GetServerTimeNow() + left else 0)
 	player:SetAttribute("boostMultiplier", Formulas.boostMultiplier(Boosts.active(data)))
+	player:SetAttribute("trainingUnlocked", Progress.trainingUnlocked(data))
+	player:SetAttribute("staminaMax", Config.Training.staminaSeconds)
 	-- The daily icons: when each one is ready (os.time(), 0 = now), and whether they exist yet.
 	player:SetAttribute("dailyUnlocked", Daily.unlocked(data))
 	player:SetAttribute("caseReadyAt", Daily.caseReadyAt(data))
@@ -39,6 +43,7 @@ function Sync.snapshot(session: Session.Session)
 	end
 	Remotes.fireClient("Snapshot", session.player, {
 		cash = data.cash,
+		tp = data.tp,
 		stadiumTier = data.stadiumTier,
 		storeLevels = {
 			cashPerMatch = data.storeLevels.cashPerMatch,

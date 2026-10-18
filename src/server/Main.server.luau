@@ -12,6 +12,8 @@ local Plots = require(script.Parent.Plots)
 local Remotes = require(script.Parent.Remotes)
 local Session = require(script.Parent.Session)
 local Stadium = require(script.Parent.Stadium)
+local Training = require(script.Parent.Training)
+local TrainingActions = require(script.Parent.TrainingActions)
 local Sync = require(script.Parent.Sync)
 
 Remotes.init()
@@ -21,6 +23,7 @@ Pads.start()
 Plots.init()
 Match.start()
 DailyActions.start()
+TrainingActions.start()
 
 -- Whatever a player buys: tell their client, redraw their capsules and log the funnel.
 Actions.onChange = function(session, what, _id)
@@ -40,7 +43,10 @@ end
 
 Session.onLoaded(function(session)
 	-- Time away becomes cash first, so the first sync already has it. The client shows the message.
-	local earned, secondsAway = Offline.apply(session.data, os.time())
+	local now = os.time()
+	local lastSeen = session.data.lastSeen
+	Training.refillAway(session.data, if lastSeen > 0 then now - lastSeen else 0)
+	local earned, secondsAway = Offline.apply(session.data, now)
 	if earned > 0 then
 		Sync.offline(session.player, earned, secondsAway)
 		Analytics.event(session, "offline_earnings")

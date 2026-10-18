@@ -23,7 +23,14 @@ local BOARD_WIDTH = 170
 local BOARD_HEIGHT = 176
 local RING_CENTER = Vector2.new(BOARD_WIDTH / 2, 98)
 local RING_RADIUS = 40
-local SHOWN_KINDS = { claim = true, player = true, store = true, stadium = true, penalty = true }
+local SHOWN_KINDS = {
+	claim = true,
+	player = true,
+	store = true,
+	stadium = true,
+	penalty = true,
+	training = true,
+}
 local MAX_DISTANCE = 30
 
 type Entry = {

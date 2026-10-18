@@ -77,6 +77,41 @@ function Progress.offlineRate(data: ProgressData): number
 	return Formulas.storeValue("offline", data.storeLevels.offline)
 end
 
+-- Training ----------------------------------------------------------------------------------
+
+-- The training ground and the level-up pads open when floor 1 is complete (Step 4).
+function Progress.trainingUnlocked(data: ProgressData): boolean
+	return Roster.floorsComplete(data) >= 1
+end
+
+-- TP for the next level of an owned player, or nil at the cap (or when not owned).
+function Progress.levelCost(data: ProgressData, id: string): number?
+	local def = Config.PlayersById[id]
+	local owned = data.players[id]
+	if def == nil or owned == nil or owned.level >= Formulas.levelCap(def.rarity) then
+		return nil
+	end
+	return Formulas.levelCost(def.rarity, owned.level + 1)
+end
+
+-- "notOwned", "locked" (training not open yet), "maxed", "cannotAfford" or "ready".
+function Progress.levelStatus(data: ProgressData, id: string): string
+	if data.players[id] == nil or Config.PlayersById[id] == nil then
+		return "notOwned"
+	end
+	if not Progress.trainingUnlocked(data) then
+		return "locked"
+	end
+	local cost = Progress.levelCost(data, id)
+	if cost == nil then
+		return "maxed"
+	end
+	if data.tp < cost then
+		return "cannotAfford"
+	end
+	return "ready"
+end
+
 -- Stadium ---------------------------------------------------------------------------------
 
 -- The next stadium tier, or nil at the top tier.
