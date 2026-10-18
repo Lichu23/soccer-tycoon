@@ -205,6 +205,7 @@ Income is cash per match for a player on the field. Prices rise faster than inco
 
 ### Simulated pacing
 - First 5 minutes: first purchase 0:23, first upgrade 1:06, player 2 at 2:06, player 3 at 3:36, player 4 at 4:16, stadium tier 2 at 5:16. This matches the Step 2 script.
+- **Measured in the real game (Phase 3, an optimal bot that is always on the right pad):** plot claimed 0:08, first purchase 0:19, first upgrade 0:54, player 2 at 1:45, player 3 at 2:36, player 4 at 3:27, stadium tier 2 at 3:57. That is within 5 to 20 s of the simulation for the first upgrade and player 2, and 50 to 80 s faster from player 3 on (the 5 s first match, rounding of small payouts and the scripted hat-trick at about 3:35 all favour the player). A real player is slower by roughly 25 to 30%, which lands the first stadium upgrade at about 5:00 (the Step 2 peak). The economy numbers stay; re-check with real players and raise the tier 2 price if most reach it before minute 4. `tests/pacing.spec.luau` keeps this timeline in range.
 - Floor 1 complete at about 11 min, floor 2 at about 40 min, floor 3 in about 2.7 hours of play (day 2 for an efficient player, around day 4 for a 30-minute-a-day player). First Legend after about 3 weeks of casual free play.
 - Spenders save time but not a lot. Boosts roughly equal playing twice as long, and a free player can catch up with time. **Cases are the strongest shortcut** (a regular spender skipped much of floor 3), so watch the 70 / 25 / 5 case pool in playtests and lower it (for example to 90 / 9 / 1) if players skip floors.
 
