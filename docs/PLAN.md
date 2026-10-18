@@ -1,6 +1,6 @@
 # soccer-tycoon: design plan
 
-Status: steps 1 to 6 agreed (step 3 numbers are a draft to be playtested). Items marked *provisional* use defaults and can change. Steps 7 and 8 are still to do.
+Status: steps 1 to 6 agreed (step 3 numbers are a draft to be playtested), step 7 decided by Claude after analysis and open to review. Items marked *provisional* use defaults and can change. Step 8 is still to do.
 
 ## Step 1: core loop
 
@@ -407,6 +407,75 @@ flags                  { firstHatTrickDone, notificationAsked, ... }
 - **Receipts and purchases.** `receipts` stores each purchase as `{ at, result }` keyed by `PurchaseId`. `ProcessReceipt` looks the ID up first: if it is there the item is not granted again, and for a case the saved result is returned. If the profile is not loaded (just joining, or the player already left) the answer is "not processed yet" and Roblox retries later. Receipts are kept for 30 days or the last 100, whichever is more, and pruned on load. Order: the grant and the receipt entry are written together, then the forced save, then the receipt is confirmed to Roblox, then the case animation is sent to the client. A failure before the confirm loses nothing. `pendingReveals` holds case results the player has not watched, so a disconnect mid-animation shows the reveal on the next join. Support disputes use `receipts` plus the Roblox Creator Dashboard purchase records. No separate ledger in version 1.
 - **Testing without touching real data.** Studio uses ProfileStore Mock mode by default (data only in memory, so every playtest starts fresh). Tests that need real saving use a differently named store (for example `PlayerData_Studio`), and the live game uses `PlayerData` only, chosen from one switch in `Config` so they never mix. A reset command and a few ready-made profiles (floor 2 complete, floor 3 complete with Legends ready, season 3) exist only in Studio, not in a published server, and the check cannot be turned on from the client. Before launch, one full save, rejoin and migration test on the Studio store is a Step 8 checklist item. No automated unit tests for the save code: the shared formulas are checked in Studio with the MCP tools and the save path is mostly ProfileStore's own tested code.
 
+## Step 7: build and polish (decided by Claude after analysis, open to review)
+
+Step 7 is the whole implementation: the map, the scripts and the UI. Studio holds a blank `Place3.rbxl` and `src/` holds two smoke-test scripts. All sizes below are *provisional* until the greybox is walked in a playtest.
+
+### What the analysis found (the constraints that drive the decisions)
+1. **The Step 2 script is a walking-time budget.** At 16 studs per second: claim at about 0:10, first purchase at 0:23, the field button at 0:25. So the gate, the first capsule and the field button must be close together (the walk from gate to first capsule at most about 8 s, from capsule to field button at most about 5 s).
+2. **Most players are on phones.** Thumbstick zone (lower left), jump button (lower right) and the Roblox top bar are taken. Buying by standing on a pad needs no button, so the world helps here, but the HUD already has a lot to show (money, loading bar, goal row, two daily icons, season badge, boost badge, TP and stamina).
+3. **Eight tier-5 plots can be heavy for a phone.** Each has up to 35 capsule figures, 22 match figures, stands, a crowd and a roof. Streaming and building the match scene on the client are what keep it playable.
+4. **The server must not simulate matches.** A match every 10 s on 8 plots is cheap as a result event, but expensive as replicated moving models.
+5. **Collision groups are limited (32).** Per-player doors for 8 plots fit, but only if each plot uses one group pair.
+6. **`Place3.rbxl` is a tracked binary file.** Every commit of the map adds a full copy, and a template with 8 plots would be 8 times larger than one plot cloned at runtime.
+7. **Uploaded images, meshes and sounds need permission grants** (they show as blank or invisible otherwise), so the first version should not depend on them.
+8. **The building skill suggests `ProximityPrompt` for world interactions.** We already decided on server-timed pads in Step 5 for the stand-on-it feel, and the skill's real rule still holds: world cues are not authority, the server validates distance, state and ownership.
+
+### Decisions
+1. **Work order: a vertical slice first.** Phase 0 setup (Rojo, folders, `Config`, `Formulas`). Phase 1 greybox: one plot with floor 1, tier-1 court, the plaza. Phase 2 scripts for the first 5 minutes (claim, pad module, economy, roster, match, field button, first Store upgrade, stadium tier 2 without the cinematic, basic HUD, saving in Mock mode). Phase 3 playtest the slice on a phone-size simulator and time it against Step 2. Phase 4 expand in this order: floors 2 to 4 and gates, tiers 3 to 5 and the upgrade cinematic, training ground and drill, daily icons, penalties and free case, New Season and trophies, cases and Robux products, Legends hall and trials, Locker room and cosmetics, reveals. Phase 5 polish: art, lighting, sound, icons, accessibility, the worst-case stress test. One commit per finished phase, and the map file is committed only at phase boundaries.
+2. **One plot template, cloned for each owner.** The template (a model in `ServerStorage`) is built once in Studio and saved in `Place3.rbxl`. The server clones it into one of 8 fixed slots when a plot is claimed. The file holds one plot, not eight.
+3. **The template carries markers, not coordinates.** Invisible named parts with a `PadId` attribute from `Config`: `Claim`, `Player_<id>` (35, serving as both the buy pad and the level-up pad), `Field`, `Store_<id>`, `Stadium`, `Training`, `Penalty`, plus field and opponent slot positions. The server reads markers; no script contains a world coordinate.
+4. **Layout: a plaza street with 4 plots on each side**, facing the plaza. Spawn is in the middle so the farthest plot is about 20 s away and the nearest about 6 s. Each plot, from the plaza: the gate with the claim ring, then the pitch zone, then the building at the back, with the training yard at the side.
+
+```
+              N: plots 1-4 (each faces south)
+   +---------+---------+---------+---------+
+   | plot 1  | plot 2  | plot 3  | plot 4  |
+   +--[gate]-+--[gate]-+--[gate]-+--[gate]-+
+        PLAZA / STREET  (spawn in the middle)  ~80 studs wide
+   +--[gate]-+--[gate]-+--[gate]-+--[gate]-+
+   | plot 5  | plot 6  | plot 7  | plot 8  |
+   +---------+---------+---------+---------+
+              S: plots 5-8 (each faces north)
+
+   one plot, about 160 wide by 180 deep (provisional):
+   [ gate + claim ring ]            <- plaza edge
+   [ pitch zone 160 x 112 ]         <- tier 1 court 60x36 in the centre,
+                                       tier 5 pitch 120x72 with stands
+   [ building 120 wide, 50 deep ][training yard 40 wide]
+```
+
+   Pitch sizes by tier (provisional): 60x36 (4 players), 70x42 (5), 84x50 (6), 100x60 (8), 120x72 (11). Every tier grows in place from the centre inside the same pitch zone, so an upgrade never moves a neighbour. Lower tiers leave the zone as a plain lawn.
+5. **The building: 4 floors around a central atrium, floor 1 at ground level.** Floor height 16 studs, capsules about 12 studs apart along the glass front facing the pitch, so matches can be watched from the pads. The ground floor holds floor 1's capsules, the Store counter, the Locker room and the trophy shelf (the entrance hall) in one open space, so the first purchase is near the gate. Floors 2 to 4 are above, reached by wide stairs around the atrium. A locked floor has a glass gate at the stairs that the server opens when the previous floor is complete (the teaser capsule shows behind it). The Legends hall is at the top of the atrium behind glass, so it can be seen from floor 2.
+6. **Plots are private; the plaza is public.** The plot's perimeter is a low see-through fence with a gate. Only the owner can pass: each plot has one collision group for its fence (`Fence_N`) and one for its owner's character (`Owner_N`), 16 groups in total. Visitors see the pitch, the building front and the trophies over the fence, as Step 1 promised, and cannot block pads or the claim ring. This is convenience and anti-griefing only: authority stays on the server (owner check on every pad), because an exploiter can ignore a fence. An unclaimed plot's gate is open. The character group must be reapplied on respawn and when accessories are added.
+7. **Players are mannequins, not full characters.** A simple blocky figure built from parts: kit colour, number on the back, name above, no faces, badges or logos (Naming risk). Capsules hold a static figure only when the player is owned (unowned capsules are dark glass with a "?" and no model).
+8. **Matches are drawn by the client.** The server sends the result event (plot, payout, goals, hat-trick) and each nearby client plays the match with local mannequins (22 per plot, cloned locally). Movement is a scripted path with tweened CFrames and a procedural limb swing, so there are no uploaded animations and no server-replicated moving models. Which players are on the field comes from a plot attribute (a list of IDs). Clients only play it for plots that are streamed in and near.
+9. **Streaming is on.** The player's own plot model is persistent. Client scripts never assume a far plot exists, and bound every `WaitForChild`. Pad billboards (name, price, ring) are created on the client only for pads within about 40 studs and drawn from `Formulas` and the snapshot, so 280 pads cost nothing until near.
+10. **HUD (phone first, `CoreUISafeInsets`, placement measured, not hard-coded).**
+    - Top centre, under the Roblox bar: money label with the match loading bar beside it, and a one-line "Next goal" row with its progress bar below.
+    - Left edge below the top bar: the two daily icons (free case, penalties), 44 px or larger. Tapping the case icon opens the case screen. Tapping the penalty icon when ready shows the guide arrow to the penalty spot on the pitch.
+    - Right edge below the top bar: the season badge, the boost badge ("x2 · 4:32") and, once the training ground is open, the TP and stamina bars.
+    - Centre: "VICTORY" / "HAT-TRICK x2" text, non-interactive and brief.
+    - Free: the lower left (thumbstick) and lower right (jump), and the bottom centre.
+    - Screens (case, Locker room, New Season, stadium confirm): one at a time, a close button, fitted to the usable area, tap targets at least 44 px. The Locker room is a world object in the hall that opens its screen, and a short HUD note appears when new options unlock.
+    - Large numbers use one shared K/M/B/T formatter. Reveals and the stadium cinematic respect `GuiService.ReducedMotionEnabled` (shorter, no camera sweep).
+    - Supported in version 1: phone, tablet, desktop. A controller works for walking and pads; full gamepad navigation of the screens and a console release are not targeted yet.
+11. **Lighting: one fixed bright late afternoon, no day and night cycle.** Brightness about 2, warm sun (ClockTime about 15 to 16), strong ambient fill so blocky shapes stay readable, low-density atmosphere, one ColorCorrection (slightly higher saturation) and a light Bloom with a high threshold so only neon glows. No cycle: it costs frames, changes colours of rarity glows, and every player and visitor should see the same stadium. Floodlights, the scoreboard and the capsule glow are neon plus transparent beam parts, not real light objects (no shadow-casting lights). Lighting technology is set in Studio and checked on a phone simulator.
+12. **Art source: native parts first.** Plastic and SmoothPlastic blocks, saturated colours, a modular kit (floor slab, glass front, fence, stand block, capsule, pad), built in Studio through MCP in small batches with readback. No Toolbox models with scripts. HUD icons are UI shapes and text at first and become uploaded images in the polish phase, using the game owner's account with the asset permission granted. Sounds: only audio that is confirmed usable in the experience.
+13. **Cost control: a worst-case fixture.** A test fixture fills all 8 plots at tier 5 with every player owned (from the Studio-only test profiles), and is run on a low-end phone preset before polish is called done.
+
+### What "done" means for each phase (evidence required)
+- **Greybox:** every marker present and named, bounds and pivot read back, the walk from spawn to claim, first capsule and field button timed from a player camera.
+- **Slice:** a clean console, the first 5 minutes completed in a playtest in under the Step 2 times, the HUD checked on the smallest phone preset with touch controls showing.
+- **Each expansion step:** the new state checked in the device matrix (every pair of HUD elements that can be visible together), the profile saves and loads (Mock and the Studio store), a commit.
+- **Polish:** the worst-case fixture, Scene Analysis and MicroProfiler on a low-end phone preset, a real phone check before launch.
+
+### Risks
+- The footprint is a guess until walked. If the walking times in the slice are off, change the template before building floors 2 to 4.
+- Collision-group doors need care on respawn (the character group). It is a small module that needs its own test.
+- Streaming adds client waiting. If it causes visible pop-in on the own plot, make more of the own plot persistent.
+- The map is one binary file. Commit it only at phase boundaries and keep the template single.
+
 ## Decisions log
 | Topic | Decision |
 |---|---|
@@ -445,5 +514,5 @@ flags                  { firstHatTrickDone, notificationAsked, ... }
 4. Retention and ethics review: agreed (needs playtest data)
 5. Architecture and security: agreed (roblox-architecture, roblox-security)
 6. Saving: agreed (roblox-data)
-7. Build and polish (roblox-building, roblox-gui, roblox-lighting)
+7. Build and polish: decided, open to review (roblox-building, roblox-gui, roblox-lighting)
 8. Launch (roblox-publish-checklist, roblox-monetization, roblox-growth-design)
