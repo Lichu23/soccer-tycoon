@@ -46,11 +46,11 @@ Goal: the project structure, `Config`, `Formulas` and the safety modules exist a
 ## Phase 1: greybox (Studio, plain blocks)
 Goal: the right sizes, and walking times that match Step 2.
 
-- [ ] **1.1 Map folders and plaza.** `Map`, plaza, spawn in the middle, 8 plot slot anchors. *Test:* tree readback, bounds, no loose parts (S).
-- [ ] **1.2 Plot template, floor 1 only.** One model in `ServerStorage` with the gate and claim ring, tier-1 court (60x36), the building with 10 capsule pads, Store counter, Locker spot and trophy shelf spot. *Test:* readback of bounds and pivot, every part anchored (S).
-- [ ] **1.3 Markers.** `Claim`, `Player_<id>` x10, `Field`, `Store_<id>`, `Stadium`, `Penalty`, field and opponent slots, each with a `PadId` attribute from `Config`. *Test:* a Studio script lists every marker and checks its `PadId` exists in `Config` (S).
-- [ ] **1.4 Walking-time check.** *Test:* a character walks spawn to claim ring, gate to first capsule (at most about 8 s), first capsule to field button (at most about 5 s), timed from the player camera (S). If a time is off, change the template before going on.
-- [ ] **1.5 Commit Phase 1.** The map file is committed here only. Message `feat: greybox plaza and plot template`.
+- [x] **1.1 Map folders and plaza.** `Map`, plaza, spawn in the middle, 8 plot slot anchors. *Test:* tree readback, bounds, no loose parts (S).
+- [x] **1.2 Plot template, floor 1 only.** One model in `ServerStorage` with the gate and claim ring, tier-1 court (60x36), the building with 10 capsule pads, Store counter, Locker spot and trophy shelf spot. *Test:* readback of bounds and pivot, every part anchored (S).
+- [x] **1.3 Markers.** `Claim`, `Player_<id>` x10, `Field`, `Store_<id>`, `Stadium`, `Penalty`, field and opponent slots, each with a `PadId` attribute from `Config`. *Test:* a Studio script lists every marker and checks its `PadId` exists in `Config` (S).
+- [x] **1.4 Walking-time check.** *Test:* a character walks spawn to claim ring, gate to first capsule (at most about 8 s), first capsule to field button (at most about 5 s), timed from the player camera (S). If a time is off, change the template before going on.
+- [x] **1.5 Commit Phase 1.** The map file is committed here only. Message `feat: greybox plaza and plot template`.
 
 ## Phase 2: slice scripts (the first 5 minutes)
 Goal: claim a plot, buy the first player, start the match loop, earn, buy the first upgrade, reach stadium tier 2, save.
@@ -115,6 +115,9 @@ Each group is done when its unit tests pass, its Studio playtest passes, and the
 | 2026-10-18 | 0.9 | S | pass | In a playtest: valid payload handled; bad payload dropped and logged with its reason; flood of 50 limited to the burst of 2; a handler that errors was caught and logged |
 | 2026-10-18 | 0.10 | U | pass | Profile template, validation, migration chain, reconcile, receipt pruning (91 unit tests in total) |
 | 2026-10-18 | 0.10 | S | pass | Playtest join on the Mock store: `$15, tier 1, 0 players owned`. The Studio store (real saving) is not tested yet, it needs API access and a published place |
+| 2026-10-18 | 1.1 | S | pass | Map readback: Origin, Plaza (ground 640x80, spawn pad), 8 PlotSlots (4 north, 4 south, each facing into its plot) |
+| 2026-10-18 | 1.2, 1.3 | S | pass | PlotTemplate: 80 parts, all anchored, none below ground, PrimaryPart = Gate, bounds 160 x 17.5 x 181; 29 markers (10 player, 4 store, claim, field, stadium, penalty, training, locker, 8 field slots, ball); every PadId exists in `Config` |
+| 2026-10-18 | 1.4 | S | pass | Real character at 16 studs/s, no blocked leg: spawn to claim ring 6.3 s; claim ring to capsule 1 pad 9.4 s (Step 2 allows about 10 s); pad 1 to Field pad 1.6 s (target at most 5 s) |
 
 ## Decisions and changes during the build
 - **2026-10-18, task 0.4:** no empty stub modules. A module is created when its task first needs it, so there is no dead code and the type check stays meaningful.
@@ -122,4 +125,6 @@ Each group is done when its unit tests pass, its Studio playtest passes, and the
 - **2026-10-18, task 0.5:** Legend incomes are not in the Step 3 table. Placeholders continue the floor 3 growth (about x1.6 per Legend: 1.0M, 1.6M, 2.6M, 4.1M, 6.6M). Check them in the economy simulation. Shirt numbers are also provisional.
 - **2026-10-18, task 0.9:** `BuyStoreUpgrade` sends the level the client saw as well as the upgrade id, so a double tap cannot buy two levels (Step 5 only listed the id).
 - **2026-10-18, test method:** `require` inside `execute_luau` creates a separate module instance, so it cannot register handlers on the running game. Studio tests that need server handlers use temporary scripts (added in Edit mode, then deleted).
+- **2026-10-18, task 1.4:** the building door moved from the middle of the front to the left end (door at local x = -62, next to capsule 1), and the Field pad moved in front of it. With the door in the middle the claim-ring-to-pad-1 walk was about 10.5 s; with the door at the left end it measured 9.4 s and the Field pad is 1.6 s from pad 1. Slot order along the capsule row stays left to right.
+- **2026-10-18, template generation:** the greybox is built by `tools/studio/BuildMap.luau` and `tools/studio/BuildPlotTemplate.luau` (run through the Studio MCP in Edit mode, safe to rerun). Change a size in the `Def` table and rebuild, do not hand-edit the parts. The map file only holds one template in `ServerStorage.PlotTemplate`.
 - **2026-10-18, unit tests:** `tests/framework.luau` loads modules from `src/` in Lune with a fake `script` and `game`, so the same `require(script.Parent.X)` lines work in Studio and in tests. It reads every source file once at startup because Lune file calls cannot yield inside the loader.
