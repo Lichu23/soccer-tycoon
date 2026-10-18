@@ -62,7 +62,7 @@ local function step(session: Session.Session, dt: number)
 
 	local field = fieldOf(session)
 	local standing = field ~= nil
-	local paid = Training.step(data, carry, dt, standing)
+	local paid = Training.step(data, carry, dt, standing, field == "afk")
 	local active = standing and Training.hasStamina(data)
 	training[player] = active
 

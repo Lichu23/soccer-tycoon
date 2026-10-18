@@ -129,9 +129,7 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 		if not Progress.trainingUnlocked(data) then
 			return { title = title, price = "", note = "Finish floor 1 first", state = "locked" }
 		end
-		local note = if active
-			then "Play the drill for extra TP"
-			else "Stand here: 10 TP per minute"
+		local note = if active then "Hit the green for TP" else "Stand here: 10 TP per minute"
 		return { title = title, price = "TP", note = note, state = "info" }
 	elseif kind == "penalty" then
 		-- Whether kicks are left today is the server's call (the client shows the wait time).

@@ -45,9 +45,16 @@ end
 
 -- Moves the training forward by `dt` seconds. `training` is true while the player stands on the
 -- pad with the training open. Standing still drains the stamina and pays the idle rate; with no
--- stamina left nothing is paid and nothing refills until the player steps away. Returns the whole
--- TP paid in this step.
-function Training.step(data: Profile, carry: Carry, dt: number, training: boolean): number
+-- stamina left nothing is paid and nothing refills until the player steps away. On the active
+-- farm (`paysIdle` false) the stamina drains the same but nothing is paid here: only the drill
+-- pays. Returns the whole TP paid in this step.
+function Training.step(
+	data: Profile,
+	carry: Carry,
+	dt: number,
+	training: boolean,
+	paysIdle: boolean?
+): number
 	if dt <= 0 then
 		return 0
 	end
@@ -63,6 +70,9 @@ function Training.step(data: Profile, carry: Carry, dt: number, training: boolea
 		return 0
 	end
 	data.staminaLeft -= used
+	if paysIdle == false then
+		return 0
+	end
 	carry.fraction += Config.Training.idleTpPerMinute / 60 * used
 	return payWhole(data, carry)
 end
@@ -82,8 +92,7 @@ end
 
 local WINDOW_SECONDS = 60
 
--- TP the drill may still pay now: the drill part of the per-minute cap (the maximum rate minus the
--- idle rate) minus what it paid in the last minute.
+-- TP the drill may still pay now: the per-minute cap minus what it paid in the last minute.
 function Training.drillRoomLeft(carry: Carry, now: number): number
 	local log = carry.drillLog
 	while #log > 0 and now - log[1].at > WINDOW_SECONDS do
@@ -93,8 +102,7 @@ function Training.drillRoomLeft(carry: Carry, now: number): number
 	for _, entry in log do
 		paid += entry.amount
 	end
-	local cap = Config.Training.drillTpPerMinuteMax - Config.Training.idleTpPerMinute
-	return math.max(cap - paid, 0)
+	return math.max(Config.Training.drillTpPerMinuteMax - paid, 0)
 end
 
 -- Pays the drill result of a press: "hit" is the base TP plus the bonus, "miss" the base TP only,

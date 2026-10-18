@@ -237,9 +237,9 @@ function TrainingUi.init()
 			return
 		end
 		local now = Workspace:GetServerTimeNow()
-		-- Moves the local copy at once so a hit restarts the marker without waiting for the server.
-		local outcome = Drill.press(drill, now)
-		if outcome == "ignored" then
+		-- Only the server moves the drill (a hit starts a new run with a new green zone).
+		Drill.normalize(drill, now)
+		if drill.phase == "cooldown" then
 			return
 		end
 		Net.fire("TrainingDrillHit")
@@ -300,7 +300,7 @@ function TrainingUi.init()
 		local isActive = field == "active"
 		title.Text = if isActive then "ACTIVE FARM" else "AFK FARM"
 		hint.Text = if isActive
-			then "Hit the green for extra TP. Standing here also earns 10 TP/min."
+			then "Hit the green: every press gives +1 TP, a hit gives extra!"
 			else "Just stand here: 10 TP per minute. Want more? Try the active farm!"
 		afkBar.Visible = not isActive
 		bar.Visible = isActive
@@ -333,8 +333,8 @@ function TrainingUi.init()
 		button.BackgroundColor3 = if waiting then Color3.fromRGB(95, 100, 115) else Style.ui.good
 		button.TextColor3 = if waiting then Color3.fromRGB(170, 175, 190) else Style.ui.dark
 		zone.Visible = running
-		-- The small green zone drifts along the bar (it follows the same clock the server judges with).
-		zone.Position = UDim2.fromScale(Drill.zoneCenter(now), 0)
+		-- The green zone stays where it is until a new run starts, then it jumps.
+		zone.Position = UDim2.fromScale(Drill.zone(drill.startedAt), 0)
 		if flashUntil > os.clock() then
 			zone.BackgroundColor3 = Style.ui.good
 			zone.BackgroundTransparency = 0

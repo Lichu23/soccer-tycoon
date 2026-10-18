@@ -1,11 +1,12 @@
 --!strict
--- The timing of the training drill (docs/PLAN.md, Step 4): a marker sweeps across a bar from left
--- to right and a press counts when it is inside the green zone, which drifts along the bar. A hit starts the sweep again at once; a
--- miss turns the bar red for a short cooldown and then the marker starts again by itself; a sweep
--- that runs to the end unpressed simply starts the next one. The drill only begins "stopped" until
--- it is first started (the server presses once when the player steps onto the field).
--- The server keeps the state and judges every press; the client runs the same functions on the
--- state it reads from the player's attributes, so the bar the player sees is the one judged.
+-- The timing of the training drill on the active farm (docs/PLAN.md, Step 4): a marker moves back
+-- and forth across a bar and a press counts when the marker is inside the green zone. A hit starts
+-- the marker again at once; a miss turns the bar red for a short cooldown and then the marker
+-- starts again by itself. Each time the marker starts, the green zone jumps to a new place, worked
+-- out from the start time, so the server and the client agree without any message. The marker never
+-- stops until the player presses (an idle player just earns nothing on the active farm).
+-- The server keeps the state and judges every press; the client reads it from the player's
+-- attributes and runs the same functions, so the bar the player sees is the one judged.
 -- Pure, so it is unit tested.
 
 local Config = require(script.Parent.Config)
@@ -19,47 +20,41 @@ function Drill.new(): State
 	return { phase = "stopped", startedAt = 0, cooldownUntil = 0 }
 end
 
--- Applies what time alone changes: a finished cooldown starts the marker again, and a sweep that
--- reached the end starts the next sweep.
+-- Applies what time alone changes: a finished cooldown starts the marker again.
 function Drill.normalize(state: State, now: number)
-	local sweep = Config.Training.drillSweepSeconds
 	if state.phase == "cooldown" and now >= state.cooldownUntil then
 		state.phase = "running"
 		state.startedAt = state.cooldownUntil
 	end
-	if state.phase == "running" then
-		local elapsed = now - state.startedAt
-		if elapsed >= sweep - 1e-6 then
-			state.startedAt += math.floor((elapsed + 1e-6) / sweep) * sweep
-		end
-	end
 end
 
--- Where the marker is (0 left, 1 right) while the drill runs, else nil.
+-- Where the marker is (0 left, 1 right) while the drill runs, else nil. It goes there and back.
 function Drill.position(state: State, now: number): number?
 	if state.phase ~= "running" then
 		return nil
 	end
-	return math.clamp((now - state.startedAt) / Config.Training.drillSweepSeconds, 0, 1)
+	local passes = math.max(now - state.startedAt, 0) / Config.Training.drillSweepSeconds
+	local phase = passes % 2
+	return if phase <= 1 then phase else 2 - phase
 end
 
--- Where the green zone is at `now` (0 left, 1 right): it drifts back and forth on the clock, so the
--- server and the client agree without any message.
-function Drill.zoneCenter(now: number): number
+-- The centre of the green zone of the run that started at `startedAt` (0 left, 1 right): a fixed
+-- pseudo-random place between drillZoneMin and drillZoneMax, the same on every machine.
+function Drill.zone(startedAt: number): number
+	local mixed = math.sin(startedAt * 12.9898) * 43758.5453
+	local fraction = mixed - math.floor(mixed)
 	local training = Config.Training
-	return 0.5
-		+ training.drillZoneAmplitude
-			* math.sin(now * 2 * math.pi / training.drillZonePeriodSeconds)
+	return training.drillZoneMin + fraction * (training.drillZoneMax - training.drillZoneMin)
 end
 
--- Whether a marker position counts as a hit: inside the green zone at `now`.
-function Drill.isHit(position: number, now: number): boolean
-	return math.abs(position - Drill.zoneCenter(now)) <= Config.Training.drillWindow
+-- Whether the marker at `position` is inside the green zone of the run that started at `startedAt`.
+function Drill.isHit(position: number, startedAt: number): boolean
+	return math.abs(position - Drill.zone(startedAt)) <= Config.Training.drillWindow
 end
 
 -- A press at `now`. Returns what happened:
 --   "start"   the drill was stopped (before its first start): the marker starts, nothing is paid
---   "hit"     the marker was in the green zone: it starts again at once
+--   "hit"     the marker was in the green zone: a new run starts at once
 --   "miss"    anywhere else: cooldown with a red bar
 --   "ignored" during the cooldown
 function Drill.press(state: State, now: number): string
@@ -72,7 +67,7 @@ function Drill.press(state: State, now: number): string
 		return "start"
 	end
 	local position = Drill.position(state, now) or 0
-	if Drill.isHit(position, now) then
+	if Drill.isHit(position, state.startedAt) then
 		state.startedAt = now
 		return "hit"
 	end

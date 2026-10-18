@@ -289,19 +289,18 @@ Config.Training = {
 	idleTpPerMinute = 10,
 	staminaSeconds = 300,
 	staminaRefillSeconds = 300, -- time away to refill from empty
-	-- The timing drill: a marker sweeps across the bar in `drillSweepSeconds`. A press in the middle
-	-- `drillWindow` (a fraction either side of the centre) is a hit: it pays the base TP plus the
-	-- bonus and the marker starts again at once. A press outside it is a miss: the base TP only, then
-	-- a short cooldown with a red bar. A marker that runs to the end unpressed also leaves the bar red
-	-- until the next press. The drill TP per minute is capped so that idle + drill never pass
-	-- `drillTpPerMinuteMax` in total.
+	-- The timing drill (active farm): a marker moves back and forth across the bar, one pass in
+	-- `drillSweepSeconds`, until the player presses. A press inside the green zone (`drillWindow`
+	-- either side of its centre) is a hit: base TP plus the bonus. A press outside it is a miss: the
+	-- base TP only, then a short cooldown with a red bar. Either way the marker starts again and the
+	-- green zone jumps to a new place (never touching the sides: zone centre between `drillZoneMin`
+	-- and `drillZoneMax`). The active farm pays only for presses; the idle rate is the AFK farm's.
+	-- The drill pays at most `drillTpPerMinuteMax` TP in any minute.
 	drillTpPerMinuteMax = 30,
-	drillSweepSeconds = 1.8,
+	drillSweepSeconds = 1.2,
 	drillWindow = 0.08, -- half the width of the green zone, as a fraction of the bar
-	-- The green zone drifts left and right (centre = 0.5 +- drillZoneAmplitude) and never touches the
-	-- sides of the bar: amplitude + window stays under 0.5.
-	drillZoneAmplitude = 0.36,
-	drillZonePeriodSeconds = 3.5,
+	drillZoneMin = 0.12,
+	drillZoneMax = 0.88,
 	drillCooldownSeconds = 1.2,
 	drillBaseTp = 1,
 	drillHitBonusTp = 0.3,

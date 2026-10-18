@@ -104,6 +104,15 @@ local function runningDrill(now)
 	return state
 end
 
+-- A running drill that started at `startedAt`, with the marker at `fraction` of the bar at the
+-- returned time (the first pass goes left to right).
+local function markerAt(startedAt, fraction)
+	local state = Drill.new()
+	state.phase = "running"
+	state.startedAt = startedAt
+	return state, startedAt + Config.Training.drillSweepSeconds * fraction
+end
+
 T.test("the drill starts stopped and the first press starts the marker without paying", function()
 	local state = Drill.new()
 	T.eq(state.phase, "stopped")
@@ -114,82 +123,89 @@ T.test("the drill starts stopped and the first press starts the marker without p
 	T.eq(Training.drillPay(data, carry, "start", 10), 0)
 end)
 
-T.test("a sweep that reaches the end just starts the next one (no stop)", function()
+T.test("the marker goes back and forth and never stops by itself", function()
 	local sweep = Config.Training.drillSweepSeconds
 	local state = runningDrill(100)
-	T.near(Drill.position(state, 100 + sweep / 2), 0.5, 1e-9)
-	Drill.normalize(state, 100 + sweep * 2.25)
-	T.eq(state.phase, "running")
-	T.near(Drill.position(state, 100 + sweep * 2.25), 0.25, 1e-6)
-	-- an away player is simply in the middle of some sweep when they come back
-	T.truthy(Drill.press(state, 100 + sweep * 50.5) ~= "ignored")
+	T.near(Drill.position(state, 100 + sweep * 0.5), 0.5, 1e-9)
+	T.near(Drill.position(state, 100 + sweep), 1, 1e-9)
+	T.near(Drill.position(state, 100 + sweep * 1.5), 0.5, 1e-9) -- on its way back
+	T.near(Drill.position(state, 100 + sweep * 2), 0, 1e-9)
+	T.near(Drill.position(state, 100 + sweep * 2.25), 0.25, 1e-9)
+	Drill.normalize(state, 100 + sweep * 500)
+	T.eq(state.phase, "running") -- an idle player never makes it stop
 end)
 
--- A running drill whose marker is at `fraction` of the bar at time `now`.
-local function markerAt(now, fraction)
-	local state = Drill.new()
-	state.phase = "running"
-	state.startedAt = now - Config.Training.drillSweepSeconds * fraction
-	return state
-end
-
--- A time when the green zone is exactly in the middle of the bar.
-local CENTERED = Config.Training.drillZonePeriodSeconds * 4
-
-T.test("a press inside the green zone is a hit and the marker starts again at once", function()
-	local state = markerAt(CENTERED, 0.5)
-	T.eq(Drill.press(state, CENTERED), "hit")
-	T.eq(state.phase, "running")
-	T.eq(state.startedAt, CENTERED)
-	T.eq(Drill.position(state, CENTERED), 0)
-	-- and a second hit half a sweep later, without waiting for the end of the bar
-	local later = CENTERED + Config.Training.drillSweepSeconds * 0.5
-	T.near(Drill.position(state, later), 0.5, 1e-9)
-end)
-
-T.test("the green zone is small and a press outside it is a miss", function()
+T.test("the green zone is small, off the sides, and fixed for a whole run", function()
 	local edge = Config.Training.drillWindow
 	T.truthy(edge <= 0.1, "the zone is at most 20% of the bar")
-	T.eq(Drill.press(markerAt(CENTERED, 0.5 + edge - 0.01), CENTERED), "hit")
-	T.eq(Drill.press(markerAt(CENTERED, 0.5 - edge + 0.01), CENTERED), "hit")
-	T.eq(Drill.press(markerAt(CENTERED, 0.5 + edge + 0.02), CENTERED), "miss")
-	T.eq(Drill.press(markerAt(CENTERED, 0.05), CENTERED), "miss")
-end)
-
-T.test("the green zone drifts along the bar and never touches its sides", function()
-	local edge = Config.Training.drillWindow
-	local period = Config.Training.drillZonePeriodSeconds
 	local lowest, highest = 1, 0
-	for step = 0, 400 do
-		local centre = Drill.zoneCenter(step * period / 100)
+	for index = 1, 500 do
+		local centre = Drill.zone(1000 + index * 1.7)
 		lowest = math.min(lowest, centre - edge)
 		highest = math.max(highest, centre + edge)
 	end
-	T.truthy(lowest > 0.03, "the zone stays off the left side")
-	T.truthy(highest < 0.97, "the zone stays off the right side")
-	T.truthy(highest - lowest > 0.6, "and it really moves")
-	-- a marker in the middle of the bar misses when the zone has drifted away
-	local drifted = CENTERED + period / 4 -- the zone is far to one side
-	T.eq(Drill.press(markerAt(drifted, 0.5), drifted), "miss")
-	-- but the same marker hits when it is where the zone is
-	T.eq(Drill.press(markerAt(drifted, Drill.zoneCenter(drifted)), drifted), "hit")
+	T.truthy(lowest > 0.02, "the zone stays off the left side")
+	T.truthy(highest < 0.98, "the zone stays off the right side")
+	T.truthy(highest - lowest > 0.6, "and it lands in different places")
+	T.eq(Drill.zone(1234.5), Drill.zone(1234.5)) -- the same run always has the same zone
+end)
+
+T.test("a press inside the green zone is a hit; a new run starts with a new zone", function()
+	local state = markerAt(500, 0)
+	local zone = Drill.zone(500)
+	-- time when the marker is at the zone centre on the first pass
+	local now = 500 + Config.Training.drillSweepSeconds * zone
+	T.eq(Drill.press(state, now), "hit")
+	T.eq(state.phase, "running")
+	T.eq(state.startedAt, now)
+	T.eq(Drill.position(state, now), 0)
+	T.truthy(Drill.zone(now) ~= zone, "the zone jumped")
+end)
+
+T.test("a press just outside the zone is a miss", function()
+	local edge = Config.Training.drillWindow
+	local zone = Drill.zone(500)
+	local inside, timeInside = markerAt(500, math.min(zone + edge - 0.01, 1))
+	T.eq(Drill.press(inside, timeInside), "hit")
+	local outside, timeOutside = markerAt(500, math.min(zone + edge + 0.02, 1))
+	-- (a zone near the right end can leave no room outside on this side)
+	if zone + edge + 0.02 <= 1 then
+		T.eq(Drill.press(outside, timeOutside), "miss")
+	end
+	local far, timeFar = markerAt(500, if zone > 0.5 then 0.02 else 0.98)
+	T.eq(Drill.press(far, timeFar), "miss")
 end)
 
 T.test(
 	"a miss starts a cooldown: presses are ignored, then the marker restarts by itself",
 	function()
 		local cooldown = Config.Training.drillCooldownSeconds
-		local state = runningDrill(0)
-		T.eq(Drill.press(state, 0.1), "miss")
-		T.eq(state.phase, "cooldown")
-		T.eq(Drill.press(state, 0.1 + cooldown - 0.05), "ignored")
-		Drill.normalize(state, 0.1 + cooldown + 0.3)
-		T.eq(state.phase, "running")
+		local far, now = markerAt(500, if Drill.zone(500) > 0.5 then 0.02 else 0.98)
+		T.eq(Drill.press(far, now), "miss")
+		T.eq(far.phase, "cooldown")
+		T.eq(Drill.press(far, now + cooldown - 0.05), "ignored")
+		Drill.normalize(far, now + cooldown + 0.3)
+		T.eq(far.phase, "running")
+		T.eq(far.startedAt, now + cooldown) -- the new run, with its own zone
 		T.near(
-			Drill.position(state, 0.1 + cooldown + 0.3),
+			Drill.position(far, now + cooldown + 0.3),
 			0.3 / Config.Training.drillSweepSeconds,
-			1e-6
+			1e-9
 		)
+	end
+)
+
+T.test(
+	"on the active farm only the drill pays: standing there drains stamina but pays no idle TP",
+	function()
+		local data, carry = fresh()
+		local paid = 0
+		for _ = 1, 240 do -- 60 seconds
+			paid += Training.step(data, carry, 0.25, true, false)
+		end
+		T.eq(paid, 0)
+		T.eq(data.tp, 0)
+		T.near(data.staminaLeft, MAX - 60, 0.01)
 	end
 )
 
@@ -211,7 +227,7 @@ end)
 
 T.test("the drill part of the rate is capped per minute, and room comes back later", function()
 	local data, carry = fresh()
-	local room = Config.Training.drillTpPerMinuteMax - Config.Training.idleTpPerMinute
+	local room = Config.Training.drillTpPerMinuteMax
 	local paid = 0
 	for index = 1, 100 do
 		paid += Training.drillPay(data, carry, "hit", index * 0.1) -- 100 hits in 10 seconds
