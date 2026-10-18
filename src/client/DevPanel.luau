@@ -23,6 +23,7 @@ local BUTTONS: { DevButton } = {
 	{ label = "Stadium tier +1", command = "stadiumUp", amount = 0 },
 	{ label = "Away 1 hour", command = "simulateAway", amount = 1 },
 	{ label = "Away 8 hours", command = "simulateAway", amount = 8 },
+	{ label = "Daily ready again", command = "resetDaily", amount = 0 },
 	{ label = "Reset profile", command = "resetProfile", amount = 0 },
 }
 
@@ -38,8 +39,8 @@ function DevPanel.init()
 	gui.Parent = player:WaitForChild("PlayerGui")
 
 	local frame = Instance.new("Frame")
-	frame.AnchorPoint = Vector2.new(0, 0.5)
-	frame.Position = UDim2.new(0, 6, 0.5, 0)
+	frame.AnchorPoint = Vector2.new(1, 0.5) -- right side: the left edge belongs to the daily icons
+	frame.Position = UDim2.new(1, -6, 0.55, 0)
 	frame.Size = UDim2.fromOffset(122, 8 + #BUTTONS * 26)
 	frame.BackgroundColor3 = Color3.fromRGB(20, 24, 35)
 	frame.BackgroundTransparency = 0.25

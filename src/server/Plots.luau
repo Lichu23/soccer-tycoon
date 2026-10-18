@@ -11,6 +11,7 @@ local Workspace = game:GetService("Workspace")
 
 local Analytics = require(script.Parent.Analytics)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Daily = require(script.Parent.Daily)
 local Mannequin = require(ReplicatedStorage.Shared.Mannequin)
 local PadActions = require(script.Parent.PadActions)
 local Pads = require(script.Parent.Pads)
@@ -22,6 +23,7 @@ local Sync = require(script.Parent.Sync)
 
 local SLOT_COUNT = 8
 local RING_COLOR = Color3.fromRGB(255, 220, 60)
+local PAD_TRANSPARENCY = 0.4 -- the template markers are built with this
 
 local plotsFolder: Folder
 local rings: { [number]: Part } = {}
@@ -102,6 +104,13 @@ function Plots.refresh(session: Session.Session)
 				gate:SetAttribute("Open", Roster.floorUnlocked(session.data, floor))
 			end
 		end
+	end
+
+	-- The penalty pad appears with the first stadium upgrade (it is invisible and unusable before).
+	local markers = plot:FindFirstChild("Markers")
+	local penalty = markers and markers:FindFirstChild("Penalty")
+	if penalty and penalty:IsA("BasePart") then
+		penalty.Transparency = if Daily.unlocked(session.data) then PAD_TRANSPARENCY else 1
 	end
 
 	local capsules = plot:FindFirstChild("Capsules")

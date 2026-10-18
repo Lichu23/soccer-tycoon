@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
+local DailyInfo = require(ReplicatedStorage.Shared.DailyInfo)
 local PadInfo = require(ReplicatedStorage.Shared.PadInfo)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
@@ -22,7 +23,7 @@ local BOARD_WIDTH = 170
 local BOARD_HEIGHT = 176
 local RING_CENTER = Vector2.new(BOARD_WIDTH / 2, 98)
 local RING_RADIUS = 40
-local SHOWN_KINDS = { claim = true, player = true, store = true, stadium = true }
+local SHOWN_KINDS = { claim = true, player = true, store = true, stadium = true, penalty = true }
 local MAX_DISTANCE = 30
 
 type Entry = {
@@ -146,6 +147,19 @@ end
 -- Updates the text and visibility of one pad from the current state.
 local function refresh(entry: Entry)
 	local info = PadInfo.describe(entry.kind, entry.padId, State.data)
+	if entry.kind == "penalty" and info.state == "ready" then
+		-- All three kicks used: the pad shows when it is back (the server judges the time).
+		local readyAt = player:GetAttribute("penaltyReadyAt")
+		local now = Workspace:GetServerTimeNow()
+		if type(readyAt) == "number" and DailyInfo.status(true, readyAt, now) == "waiting" then
+			info = {
+				title = "Penalty kicks",
+				price = "WAIT",
+				note = DailyInfo.waitText(readyAt - now),
+				state = "locked",
+			}
+		end
+	end
 	entry.title.Text = info.title
 	entry.price.Text = info.price
 	entry.note.Text = info.note
@@ -157,6 +171,7 @@ local function refresh(entry: Entry)
 	-- the stairs are worth climbing to see what is coming.
 	local hidden = (entry.kind == "claim" and State.hasPlot())
 		or (entry.kind == "store" and info.state == "locked")
+		or (entry.kind == "penalty" and info.price == "")
 	entry.billboard.Enabled = not hidden
 	if entry.filled == 0 then
 		entry.color = ringColor(info.state)
@@ -213,11 +228,13 @@ function PadRing.init()
 		track(part)
 	end
 
-	State.onChange(function()
+	local function refreshAll()
 		for _, entry in entries do
 			refresh(entry)
 		end
-	end)
+	end
+	State.onChange(refreshAll)
+	player:GetAttributeChangedSignal("penaltyReadyAt"):Connect(refreshAll)
 
 	RunService.RenderStepped:Connect(function()
 		local activeKey = player:GetAttribute("padKey")

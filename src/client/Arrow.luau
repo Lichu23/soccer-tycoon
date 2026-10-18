@@ -25,6 +25,7 @@ local STORE_HINT_NEAR = 14 -- the hint ends when the player gets this close to t
 local MARKER_HEIGHT = 12 -- studs above the pad
 local GOLD = Color3.fromRGB(255, 220, 60)
 
+local guide: { kind: string, caption: string, endsAt: number }? = nil -- asked for by a HUD icon
 local lastOwned: number? = nil -- players owned at the last state change (nil before the first)
 local storeHintStartedAt: number? = nil
 local storeHintDone = false
@@ -53,6 +54,17 @@ end
 
 -- The pad part to point at right now and the caption above it, or nil for no guidance.
 local function target(root: BasePart): (BasePart?, string)
+	-- A tapped HUD icon points at its spot for a short time.
+	if guide ~= nil then
+		if os.clock() > guide.endsAt then
+			guide = nil
+		else
+			local spot = nearestPad(root, guide.kind, nil)
+			if spot ~= nil then
+				return spot, guide.caption
+			end
+		end
+	end
 	local goal = Goals.next(State.data, State.hasPlot())
 	if goal.kind == "claim" then
 		return nearestPad(root, "claim", nil), "Claim your plot"
@@ -122,6 +134,11 @@ local function buildMarker(): (BillboardGui, TextLabel)
 	diamondOutline.Parent = diamond
 
 	return billboard, caption
+end
+
+-- Points the guide at the nearest pad of `kind` for `seconds` (a tapped daily icon uses this).
+function Arrow.guide(kind: string, seconds: number, caption: string)
+	guide = { kind = kind, caption = caption, endsAt = os.clock() + seconds }
 end
 
 function Arrow.init()

@@ -3,6 +3,7 @@
 -- server sends and never decides cash, purchases or progress.
 
 local Arrow = require(script.Parent.Arrow)
+local DailyUi = require(script.Parent.DailyUi)
 local DevPanel = require(script.Parent.DevPanel)
 local GateLabels = require(script.Parent.GateLabels)
 local Hud = require(script.Parent.Hud)
@@ -18,6 +19,7 @@ MatchView.init()
 Arrow.init()
 GateLabels.init()
 StadiumCinematic.init()
+DailyUi.init()
 DevPanel.init()
 
 print("soccer-tycoon client started")

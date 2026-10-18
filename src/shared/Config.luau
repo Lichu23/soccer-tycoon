@@ -199,6 +199,21 @@ Config.Daily = {
 	penaltyMultiplier = 1.5,
 	-- Seconds of boost for the number of goals scored out of 3 kicks.
 	penaltyBoostSeconds = { [0] = 0, [1] = 180, [2] = 300, [3] = 600 } :: { [number]: number },
+	unlockTier = 2, -- the daily icons and the penalty pad open with the first stadium upgrade
+	-- Chance that a kick goes wide or over before the keeper is even asked, by aim zone. Corners
+	-- are riskier than the middle; the keeper then dives to a random zone.
+	zoneMissChance = {
+		topLeft = 0.2,
+		topCenter = 0.1,
+		topRight = 0.2,
+		bottomLeft = 0.08,
+		bottomCenter = 0.03,
+		bottomRight = 0.08,
+	} :: { [string]: number },
+	-- The free daily case: cash worth some minutes of income, or a x2 boost (never players).
+	caseCashMinutes = 5,
+	caseBoostSeconds = 300,
+	caseBoostChance = 0.5,
 }
 
 Config.Offline = {

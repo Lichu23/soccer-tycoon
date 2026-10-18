@@ -30,8 +30,8 @@ export type Profile = {
 	season: { number: number },
 	trials: { [string]: { [string]: boolean } }, -- Legend Trial goals, never unset
 	cosmetics: { owned: { [string]: boolean }, chosen: { [string]: string } },
-	daily: { caseClaimedAt: number, penaltyBatchAt: number, kicksUsed: number },
-	boosts: { bankedMatches: number, stadiumBoostLeft: number },
+	daily: { caseClaimedAt: number, penaltyBatchAt: number, kicksUsed: number, goals: number },
+	boosts: { bankedMatches: number, stadiumBoostLeft: number, penaltyBoostLeft: number },
 	receipts: { [string]: Receipt },
 	pendingReveals: { PendingReveal },
 	seenRarities: { [string]: boolean },
@@ -66,8 +66,8 @@ function ProfileSchema.newProfile(): Profile
 		season = { number = 1 },
 		trials = {},
 		cosmetics = { owned = {}, chosen = {} },
-		daily = { caseClaimedAt = 0, penaltyBatchAt = 0, kicksUsed = 0 },
-		boosts = { bankedMatches = 0, stadiumBoostLeft = 0 },
+		daily = { caseClaimedAt = 0, penaltyBatchAt = 0, kicksUsed = 0, goals = 0 },
+		boosts = { bankedMatches = 0, stadiumBoostLeft = 0, penaltyBoostLeft = 0 },
 		receipts = {},
 		pendingReveals = {},
 		seenRarities = {},
@@ -237,10 +237,15 @@ function ProfileSchema.validate(profile: { [string]: any }): (boolean, string?)
 	if
 		not isCount(profile.boosts.bankedMatches, 10_000)
 		or not isCount(profile.boosts.stadiumBoostLeft)
+		or not isCount(profile.boosts.penaltyBoostLeft)
 	then
 		return false, "profile.boosts is out of range"
 	end
-	if not isCount(profile.daily.kicksUsed, Config.Daily.penaltyKicks) then
+	if
+		not isCount(profile.daily.kicksUsed, Config.Daily.penaltyKicks)
+		or not isCount(profile.daily.goals, Config.Daily.penaltyKicks)
+		or profile.daily.goals > profile.daily.kicksUsed
+	then
 		return false, "profile.daily.kicksUsed is out of range"
 	end
 	return true, nil

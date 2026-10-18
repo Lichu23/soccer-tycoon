@@ -70,11 +70,8 @@ end
 
 local function tick(session: Session.Session, seconds: number)
 	local data, runtime = session.data, session.runtime
-	if data.boosts.stadiumBoostLeft > 0 then
-		Boosts.tick(data, seconds)
-		if data.boosts.stadiumBoostLeft <= 0 then
-			Sync.scalars(session) -- the boost badge goes away
-		end
+	if Boosts.nextEnd(data) > 0 and Boosts.tick(data, seconds) then
+		Sync.scalars(session) -- the boost badge changes or goes away
 	end
 	if not data.fieldStarted or runtime.plot == nil then
 		return

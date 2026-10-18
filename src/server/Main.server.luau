@@ -3,6 +3,7 @@
 
 local Actions = require(script.Parent.Actions)
 local Analytics = require(script.Parent.Analytics)
+local DailyActions = require(script.Parent.DailyActions)
 local DevTools = require(script.Parent.DevTools)
 local Match = require(script.Parent.Match)
 local Offline = require(script.Parent.Offline)
@@ -19,6 +20,7 @@ Session.init()
 Pads.start()
 Plots.init()
 Match.start()
+DailyActions.start()
 
 -- Whatever a player buys: tell their client, redraw their capsules and log the funnel.
 Actions.onChange = function(session, what, _id)

@@ -294,7 +294,9 @@ function Hud.init()
 		local boostEnds = player:GetAttribute("boostEndsAt")
 		if type(boostEnds) == "number" and boostEnds > now then
 			boost.Visible = true
-			boost.Text = "x2 · " .. clockText(boostEnds - now)
+			local multiplier = player:GetAttribute("boostMultiplier")
+			local shown = if type(multiplier) == "number" then multiplier else 2
+			boost.Text = string.format("x%g · %s", shown, clockText(boostEnds - now))
 		else
 			boost.Visible = false
 		end

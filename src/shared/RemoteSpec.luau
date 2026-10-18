@@ -111,7 +111,14 @@ RemoteSpec.remotes = {
 		args = {
 			{
 				kind = "enum",
-				values = { "grantFloor", "setCash", "resetProfile", "simulateAway", "stadiumUp" },
+				values = {
+					"grantFloor",
+					"setCash",
+					"resetProfile",
+					"simulateAway",
+					"stadiumUp",
+					"resetDaily",
+				},
 			},
 			{ kind = "number", min = 0, max = 1e15 },
 		},

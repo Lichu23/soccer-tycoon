@@ -11,11 +11,13 @@ local Roster = require(ReplicatedStorage.Shared.Roster)
 
 local DevCommands = {}
 
-DevCommands.commands = { "grantFloor", "setCash", "resetProfile", "simulateAway", "stadiumUp" }
+DevCommands.commands =
+	{ "grantFloor", "setCash", "resetProfile", "simulateAway", "stadiumUp", "resetDaily" }
 
 -- Applies one command. Returns false for an unknown command.
 --   grantFloor n: owns every cash-floor player of floors 1 to n (Legends are never granted)
 --   setCash n:    sets the cash (clamped to the maximum)
+--   resetDaily:   the free case and the penalty kicks are ready again
 --   resetProfile: back to a brand-new profile
 function DevCommands.apply(data: ProfileSchema.Profile, command: string, amount: number): boolean
 	if command == "grantFloor" then
@@ -28,6 +30,10 @@ function DevCommands.apply(data: ProfileSchema.Profile, command: string, amount:
 		return true
 	elseif command == "setCash" then
 		data.cash = math.clamp(amount, 0, Config.MaxCash)
+		return true
+	elseif command == "resetDaily" then
+		data.daily = { caseClaimedAt = 0, penaltyBatchAt = 0, kicksUsed = 0, goals = 0 }
+		data.boosts.penaltyBoostLeft = 0
 		return true
 	elseif command == "resetProfile" then
 		local fresh = ProfileSchema.newProfile()

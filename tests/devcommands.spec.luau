@@ -57,6 +57,19 @@ T.test("resetProfile returns a new profile", function()
 	T.eq(ok, true)
 end)
 
+T.test("resetDaily makes the case and the kicks ready again", function()
+	local data = ProfileSchema.newProfile()
+	data.daily = { caseClaimedAt = 99, penaltyBatchAt = 99, kicksUsed = 3, goals = 2 }
+	data.boosts.penaltyBoostLeft = 300
+	T.eq(DevCommands.apply(data, "resetDaily", 0), true)
+	T.eq(data.daily.caseClaimedAt, 0)
+	T.eq(data.daily.kicksUsed, 0)
+	T.eq(data.daily.goals, 0)
+	T.eq(data.boosts.penaltyBoostLeft, 0)
+	local ok = ProfileSchema.validate(data)
+	T.eq(ok, true)
+end)
+
 T.test("an unknown command does nothing", function()
 	local data = ProfileSchema.newProfile()
 	T.eq(DevCommands.apply(data, "explode", 1), false)
