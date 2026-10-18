@@ -24,12 +24,20 @@ local Def = {
 	GroundTop = 0.5,
 	FloorTop = 0.7,
 	FloorHeight = 16,
-	Plot = { Width = 200, Depth = 210 },
-	Gate = { Width = 16 },
+	Plot = { Width = 280, Depth = 300 },
+	Gate = { Width = 40 }, -- as wide as the central path
 	Fence = { Height = 4, Thickness = 1 },
-	Court = { Length = 60, Width = 36, CenterZ = 64 }, -- tier 1, 4 against 4
+	Court = { Length = 60, Width = 36, CenterZ = 235 }, -- tier 1, 4 against 4, in the stadium zone
 	Building = { X0 = -100, X1 = 40, Z0 = 120, Z1 = 200, Wall = 2, DoorWidth = 14, DoorCenterX = -30 },
-	Yard = { X0 = 40, X1 = 100, Z0 = 120, Z1 = 200 },
+	-- The building is generated upright in its own space (above), then turned a quarter so its front
+	-- faces the central path: building (bx, bz) becomes plot (x = ToPlot.A + bz, z = ToPlot.B - bx).
+	-- The plot's +Z points away from the plaza, so a player walking in sees +X on the LEFT: the
+	-- building (x 50 to 130, z 20 to 160, door at x 50, z 90) is on their left, training on the right.
+	ToPlot = { A = -70, B = 60 },
+	Path = { Half = 20, Length = 172 }, -- the central path from the gate to the stadium pad
+	-- The training yard on the right, reached by a walkway from the path.
+	Training = { X0 = -130, X1 = -50, Z0 = 60, Z1 = 140, WalkHalf = 8 },
+	Stadium = { Z0 = 182, Z1 = 296 }, -- the lawn of the stadium zone at the back
 	-- A capsule stands against a wall (CapsuleInset from the wall's inner face to its middle) and
 	-- its pad is PadOffset further into the room.
 	CapsuleInset = 4,
@@ -151,8 +159,7 @@ model.PrimaryPart = gate
 
 local ground = folder("Ground")
 addBox(ground, "PlotGround", -Def.Plot.Width / 2, Def.Plot.Width / 2, Def.GroundTop - 1, Def.GroundTop, 0, Def.Plot.Depth, COLORS.ground, Enum.Material.Grass)
-addBox(ground, "PitchLawn", -Def.Plot.Width / 2 + 4, Def.Plot.Width / 2 - 4, Def.GroundTop, Def.GroundTop + 0.1, 8, 118, COLORS.lawn, Enum.Material.Grass)
-addBox(ground, "YardGround", Def.Yard.X0 + 2, Def.Yard.X1 - 2, Def.GroundTop, FLOOR - 0.1, Def.Yard.Z0 + 2, Def.Yard.Z1 - 2, COLORS.yard, Enum.Material.SmoothPlastic)
+addBox(ground, "StadiumLawn", -Def.Plot.Width / 2 + 4, Def.Plot.Width / 2 - 4, Def.GroundTop, Def.GroundTop + 0.1, Def.Stadium.Z0, Def.Stadium.Z1, COLORS.lawn, Enum.Material.Grass)
 
 local fence = folder("Fence")
 local half = Def.Plot.Width / 2
@@ -333,28 +340,59 @@ for index, id in { "cashPerMatch", "matchSpeed", "hatTrick", "offline" } do
 	marker("Store_" .. id, id, "store", Vector3.new(-60 + (index - 1) * 18, FLOOR + 0.1, 158), PAD)
 end
 
+-- The central path, the walkways and the training yard (not part of the building) ----------------
+local land = folder("Landscape")
+COLORS.path = Color3.fromRGB(165, 165, 172)
+local pathTop = FLOOR - 0.1
+local PH, TR = Def.Path.Half, Def.Training
+addBox(land, "Path", -PH, PH, Def.GroundTop, pathTop, 0, Def.Path.Length, COLORS.path, Enum.Material.Concrete)
+addBox(land, "PathEdgeL", -PH, -PH + 0.6, pathTop, pathTop + 0.05, 0, Def.Path.Length, COLORS.line)
+addBox(land, "PathEdgeR", PH - 0.6, PH, pathTop, pathTop + 0.05, 0, Def.Path.Length, COLORS.line)
+-- Walkway from the path to the building door (the door is at x 50, z 90 once the building is turned).
+local doorZ = Def.ToPlot.B - b.DoorCenterX
+local doorHalf = b.DoorWidth / 2
+local doorX = Def.ToPlot.A + b.Z0
+addBox(land, "WalkwayBuilding", PH, doorX, Def.GroundTop, pathTop, doorZ - doorHalf, doorZ + doorHalf, COLORS.path, Enum.Material.Concrete)
+-- Walkway from the path to the training yard.
+local trainingMidZ = (TR.Z0 + TR.Z1) / 2
+addBox(land, "WalkwayTraining", TR.X1, -PH, Def.GroundTop, pathTop, trainingMidZ - TR.WalkHalf, trainingMidZ + TR.WalkHalf, COLORS.path, Enum.Material.Concrete)
+-- The yard: a floor, low walls on three sides and an opening towards the path, a few cones.
+addBox(land, "TrainingFloor", TR.X0, TR.X1, Def.GroundTop, pathTop, TR.Z0, TR.Z1, COLORS.yard, Enum.Material.SmoothPlastic)
+local wallTop = FLOOR + 3
+addBox(land, "TrainingWallBack", TR.X0, TR.X0 + 1, Def.GroundTop, wallTop, TR.Z0, TR.Z1, COLORS.wall)
+addBox(land, "TrainingWallNear", TR.X0, TR.X1, Def.GroundTop, wallTop, TR.Z0, TR.Z0 + 1, COLORS.wall)
+addBox(land, "TrainingWallFar", TR.X0, TR.X1, Def.GroundTop, wallTop, TR.Z1 - 1, TR.Z1, COLORS.wall)
+addBox(land, "TrainingWallFrontA", TR.X1 - 1, TR.X1, Def.GroundTop, wallTop, TR.Z0, trainingMidZ - TR.WalkHalf, COLORS.wall)
+addBox(land, "TrainingWallFrontB", TR.X1 - 1, TR.X1, Def.GroundTop, wallTop, trainingMidZ + TR.WalkHalf, TR.Z1, COLORS.wall)
+for index, offset in { { 12, -16 }, { 12, 16 }, { 28, -16 }, { 28, 16 } } do
+	local cone = addBox(land, "Cone" .. index, TR.X1 - 21.2 - offset[1], TR.X1 - 20 - offset[1], pathTop, pathTop + 1.5, trainingMidZ + offset[2], trainingMidZ + offset[2] + 1.2, Color3.fromRGB(255, 140, 40))
+	cone.CanCollide = false
+end
+
 -- Pads outside the building ---------------------------------------------------------------------
 local PAD_Y = FLOOR + 0.1
+local cz = c.CenterZ
 marker("Claim", "claim", "claim", Vector3.new(0, PAD_Y, 8), Vector3.new(14, 0.2, 14))
-marker("Stadium", "stadium", "stadium", Vector3.new(86, PAD_Y, c.CenterZ), PAD)
-marker("Penalty", "penalty", "penalty", Vector3.new(c.Length / 2 - 9, PAD_Y, c.CenterZ), PAD)
-marker("Training", "training", "training", Vector3.new(70, PAD_Y, 160), Vector3.new(12, 0.2, 12))
+-- The stadium pad stands on the path, just in front of the stadium.
+marker("Stadium", "stadium", "stadium", Vector3.new(0, PAD_Y, Def.Path.Length + 6), Vector3.new(12, 0.2, 7))
+marker("Penalty", "penalty", "penalty", Vector3.new(c.Length / 2 - 9, PAD_Y, cz), PAD)
+marker("Training", "training", "training", Vector3.new((TR.X0 + TR.X1) / 2, PAD_Y, trainingMidZ), Vector3.new(14, 0.2, 14))
 marker("LockerSpotMarker", "locker", "spot", Vector3.new(33, PAD_Y, innerZ1 - 10), Vector3.new(4, 0.2, 4))
 
-local ours = { { -20, 56 }, { -20, 72 }, { -8, 56 }, { -8, 72 } }
-local theirs = { { 20, 56 }, { 20, 72 }, { 8, 56 }, { 8, 72 } }
+local ours = { { -20, -8 }, { -20, 8 }, { -8, -8 }, { -8, 8 } }
+local theirs = { { 20, -8 }, { 20, 8 }, { 8, -8 }, { 8, 8 } }
 local small = Vector3.new(2, 0.2, 2)
 for index, spot in ours do
-	local part = marker("FieldSlot_T1_" .. index, "fieldSlot", "spot", Vector3.new(spot[1], PAD_Y, spot[2]), small)
+	local part = marker("FieldSlot_T1_" .. index, "fieldSlot", "spot", Vector3.new(spot[1], PAD_Y, cz + spot[2]), small)
 	part:SetAttribute("Tier", 1)
 	part:SetAttribute("Index", index)
 end
 for index, spot in theirs do
-	local part = marker("OppSlot_T1_" .. index, "oppSlot", "spot", Vector3.new(spot[1], PAD_Y, spot[2]), small)
+	local part = marker("OppSlot_T1_" .. index, "oppSlot", "spot", Vector3.new(spot[1], PAD_Y, cz + spot[2]), small)
 	part:SetAttribute("Tier", 1)
 	part:SetAttribute("Index", index)
 end
-marker("BallSpot", "ballSpot", "spot", Vector3.new(0, PAD_Y, c.CenterZ), small)
+marker("BallSpot", "ballSpot", "spot", Vector3.new(0, PAD_Y, cz), small)
 
 model.Parent = ServerStorage
 
@@ -391,6 +429,26 @@ for index = 1, 3 do
 	local top = lastStep.Position.Y + lastStep.Size.Y / 2
 	if math.abs(top - floorTop(index + 1)) > 0.01 then
 		table.insert(problems, "flight " .. index .. " top is " .. top .. ", floor " .. (index + 1) .. " is " .. floorTop(index + 1))
+	end
+end
+
+-- Turn the building a quarter so its front faces the path (the checks above ran in building space).
+local toPlot = CFrame.new(Def.ToPlot.A, 0, Def.ToPlot.B) * CFrame.Angles(0, math.pi / 2, 0)
+local function turn(container: Instance)
+	for _, d in container:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.CFrame = toPlot * d.CFrame
+		end
+	end
+end
+turn(building)
+turn(stairs)
+turn(capsules)
+turn(fixtures)
+for _, m in markers:GetChildren() do
+	local kind = m:GetAttribute("Kind")
+	if m:IsA("BasePart") and (kind == "player" or kind == "legend" or kind == "store" or m.Name == "LockerSpotMarker") then
+		m.CFrame = toPlot * m.CFrame
 	end
 end
 

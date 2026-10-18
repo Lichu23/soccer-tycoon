@@ -24,11 +24,11 @@ export type PartSpec = {
 
 local CourtPlan = {}
 
-CourtPlan.CENTER_Z = 64 -- the middle of every pitch
+CourtPlan.CENTER_Z = 235 -- the middle of every pitch, in the stadium zone at the back of the plot
 CourtPlan.FLOOR = 0.7 -- the walkable height of the pitch
 -- The way from the street to the building door stays free of tall things.
-CourtPlan.DOOR_GAP = { x0 = -37, x1 = -23 }
-CourtPlan.DOOR_Z = 100
+CourtPlan.DOOR_GAP = { x0 = 0, x1 = 0 } -- no door gap any more: the building has its own side
+CourtPlan.FRONT_Z = 175 -- nothing of the pitch comes closer to the gate than this (the pad stands here)
 
 local FLOOR = CourtPlan.FLOOR
 local CENTER_Z = CourtPlan.CENTER_Z

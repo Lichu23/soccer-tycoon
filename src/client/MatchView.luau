@@ -11,6 +11,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local CourtPlan = require(ReplicatedStorage.Shared.CourtPlan)
 local Formation = require(ReplicatedStorage.Shared.Formation)
 local Mannequin = require(ReplicatedStorage.Shared.Mannequin)
 local Net = require(script.Parent.Net)
@@ -20,7 +21,7 @@ local State = require(script.Parent.State)
 local player = Players.LocalPlayer
 local random = Random.new()
 
-local COURT_CENTER_Z = 64 -- the middle of every pitch, in plot space (docs/PLAN.md, Step 7)
+local COURT_CENTER_Z = CourtPlan.CENTER_Z -- the middle of every pitch, in plot space
 local TORSO_HEIGHT = 0.7 + Mannequin.FEET_TO_TORSO - 1 -- in gate space (the gate is 1 stud up)
 local RIVAL_KIT = Color3.fromRGB(215, 70, 70)
 local SPEED = 5 -- studs per second while jogging

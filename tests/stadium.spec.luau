@@ -39,22 +39,23 @@ T.test("every part has a positive size and stays inside the plot", function()
 	for tier = 1, #Config.StadiumTiers do
 		for _, part in CourtPlan.parts(tier) do
 			T.truthy(part.x1 > part.x0 and part.y1 > part.y0 and part.z1 > part.z0, part.name)
-			T.truthy(part.x0 >= -100 and part.x1 <= 100, part.name .. " x, tier " .. tier)
-			T.truthy(part.z0 >= 2 and part.z1 <= 119, part.name .. " z, tier " .. tier)
+			T.truthy(
+				part.x0 >= -Config.Plot.width / 2 and part.x1 <= Config.Plot.width / 2,
+				part.name .. " x, tier " .. tier
+			)
+			T.truthy(
+				part.z0 >= CourtPlan.FRONT_Z and part.z1 <= Config.Plot.depth - 2,
+				part.name .. " z, tier " .. tier
+			)
 			T.truthy(part.y0 >= 0.45 and part.y1 <= 40, part.name .. " y, tier " .. tier)
 		end
 	end
 end)
 
-T.test("nothing tall blocks the way to the building door", function()
-	local gap = CourtPlan.DOOR_GAP
+T.test("nothing of the pitch stands on the path or the stadium pad in front of it", function()
 	for tier = 1, #Config.StadiumTiers do
 		for _, part in CourtPlan.parts(tier) do
-			local tall = part.y1 - CourtPlan.FLOOR > 0.5
-			local inDoorWay = part.x1 > gap.x0
-				and part.x0 < gap.x1
-				and part.z1 > CourtPlan.DOOR_Z - 20
-			T.falsy(tall and inDoorWay, part.name .. " blocks the door at tier " .. tier)
+			T.truthy(part.z0 >= CourtPlan.FRONT_Z, part.name .. " reaches the pad at tier " .. tier)
 		end
 	end
 end)

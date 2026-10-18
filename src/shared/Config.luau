@@ -173,6 +173,9 @@ Config.Pad = {
 	holdSeconds = 1, -- one value for every pad (purchase, level-up, stadium, claim)
 }
 
+-- The size of one plot (the plaza slots in tools/studio/BuildMap.luau are spaced for it).
+Config.Plot = { width = 280, depth = 300 }
+
 Config.Player = {
 	walkSpeed = 26, -- studs per second (Roblox default is 16); every player gets it on spawn
 }
