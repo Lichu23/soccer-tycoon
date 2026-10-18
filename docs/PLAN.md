@@ -462,11 +462,11 @@ Step 7 is the whole implementation: the map, the scripts and the UI. Studio hold
    +---------+---------+---------+---------+
               S: plots 5-8 (each faces north)
 
-   one plot, about 160 wide by 180 deep (provisional):
+   one plot, about 200 wide by 210 deep (provisional, enlarged after the first playtest):
    [ gate + claim ring ]            <- plaza edge
-   [ pitch zone 160 x 112 ]         <- tier 1 court 60x36 in the centre,
+   [ pitch zone 200 x 112 ]         <- tier 1 court 60x36 in the centre,
                                        tier 5 pitch 120x72 with stands
-   [ building 120 wide, 50 deep ][training yard 40 wide]
+   [ building 140 wide, 80 deep ][training yard 60 wide]
 ```
 
    Pitch sizes by tier (provisional): 60x36 (4 players), 70x42 (5), 84x50 (6), 100x60 (8), 120x72 (11). Every tier grows in place from the centre inside the same pitch zone, so an upgrade never moves a neighbour. Lower tiers leave the zone as a plain lawn.

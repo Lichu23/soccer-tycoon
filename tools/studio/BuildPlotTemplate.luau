@@ -17,29 +17,30 @@ local ServerStorage = game:GetService("ServerStorage")
 local Def = {
 	GroundTop = 0.5,
 	FloorTop = 0.7,
-	Plot = { Width = 160, Depth = 180 },
+	Plot = { Width = 200, Depth = 210 },
 	Gate = { Width = 16 },
 	Fence = { Height = 4, Thickness = 1 },
 	Court = { Length = 60, Width = 36, CenterZ = 64 }, -- tier 1, 4 against 4
-	Building = { X0 = -80, X1 = 40, Z0 = 120, Z1 = 170, Height = 15.5, Wall = 2, DoorWidth = 12, DoorCenterX = -20 },
-	Yard = { X0 = 40, X1 = 80, Z0 = 120, Z1 = 170 },
+	Building = { X0 = -100, X1 = 40, Z0 = 120, Z1 = 200, Height = 15.5, Wall = 2, DoorWidth = 14, DoorCenterX = -30 },
+	Yard = { X0 = 40, X1 = 100, Z0 = 120, Z1 = 200 },
 	-- A capsule stands against a wall (CapsuleInset from the wall's inner face to its middle) and
 	-- its pad is PadOffset further into the room.
 	CapsuleInset = 4,
-	PadOffset = 6,
+	CapsuleSize = 5,
+	PadOffset = 8,
 	-- Floor 1 players in buying order: { id, wall, position along the wall }.
 	-- front/back: position is x; left/right: position is z.
 	Floor1 = {
-		{ "rashford", "front", -34 },
-		{ "grealish", "front", -46 },
-		{ "sterling", "left", 136 },
-		{ "joao_felix", "left", 148 },
-		{ "son", "back", -46 },
-		{ "saka", "back", -28 },
-		{ "griezmann", "back", -10 },
-		{ "pedri", "right", 152 },
-		{ "trent", "right", 138 },
-		{ "gavi", "front", -6 },
+		{ "rashford", "front", -48 },
+		{ "grealish", "front", -66 },
+		{ "sterling", "left", 146 },
+		{ "joao_felix", "left", 166 },
+		{ "son", "back", -60 },
+		{ "saka", "back", -32 },
+		{ "griezmann", "back", -4 },
+		{ "pedri", "right", 172 },
+		{ "trent", "right", 148 },
+		{ "gavi", "front", -8 },
 	},
 }
 
@@ -116,7 +117,7 @@ end
 
 local FLOOR = Def.FloorTop
 local PAD_Y = FLOOR + 0.1
-local PAD = Vector3.new(6, 0.2, 6)
+local PAD = Vector3.new(7, 0.2, 7)
 
 local gate = addPart(model, "Gate", Vector3.new(2, 2, 2), Vector3.new(0, 1, 0), COLORS.line)
 gate.Transparency = 1
@@ -187,7 +188,7 @@ glassB.Transparency = 0.6
 addBox(building, "Slab_Floor2", b.X0, b.X1, top1, top1 + 1, b.Z0, b.Z1, COLORS.floor)
 
 -- The stairs to floor 2 stand in the back-left corner (a placeholder block until task 4.1).
-local stairs = addBox(building, "StairsPlaceholder", innerX0, innerX0 + 20, FLOOR, FLOOR + 1, innerZ1 - 16, innerZ1, COLORS.stairs)
+local stairs = addBox(building, "StairsPlaceholder", innerX0, innerX0 + 22, FLOOR, FLOOR + 1, innerZ1 - 18, innerZ1, COLORS.stairs)
 stairs:SetAttribute("Note", "Stairs to floor 2 are built in task 4.1")
 local stairsGui = Instance.new("SurfaceGui")
 stairsGui.Face = Enum.NormalId.Top
@@ -223,8 +224,9 @@ for _, entry in Def.Floor1 do
 	local capsulePos, padPos = capsuleSpot(wall, along)
 	local capsule = Instance.new("Model")
 	capsule.Name = "Capsule_" .. playerId
-	local pedestal = addPart(capsule, "Pedestal", Vector3.new(4, 1, 4), Vector3.new(capsulePos.X, FLOOR + 0.5, capsulePos.Z), COLORS.pedestal)
-	local glass = addPart(capsule, "Glass", Vector3.new(4, 8, 4), Vector3.new(capsulePos.X, FLOOR + 1 + 4, capsulePos.Z), COLORS.glass, Enum.Material.Glass)
+	local size = Def.CapsuleSize
+	local pedestal = addPart(capsule, "Pedestal", Vector3.new(size, 1, size), Vector3.new(capsulePos.X, FLOOR + 0.5, capsulePos.Z), COLORS.pedestal)
+	local glass = addPart(capsule, "Glass", Vector3.new(size, 9, size), Vector3.new(capsulePos.X, FLOOR + 1 + 4.5, capsulePos.Z), COLORS.glass, Enum.Material.Glass)
 	glass.Transparency = 0.6
 	capsule.PrimaryPart = pedestal
 	capsule:SetAttribute("PlayerId", playerId)
@@ -234,19 +236,19 @@ end
 
 -- Store pads in the open middle with the counter behind them, locker and trophy shelf on the back wall.
 local fixtures = folder("Fixtures")
-addBox(fixtures, "StoreCounter", -40, 8, FLOOR, FLOOR + 3, 152, 155, COLORS.counter)
-addBox(fixtures, "LockerSpot", 24, 28, FLOOR, FLOOR + 7, innerZ1 - 2, innerZ1, COLORS.counter)
-addBox(fixtures, "TrophyShelf", 4, 20, FLOOR, FLOOR + 6, innerZ1 - 2, innerZ1, COLORS.counter)
+addBox(fixtures, "StoreCounter", -70, -2, FLOOR, FLOOR + 3, 168, 171, COLORS.counter)
+addBox(fixtures, "LockerSpot", 30, 36, FLOOR, FLOOR + 7, innerZ1 - 2, innerZ1, COLORS.counter)
+addBox(fixtures, "TrophyShelf", 8, 26, FLOOR, FLOOR + 6, innerZ1 - 2, innerZ1, COLORS.counter)
 for index, id in { "cashPerMatch", "matchSpeed", "hatTrick", "offline" } do
-	marker("Store_" .. id, id, "store", Vector3.new(-34 + (index - 1) * 12, PAD_Y, 146), PAD)
+	marker("Store_" .. id, id, "store", Vector3.new(-60 + (index - 1) * 18, PAD_Y, 158), PAD)
 end
 
 -- Pads outside the building ---------------------------------------------------------------------
 marker("Claim", "claim", "claim", Vector3.new(0, PAD_Y, 8), Vector3.new(14, 0.2, 14))
-marker("Stadium", "stadium", "stadium", Vector3.new(44, PAD_Y, c.CenterZ), PAD)
+marker("Stadium", "stadium", "stadium", Vector3.new(86, PAD_Y, c.CenterZ), PAD)
 marker("Penalty", "penalty", "penalty", Vector3.new(c.Length / 2 - 9, PAD_Y, c.CenterZ), PAD)
-marker("Training", "training", "training", Vector3.new(60, PAD_Y, 145), Vector3.new(10, 0.2, 10))
-marker("LockerSpotMarker", "locker", "spot", Vector3.new(26, PAD_Y, innerZ1 - 8), Vector3.new(4, 0.2, 4))
+marker("Training", "training", "training", Vector3.new(70, PAD_Y, 160), Vector3.new(12, 0.2, 12))
+marker("LockerSpotMarker", "locker", "spot", Vector3.new(33, PAD_Y, innerZ1 - 10), Vector3.new(4, 0.2, 4))
 
 local ours = { { -20, 56 }, { -20, 72 }, { -8, 56 }, { -8, 72 } }
 local theirs = { { 20, 56 }, { 20, 72 }, { 8, 56 }, { 8, 72 } }

@@ -108,11 +108,12 @@ function Hud.build(parent: Instance): any
 
 	local payout = new("TextLabel", {
 		Name = "Payout",
-		Position = UDim2.fromOffset(4, 36),
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromOffset(150, 98),
 		Size = UDim2.fromOffset(170, 26),
 		BackgroundTransparency = 1,
 		Text = "",
-		TextXAlignment = Enum.TextXAlignment.Left,
+		TextXAlignment = Enum.TextXAlignment.Center,
 		Font = Style.font,
 		TextSize = 22,
 		TextColor3 = Style.ui.gold,
@@ -292,11 +293,11 @@ function Hud.init()
 
 		payout.Text = "+" .. NumberFormat.money(info.payout)
 		payout.TextTransparency = 0
-		payout.Position = UDim2.fromOffset(4, 36)
+		payout.Position = UDim2.fromOffset(150, 98)
 		TweenService
 			:Create(payout, TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 				TextTransparency = 1,
-				Position = UDim2.fromOffset(4, 24),
+				Position = UDim2.fromOffset(150, 110),
 			})
 			:Play()
 	end)

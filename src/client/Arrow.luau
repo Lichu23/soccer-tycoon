@@ -1,8 +1,10 @@
 --!strict
--- The guide arrow (docs/PLAN.md, Step 2): a beam from the player to the next thing to do.
--- It only guides the first steps: to a free plot, then to the first player's pad. After the first
--- purchase it disappears. Then it shows once, for a short time, towards the Store pad, only so the
--- player knows the Store exists, and never again. Later goals are shown by the goal row alone.
+-- The guide (docs/PLAN.md, Step 2): a beam from the player to the next thing to do, and a bouncing
+-- marker with a short caption above the target pad that shows through walls, so it is always clear
+-- where to go. It only guides the first steps: to a free plot, then to the first player's pad.
+-- After the first purchase it disappears. Then it shows once, for a short time, towards the Store
+-- pad, only so the player knows the Store exists, and never again. Later goals are shown by the
+-- goal row alone.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -12,6 +14,7 @@ local RunService = game:GetService("RunService")
 local Goals = require(ReplicatedStorage.Shared.Goals)
 local Roster = require(ReplicatedStorage.Shared.Roster)
 local State = require(script.Parent.State)
+local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
 
@@ -19,6 +22,8 @@ local ARRIVED_DISTANCE = 7
 local UPDATE_SECONDS = 0.25
 local STORE_HINT_SECONDS = 20 -- how long the Store hint can show at most
 local STORE_HINT_NEAR = 14 -- the hint ends when the player gets this close to the Store pad
+local MARKER_HEIGHT = 12 -- studs above the pad
+local GOLD = Color3.fromRGB(255, 220, 60)
 
 local lastOwned: number? = nil -- players owned at the last state change (nil before the first)
 local storeHintStartedAt: number? = nil
@@ -46,15 +51,15 @@ local function nearestPad(root: BasePart, wantKind: string, wantId: string?): Ba
 	return best
 end
 
--- The pad part the arrow should point at right now, or nil for no arrow.
-local function targetPart(root: BasePart): BasePart?
+-- The pad part to point at right now and the caption above it, or nil for no guidance.
+local function target(root: BasePart): (BasePart?, string)
 	local goal = Goals.next(State.data, State.hasPlot())
 	if goal.kind == "claim" then
-		return nearestPad(root, "claim", nil)
+		return nearestPad(root, "claim", nil), "Claim your plot"
 	end
 	-- Before the first purchase: the first player's pad.
 	if goal.kind == "player" and Roster.ownedCount(State.data) == 0 then
-		return nearestPad(root, "player", goal.id)
+		return nearestPad(root, "player", goal.id), "Buy your first player"
 	end
 
 	-- After it: the Store hint, once and for a short time.
@@ -66,11 +71,57 @@ local function targetPart(root: BasePart): BasePart?
 		local near = store ~= nil and (store.Position - root.Position).Magnitude < STORE_HINT_NEAR
 		if expired or bought or near or store == nil then
 			storeHintDone = true
-			return nil
+			return nil, ""
 		end
-		return store
+		return store, "Upgrades are here"
 	end
-	return nil
+	return nil, ""
+end
+
+-- A bouncing diamond with a caption, drawn on top of walls.
+local function buildMarker(): (BillboardGui, TextLabel)
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "GuideMarker"
+	billboard.Size = UDim2.fromOffset(190, 74)
+	billboard.AlwaysOnTop = true
+	billboard.LightInfluence = 0
+	billboard.ResetOnSpawn = false
+	billboard.MaxDistance = 400
+
+	local caption = Instance.new("TextLabel")
+	caption.Name = "Caption"
+	caption.AnchorPoint = Vector2.new(0.5, 0)
+	caption.Position = UDim2.fromOffset(95, 0)
+	caption.Size = UDim2.fromOffset(190, 30)
+	caption.BackgroundColor3 = Style.ui.dark
+	caption.BackgroundTransparency = 0.2
+	caption.TextColor3 = GOLD
+	caption.Font = Style.font
+	caption.TextSize = 17
+	caption.Parent = billboard
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = caption
+	local outline = Instance.new("UIStroke")
+	outline.Color = GOLD
+	outline.Thickness = 2
+	outline.Parent = caption
+
+	local diamond = Instance.new("Frame")
+	diamond.Name = "Diamond"
+	diamond.AnchorPoint = Vector2.new(0.5, 0.5)
+	diamond.Position = UDim2.fromOffset(95, 52)
+	diamond.Size = UDim2.fromOffset(24, 24)
+	diamond.Rotation = 45
+	diamond.BackgroundColor3 = GOLD
+	diamond.BorderSizePixel = 0
+	diamond.Parent = billboard
+	local diamondOutline = Instance.new("UIStroke")
+	diamondOutline.Color = Style.ui.dark
+	diamondOutline.Thickness = 2
+	diamondOutline.Parent = diamond
+
+	return billboard, caption
 end
 
 function Arrow.init()
@@ -89,7 +140,7 @@ function Arrow.init()
 
 	local beam = Instance.new("Beam")
 	beam.Name = "GuideArrow"
-	beam.Color = ColorSequence.new(Color3.fromRGB(255, 220, 60))
+	beam.Color = ColorSequence.new(GOLD)
 	beam.Width0 = 1.4
 	beam.Width1 = 1.4
 	beam.FaceCamera = true
@@ -104,8 +155,14 @@ function Arrow.init()
 	beam.Attachment0 = from
 	beam.Attachment1 = to
 
+	local marker, caption = buildMarker()
+	marker.Enabled = false
+
 	local elapsed = 0
 	RunService.Heartbeat:Connect(function(dt: number)
+		-- The marker bobs every frame.
+		marker.StudsOffset = Vector3.new(0, MARKER_HEIGHT + math.sin(os.clock() * 4) * 0.8, 0)
+
 		elapsed += dt
 		if elapsed < UPDATE_SECONDS then
 			return
@@ -116,31 +173,42 @@ function Arrow.init()
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 		if not root or not root:IsA("BasePart") then
 			beam.Enabled = false
+			marker.Enabled = false
 			return
 		end
-		local target = targetPart(root)
-		-- Hide the arrow on the target itself or while the pad is filling.
-		local onTarget = target ~= nil
-			and (target.Position - root.Position).Magnitude < ARRIVED_DISTANCE
+		local part, text = target(root)
+		-- Hide the guide on the target itself or while the pad is filling.
+		local onTarget = part ~= nil
+			and (part.Position - root.Position).Magnitude < ARRIVED_DISTANCE
 		if
-			target == nil
+			part == nil
 			or onTarget
-			or player:GetAttribute("padKey") == target:GetAttribute("PadKey")
+			or player:GetAttribute("padKey") == part:GetAttribute("PadKey")
 		then
 			beam.Enabled = false
+			marker.Enabled = false
 			return
 		end
 
 		if from.Parent ~= root then
 			from.Parent = root
 		end
-		if to.Parent ~= target then
-			to.Parent = target
+		if to.Parent ~= part then
+			to.Parent = part
 		end
 		if beam.Parent ~= root then
 			beam.Parent = root
 		end
 		beam.Enabled = true
+
+		caption.Text = text
+		if marker.Adornee ~= part then
+			marker.Adornee = part
+		end
+		if marker.Parent ~= part then
+			marker.Parent = part
+		end
+		marker.Enabled = true
 	end)
 end
 

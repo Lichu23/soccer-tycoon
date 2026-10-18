@@ -7,9 +7,9 @@ local Workspace = game:GetService("Workspace")
 local Def = {
 	GroundTop = 0.5, -- top of every ground slab
 	FloorTop = 0.7, -- top of courts, floors and pads
-	Plaza = { Length = 640, Width = 80 },
-	Plot = { Width = 160, Depth = 180 },
-	SlotX = { -240, -80, 80, 240 },
+	Plaza = { Length = 800, Width = 80 },
+	Plot = { Width = 200, Depth = 210 },
+	SlotX = { -300, -100, 100, 300 },
 }
 
 local COLORS = {

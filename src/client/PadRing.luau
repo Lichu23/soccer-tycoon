@@ -18,10 +18,10 @@ local Style = require(ReplicatedStorage.Shared.Style)
 local player = Players.LocalPlayer
 
 local SEGMENTS = 36
-local BOARD_WIDTH = 200
-local BOARD_HEIGHT = 210
-local RING_CENTER = Vector2.new(BOARD_WIDTH / 2, 112)
-local RING_RADIUS = 48
+local BOARD_WIDTH = 170
+local BOARD_HEIGHT = 176
+local RING_CENTER = Vector2.new(BOARD_WIDTH / 2, 98)
+local RING_RADIUS = 40
 local SHOWN_KINDS = { claim = true, player = true, store = true, stadium = true }
 local MAX_DISTANCE = 30
 
@@ -101,7 +101,7 @@ local function buildBillboard(
 		local segment = Instance.new("Frame")
 		segment.Name = "Segment" .. index
 		segment.AnchorPoint = Vector2.new(0.5, 0.5)
-		segment.Size = UDim2.fromOffset(arc + 1, 9)
+		segment.Size = UDim2.fromOffset(arc + 1, 8)
 		segment.Position = UDim2.fromOffset(
 			RING_CENTER.X + RING_RADIUS * math.sin(angle),
 			RING_CENTER.Y - RING_RADIUS * math.cos(angle)
@@ -116,11 +116,11 @@ local function buildBillboard(
 
 	-- The name above the ring, the price inside it, the note under it.
 	local title =
-		label(billboard, "Title", Vector2.new(RING_CENTER.X, 22), Vector2.new(BOARD_WIDTH, 36), 20)
-	local price = label(billboard, "Price", RING_CENTER, Vector2.new(76, 44), 28)
+		label(billboard, "Title", Vector2.new(RING_CENTER.X, 16), Vector2.new(BOARD_WIDTH, 30), 17)
+	local price = label(billboard, "Price", RING_CENTER, Vector2.new(62, 36), 24)
 	price.TextColor3 = Style.ui.money
 	local note =
-		label(billboard, "Note", Vector2.new(RING_CENTER.X, 184), Vector2.new(BOARD_WIDTH, 30), 18)
+		label(billboard, "Note", Vector2.new(RING_CENTER.X, 156), Vector2.new(BOARD_WIDTH, 26), 15)
 
 	billboard.Parent = part
 	return billboard, segments, title, price, note
@@ -152,7 +152,10 @@ local function refresh(entry: Entry)
 	entry.price.TextColor3 = if info.state == "cannotAfford" then Style.ui.bad else Style.ui.money
 	entry.note.TextColor3 = if info.state == "cannotAfford" then Style.ui.bad else Style.ui.idle
 	-- The claim rings of free plots only matter to a player who has no plot yet.
-	entry.billboard.Enabled = not (entry.kind == "claim" and State.hasPlot())
+	-- Locked Store pads stay hidden until they unlock, so the middle of the room is not cluttered.
+	local hidden = (entry.kind == "claim" and State.hasPlot())
+		or (entry.kind == "store" and info.state == "locked")
+	entry.billboard.Enabled = not hidden
 	if entry.filled == 0 then
 		entry.color = ringColor(info.state)
 	end
