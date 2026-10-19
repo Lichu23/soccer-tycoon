@@ -11,12 +11,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local Net = require(script.Parent.Net)
+local Panel = require(script.Parent.Panel)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
 
-local CARD_W = 380
 local ICON_SIZE = 52
 local ICON_TOP = 8 + 3 * (ICON_SIZE + 8) -- under the case, kick and shop icons
 local WAIT_SECONDS = 4
@@ -84,46 +84,11 @@ function LockerUi.init()
 	}, gui)
 	new("UICorner", { CornerRadius = UDim.new(0, 8) }, note)
 
-	-- A full-screen panel: a solid black backdrop, a scrolling area and a centred column that grows
-	-- with its content (so nothing is cut off on a small phone). It closes with its Close button.
-	local backdrop = new("Frame", {
-		Name = "Backdrop",
-		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-		Visible = false,
-		Active = true, -- swallows taps so nothing behind it is pressed
-		ZIndex = 5,
-	}, gui)
-	local scroll = new("ScrollingFrame", {
-		Name = "Scroll",
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		CanvasSize = UDim2.new(),
-		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		ScrollBarThickness = 6,
-		ScrollingDirection = Enum.ScrollingDirection.Y,
-		ZIndex = 6,
-	}, backdrop)
-	local card = new("Frame", {
-		Name = "Card",
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.fromScale(0.5, 0),
-		Size = UDim2.new(1, -32, 0, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		BackgroundTransparency = 1,
-		ZIndex = 6,
-	}, scroll)
-	new("UISizeConstraint", { MaxSize = Vector2.new(CARD_W + 120, math.huge) }, card)
-	new("UIPadding", {
-		PaddingTop = UDim.new(0, 16),
-		PaddingBottom = UDim.new(0, 24),
-	}, card)
-	new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, card)
-	-- Open, the panel sits above every other HUD screen and icon.
-	backdrop:GetPropertyChangedSignal("Visible"):Connect(function()
-		gui.DisplayOrder = if backdrop.Visible then 6 else 4
+	local close: () -> ()
+	local built = Panel.build(gui, "Locker room", 0.8, function()
+		close()
 	end)
+	local backdrop, card = built.backdrop, built.card
 
 	local order = 0
 	local function line(text: string, props: { [string]: any }?)
@@ -138,7 +103,7 @@ function LockerUi.init()
 			TextXAlignment = Enum.TextXAlignment.Left,
 			Font = Style.font,
 			TextSize = 15,
-			TextColor3 = TEXT_COLOR,
+			TextColor3 = Panel.TEXT,
 			ZIndex = 7,
 		}
 		if props then
@@ -206,15 +171,15 @@ function LockerUi.init()
 	local waiting = false
 	local render: () -> ()
 
-	local function close()
+	function close()
 		backdrop.Visible = false
 		slotView, previewId, message = nil, nil, nil
 	end
 
 	local function renderSlots()
-		line("Locker room", { TextSize = 24, TextColor3 = Style.ui.gold })
+		built.setTitle("Locker room")
 		if message then
-			line(message, { TextColor3 = Style.ui.good })
+			line(message, { TextColor3 = Panel.GOOD })
 		end
 		for _, slot in Config.CosmeticSlots do
 			if Cosmetics.slotOpen(State.data, slot.id) then
@@ -240,7 +205,6 @@ function LockerUi.init()
 					TEXT_COLOR
 			end
 		end
-		row("Close", "Close", Style.ui.idle, nil, close)
 	end
 
 	local function renderStyles(slotId: string)
@@ -250,9 +214,9 @@ function LockerUi.init()
 				slot = candidate
 			end
 		end
-		line(if slot then slot.name else "Styles", { TextSize = 24, TextColor3 = Style.ui.gold })
+		built.setTitle(if slot then slot.name else "Styles")
 		if message then
-			line(message, { TextColor3 = Style.ui.good })
+			line(message, { TextColor3 = Panel.GOOD })
 		end
 		local chosen = Cosmetics.chosen(State.data, slotId)
 		for _, def in Cosmetics.styles(slotId) do
@@ -284,7 +248,7 @@ function LockerUi.init()
 
 	local function renderPreview(id: string)
 		local def = Config.CosmeticsById[id]
-		line(def.name, { TextSize = 24, TextColor3 = Style.ui.gold })
+		built.setTitle(def.name)
 		line(
 			"A premium style. It changes only how your team looks, and it stays after a New Season."
 		)

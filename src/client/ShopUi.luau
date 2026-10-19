@@ -12,12 +12,12 @@ local Cases = require(ReplicatedStorage.Shared.Cases)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Legends = require(ReplicatedStorage.Shared.Legends)
 local Net = require(script.Parent.Net)
+local Panel = require(script.Parent.Panel)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
 
-local CARD_W = 380
 local ICON_SIZE = 52
 local ICON_TOP = 8 + 2 * (ICON_SIZE + 8) -- under the case and kick icons
 local WAIT_SECONDS = 4
@@ -80,46 +80,11 @@ function ShopUi.init()
 	}, gui)
 	rounded(icon, 12)
 
-	-- A full-screen panel: a solid black backdrop, a scrolling area and a centred column that grows
-	-- with its content (so nothing is cut off on a small phone). It closes with its Close button.
-	local backdrop = new("Frame", {
-		Name = "Backdrop",
-		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-		Visible = false,
-		Active = true, -- swallows taps so nothing behind it is pressed
-		ZIndex = 5,
-	}, gui)
-	local scroll = new("ScrollingFrame", {
-		Name = "Scroll",
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		CanvasSize = UDim2.new(),
-		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		ScrollBarThickness = 6,
-		ScrollingDirection = Enum.ScrollingDirection.Y,
-		ZIndex = 6,
-	}, backdrop)
-	local card = new("Frame", {
-		Name = "Card",
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.fromScale(0.5, 0),
-		Size = UDim2.new(1, -32, 0, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		BackgroundTransparency = 1,
-		ZIndex = 6,
-	}, scroll)
-	new("UISizeConstraint", { MaxSize = Vector2.new(CARD_W + 120, math.huge) }, card)
-	new("UIPadding", {
-		PaddingTop = UDim.new(0, 16),
-		PaddingBottom = UDim.new(0, 24),
-	}, card)
-	new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, card)
-	-- Open, the panel sits above every other HUD screen and icon.
-	backdrop:GetPropertyChangedSignal("Visible"):Connect(function()
-		gui.DisplayOrder = if backdrop.Visible then 6 else 4
+	local close: () -> ()
+	local built = Panel.build(gui, "Shop", 0.84, function()
+		close()
 	end)
+	local backdrop, card = built.backdrop, built.card
 
 	local order = 0
 	local function line(text: string, props: { [string]: any }?)
@@ -134,7 +99,7 @@ function ShopUi.init()
 			TextXAlignment = Enum.TextXAlignment.Left,
 			Font = Style.font,
 			TextSize = 15,
-			TextColor3 = Color3.fromRGB(215, 220, 232),
+			TextColor3 = Panel.TEXT,
 			ZIndex = 7,
 		}
 		if props then
@@ -181,7 +146,7 @@ function ShopUi.init()
 	local waiting = false
 	local render: () -> ()
 
-	local function close()
+	function close()
 		backdrop.Visible = false
 		view = nil
 		message = nil
@@ -192,7 +157,7 @@ function ShopUi.init()
 		if robux > 0 then
 			line(
 				`This visit: {cases} {if cases == 1 then "case" else "cases"}, {robux} Robux`,
-				{ TextColor3 = Style.ui.idle }
+				{ TextColor3 = Panel.MUTED }
 			)
 		end
 	end
@@ -236,19 +201,19 @@ function ShopUi.init()
 	end
 
 	local function renderList()
-		line("Shop", { TextSize = 24, TextColor3 = Style.ui.gold })
+		built.setTitle("Shop")
 		if message then
-			line(message, { TextColor3 = Style.ui.good })
+			line(message, { TextColor3 = Panel.GOOD })
 		end
 		if player:GetAttribute("casesRestricted") == true then
-			line(REFUSALS.restricted, { TextColor3 = Style.ui.idle })
+			line(REFUSALS.restricted, { TextColor3 = Panel.MUTED })
 		else
 			listRow("caseStandard", "Standard Case")
 			listRow("caseElite", "Elite Case")
 		end
 		listRow("matchBoost", "Boost: next 30 matches x2")
 		if Legends.reached(State.data) then
-			line("Legends: skips the trials and the cash price", { TextColor3 = Style.ui.idle })
+			line("Legends: skips the trials and the cash price", { TextColor3 = Panel.MUTED })
 			for _, def in Config.Players do
 				local key = "legend_" .. def.id
 				if def.floor >= Config.LegendFloor and Config.Products[key] then
@@ -257,7 +222,6 @@ function ShopUi.init()
 			end
 		end
 		total()
-		button("Close", "Close", Style.ui.idle, close)
 	end
 
 	local function renderDetail(key: string)
@@ -269,7 +233,7 @@ function ShopUi.init()
 		if product.kind == "case" then
 			local def = Config.Cases[product.caseId or ""]
 			local _, odds = Cases.odds(State.data, product.caseId or "")
-			line(def.name, { TextSize = 22, TextColor3 = Style.ui.gold })
+			built.setTitle(def.name)
 			line("One random player. The odds below are the real ones.")
 			line(`A player from the floors open: {percent(odds.reached)}`)
 			if odds.nextFloor > 0 then
@@ -280,24 +244,24 @@ function ShopUi.init()
 			end
 			line(`A Legend: {percent(odds.legend)}`)
 			line(`A player you already own: {percent(odds.duplicate)}`, {
-				TextColor3 = Style.ui.text,
+				TextColor3 = Panel.TEXT,
 			})
 			line(
 				`A duplicate adds a star (+{math.floor(Config.Stars.bonusPerStar * 100)}% income, up to {Config.Stars.maxStars}). After that it gives cash.`,
-				{ TextColor3 = Style.ui.idle }
+				{ TextColor3 = Panel.MUTED }
 			)
 		elseif product.kind == "boost" then
-			line("Match boost", { TextSize = 22, TextColor3 = Style.ui.gold })
+			built.setTitle("Match boost")
 			line(
 				`Your next {Config.Boost.matchPackSize} matches pay x{Config.Boost.matchMultiplier}.`
 			)
 			line(
 				`It stays until used (you have {attribute("bankedMatches")}, up to {Config.Boost.matchBankMax}).`,
-				{ TextColor3 = Style.ui.idle }
+				{ TextColor3 = Panel.MUTED }
 			)
 		else
 			local def = Config.PlayersById[product.playerId or ""]
-			line(if def then def.name else "Legend", { TextSize = 22, TextColor3 = Style.ui.gold })
+			built.setTitle(if def then def.name else "Legend")
 			line("Yours at once, with no trials and no cash price. Legends stay across seasons.")
 		end
 		total()

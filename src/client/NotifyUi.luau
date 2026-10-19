@@ -6,19 +6,17 @@
 local ExperienceNotificationService = game:GetService("ExperienceNotificationService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
 
 local Net = require(script.Parent.Net)
 local Notifications = require(ReplicatedStorage.Shared.Notifications)
+local Panel = require(script.Parent.Panel)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
 
-local CARD_W = 380
 local ICON_SIZE = 52
 local ICON_TOP = 8 + 4 * (ICON_SIZE + 8) -- under the case, kick, shop and locker icons
-local TEXT_COLOR = Color3.fromRGB(215, 220, 232)
 
 local NotifyUi = {}
 
@@ -55,104 +53,43 @@ function NotifyUi.init()
 	}, gui)
 	new("UICorner", { CornerRadius = UDim.new(0, 12) }, icon)
 
-	local backdrop = new("TextButton", {
-		Name = "Backdrop",
-		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = Style.ui.dark,
-		BackgroundTransparency = 0.35,
-		AutoButtonColor = false,
-		Text = "",
-		Visible = false,
-		ZIndex = 5,
-	}, gui)
-	local card = new("Frame", {
-		Name = "Card",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(CARD_W, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-		ZIndex = 6,
-	}, backdrop)
-	new("UICorner", { CornerRadius = UDim.new(0, 12) }, card)
-	new("UIPadding", {
-		PaddingTop = UDim.new(0, 12),
-		PaddingBottom = UDim.new(0, 12),
-		PaddingLeft = UDim.new(0, 16),
-		PaddingRight = UDim.new(0, 16),
-	}, card)
-	new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, card)
-	local scale = new("UIScale", {}, card)
-	local function fit()
-		local camera = Workspace.CurrentCamera
-		if camera == nil then
-			return
-		end
-		local size = camera.ViewportSize
-		if size.X < 100 or size.Y < 100 then
-			return -- the viewport is not ready yet; the next fit (when the card opens) corrects it
-		end
-		local naturalHeight = card.AbsoluteSize.Y / scale.Scale
-		scale.Scale =
-			math.min(1, size.X / (CARD_W + 40), size.Y * 0.92 / math.max(naturalHeight, 1))
+	local backdrop: Frame
+	local function hide()
+		backdrop.Visible = false
 	end
-	card:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
-	backdrop:GetPropertyChangedSignal("Visible"):Connect(fit)
+	local built = Panel.build(gui, "Reminders", 0.6, hide)
+	backdrop = built.backdrop
+	local card = built.card
 
-	new("TextLabel", {
-		LayoutOrder = 1,
-		Size = UDim2.fromScale(1, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		BackgroundTransparency = 1,
-		Text = "Reminders",
-		Font = Style.font,
-		TextSize = 24,
-		TextColor3 = Style.ui.gold,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 7,
-	}, card)
-	new("TextLabel", {
-		LayoutOrder = 2,
-		Size = UDim2.fromScale(1, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		BackgroundTransparency = 1,
-		Text = "Tell me when my offline earnings are full or the free case is ready. At most one a day.",
-		TextWrapped = true,
-		Font = Style.font,
-		TextSize = 15,
-		TextColor3 = TEXT_COLOR,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 7,
-	}, card)
-	local status = new("TextLabel", {
-		LayoutOrder = 3,
-		Size = UDim2.fromScale(1, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		BackgroundTransparency = 1,
-		Font = Style.font,
-		TextSize = 15,
-		TextColor3 = TEXT_COLOR,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 7,
-	}, card)
-
-	local function button(name: string, order: number, color: Color3): TextButton
-		local item = new("TextButton", {
-			Name = name,
+	local function label(order: number, size: number, color: Color3): TextLabel
+		return new("TextLabel", {
 			LayoutOrder = order,
-			Size = UDim2.new(1, 0, 0, 44),
-			BackgroundColor3 = color,
+			Size = UDim2.fromScale(1, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundTransparency = 1,
+			TextWrapped = true,
 			Font = Style.font,
-			TextSize = 17,
-			TextColor3 = Style.ui.dark,
+			TextSize = size,
+			TextColor3 = color,
+			TextXAlignment = Enum.TextXAlignment.Left,
 			ZIndex = 7,
 		}, card)
-		new("UICorner", { CornerRadius = UDim.new(0, 8) }, item)
-		return item
 	end
-	local toggle = button("Toggle", 4, Style.ui.good)
-	local close = button("Close", 5, Style.ui.idle)
-	close.Text = "Close"
+	label(1, 17, Panel.TEXT).Text =
+		"Tell me when my offline earnings are full or the free case is ready. At most one a day."
+	local status = label(2, 17, Panel.MUTED)
+
+	local toggle = new("TextButton", {
+		Name = "Toggle",
+		LayoutOrder = 3,
+		Size = UDim2.new(1, 0, 0, 56),
+		BackgroundColor3 = Style.ui.good,
+		Font = Style.font,
+		TextSize = 20,
+		TextColor3 = Style.ui.dark,
+		ZIndex = 7,
+	}, card)
+	new("UICorner", { CornerRadius = UDim.new(0, 10) }, toggle)
 
 	local function isOn(): boolean
 		return player:GetAttribute("notificationsOn") == true
@@ -179,11 +116,6 @@ function NotifyUi.init()
 			end)
 		end
 	end)
-	local function hide()
-		backdrop.Visible = false
-	end
-	close.Activated:Connect(hide)
-	backdrop.Activated:Connect(hide)
 	icon.Activated:Connect(function()
 		render()
 		backdrop.Visible = true
