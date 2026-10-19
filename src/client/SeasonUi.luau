@@ -22,6 +22,7 @@ local BADGE_W, BADGE_H = 160, 28
 local CARD_W = 400
 local CELEBRATION_SECONDS = 3.5
 local CELEBRATION_REDUCED_SECONDS = 2.5
+local HIGHLIGHT_SECONDS = 2 -- the badge is bright this long when floor 3 opens
 local RETRY_SECONDS = 4 -- the button comes back if the server never answered
 
 local SeasonUi = {}
@@ -119,6 +120,20 @@ function SeasonUi.init()
 		}, icon)
 		rounded(frame, bit[5])
 	end
+	local dot = new("TextLabel", {
+		Name = "Dot",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -4, 0, 2),
+		Size = UDim2.fromOffset(20, 20),
+		BackgroundColor3 = Style.ui.bad,
+		Text = "1",
+		Font = Style.font,
+		TextSize = 13,
+		TextColor3 = Style.ui.text,
+		Visible = false,
+		ZIndex = 3,
+	}, badge)
+	rounded(dot, 10)
 	local glow = new("UIStroke", {
 		Color = Style.ui.gold,
 		Thickness = 2,
@@ -276,47 +291,45 @@ function SeasonUi.init()
 	end
 	badge.Activated:Connect(open)
 
-	-- The badge follows the progress.
-	local pulse: Tween? = nil
+	-- The badge follows the progress. It lights up for a moment when floor 3 opens (floor 2 done), then
+	-- goes grey; when the season can start it carries a red "1".
+	local lastState: string? = nil
+	local highlightUntil = 0
+	local function paintIcon(color: Color3)
+		for _, bit in icon:GetChildren() do
+			if bit:IsA("Frame") then
+				bit.BackgroundColor3 = color
+			end
+		end
+	end
 	local function refresh()
 		local season = currentSeason()
 		local state = Season.state(State.data)
+		if lastState == "hidden" and state == "locked" then
+			highlightUntil = os.clock() + HIGHLIGHT_SECONDS
+			task.delay(HIGHLIGHT_SECONDS + 0.05, function()
+				if os.clock() >= highlightUntil then
+					glow.Transparency = 1
+					paintIcon(Style.ui.idle)
+					badge.TextColor3 = Style.ui.idle
+				end
+			end)
+		end
+		lastState = state
 		if state == "hidden" and season == 1 then
 			badge.Visible = false
 			return
 		end
 		badge.Visible = true
-		-- Bright from the moment floor 3 opens (floor 2 done), when the preview becomes available.
-		local bright = state ~= "hidden"
-		icon.Visible = bright
-		if bright then
-			badge.Text = "New Season"
-			badge.TextColor3 = Style.ui.gold
-		else
-			badge.Text = `Season {season} · {multiplierText(season)}`
-			badge.TextColor3 = Style.ui.idle
-		end
-		if bright then
-			if GuiService.ReducedMotionEnabled then
-				glow.Transparency = 0.2
-			elseif pulse == nil then
-				glow.Transparency = 0.7
-				local tween = TweenService:Create(
-					glow,
-					TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-					{ Transparency = 0 }
-				)
-				pulse = tween
-				tween:Play()
-			end
-		else
-			local running = pulse
-			if running then
-				running:Cancel()
-				pulse = nil
-			end
-			glow.Transparency = 1
-		end
+		icon.Visible = state ~= "hidden"
+		dot.Visible = state == "ready"
+		badge.Text = if state == "hidden"
+			then `Season {season} · {multiplierText(season)}`
+			else "New Season"
+		local lit = os.clock() < highlightUntil
+		badge.TextColor3 = if lit then Style.ui.gold else Style.ui.idle
+		paintIcon(if lit then Style.ui.gold else Style.ui.idle)
+		glow.Transparency = if lit then 0.1 else 1
 		if backdrop.Visible and not starting then
 			render() -- the screen follows a change under it (a purchase, a new season)
 		end
