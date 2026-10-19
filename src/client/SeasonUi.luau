@@ -95,6 +95,30 @@ function SeasonUi.init()
 		Visible = false,
 	}, gui)
 	rounded(badge, 8)
+	new("UIPadding", { PaddingLeft = UDim.new(0, 24) }, badge)
+	-- A small gold cup at the left of the badge: bowl, handles, stem and base.
+	local icon = new("Frame", {
+		Name = "Icon",
+		Position = UDim2.fromOffset(-22, 4),
+		Size = UDim2.fromOffset(18, 20),
+		BackgroundTransparency = 1,
+	}, badge)
+	for _, bit in
+		{
+			{ 4, 0, 10, 9, 3 },
+			{ 0, 1, 4, 5, 2 },
+			{ 14, 1, 4, 5, 2 },
+			{ 8, 9, 2, 6, 0 },
+			{ 4, 15, 10, 4, 1 },
+		}
+	do
+		local frame = new("Frame", {
+			Position = UDim2.fromOffset(bit[1], bit[2]),
+			Size = UDim2.fromOffset(bit[3], bit[4]),
+			BackgroundColor3 = Style.ui.gold,
+		}, icon)
+		rounded(frame, bit[5])
+	end
 	local glow = new("UIStroke", {
 		Color = Style.ui.gold,
 		Thickness = 2,
@@ -262,17 +286,17 @@ function SeasonUi.init()
 			return
 		end
 		badge.Visible = true
-		if state == "ready" then
-			badge.Text = "New Season available"
+		-- Bright from the moment floor 3 opens (floor 2 done), when the preview becomes available.
+		local bright = state ~= "hidden"
+		icon.Visible = bright
+		if bright then
+			badge.Text = "New Season"
 			badge.TextColor3 = Style.ui.gold
-		elseif state == "locked" then
-			badge.Text = "New Season · locked"
-			badge.TextColor3 = Style.ui.idle
 		else
 			badge.Text = `Season {season} · {multiplierText(season)}`
 			badge.TextColor3 = Style.ui.idle
 		end
-		if state == "ready" then
+		if bright then
 			if GuiService.ReducedMotionEnabled then
 				glow.Transparency = 0.2
 			elseif pulse == nil then
