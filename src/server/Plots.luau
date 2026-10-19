@@ -83,23 +83,46 @@ local function createRing(index: number)
 	})
 end
 
--- The middle of the building, seen from above (nil when the plot has no building parts).
-local function buildingCenter(plot: Model): Vector3?
+type Bounds = { minX: number, maxX: number, minZ: number, maxZ: number }
+
+-- The walls of the building in plot space (x to the right of the gate, z towards the stadium): the
+-- extremes of the building parts. nil when the plot has no building parts.
+local function buildingBounds(plot: Model, gate: BasePart): Bounds?
 	local building = plot:FindFirstChild("Building")
 	if building == nil then
 		return nil
 	end
-	local low, high = Vector3.new(math.huge, 0, math.huge), Vector3.new(-math.huge, 0, -math.huge)
+	local bounds: Bounds =
+		{ minX = math.huge, maxX = -math.huge, minZ = math.huge, maxZ = -math.huge }
 	local any = false
 	for _, descendant in building:GetDescendants() do
 		if descendant:IsA("BasePart") then
 			any = true
-			local position = descendant.Position
-			low = Vector3.new(math.min(low.X, position.X), 0, math.min(low.Z, position.Z))
-			high = Vector3.new(math.max(high.X, position.X), 0, math.max(high.Z, position.Z))
+			local inPlot = gate.CFrame:PointToObjectSpace(descendant.Position)
+			bounds.minX = math.min(bounds.minX, inPlot.X)
+			bounds.maxX = math.max(bounds.maxX, inPlot.X)
+			bounds.minZ = math.min(bounds.minZ, inPlot.Z)
+			bounds.maxZ = math.max(bounds.maxZ, inPlot.Z)
 		end
 	end
-	return if any then (low + high) / 2 else nil
+	return if any then bounds else nil
+end
+
+-- The way a capsule faces: straight away from the wall it stands against, into the building (a plot
+-- space direction, one of the four axes). The wall is the nearest one.
+local function inwardDirection(position: Vector3, bounds: Bounds): Vector3
+	local nearest = position.X - bounds.minX
+	local direction = Vector3.new(1, 0, 0) -- the front glass wall: face the building
+	if bounds.maxX - position.X < nearest then
+		nearest, direction = bounds.maxX - position.X, Vector3.new(-1, 0, 0)
+	end
+	if position.Z - bounds.minZ < nearest then
+		nearest, direction = position.Z - bounds.minZ, Vector3.new(0, 0, 1)
+	end
+	if bounds.maxZ - position.Z < nearest then
+		direction = Vector3.new(0, 0, -1)
+	end
+	return direction
 end
 
 -- Lights the capsules of owned players (glass tinted by rarity, a figure inside) and clears the
@@ -136,7 +159,11 @@ function Plots.refresh(session: Session.Session)
 	if capsules == nil then
 		return
 	end
-	local center = buildingCenter(plot)
+	local gateInstance = plot:FindFirstChild("Gate")
+	local gate: BasePart? = if gateInstance and gateInstance:IsA("BasePart")
+		then gateInstance
+		else nil
+	local bounds = if gate then buildingBounds(plot, gate) else nil
 	for _, capsule in capsules:GetChildren() do
 		local playerId = capsule:GetAttribute("PlayerId")
 		local def = if type(playerId) == "string" then Config.PlayersById[playerId] else nil
@@ -164,15 +191,13 @@ function Plots.refresh(session: Session.Session)
 				model.Name = "Figure"
 				model:SetAttribute("Owned", owned)
 				local stand = pedestal.CFrame * CFrame.new(0, 0.5 + Mannequin.FEET_TO_TORSO, 0)
-				-- Every figure faces the middle of the building, so whoever walks inside sees his face.
-				if
-					center
-					and (Vector3.new(center.X, stand.Y, center.Z) - stand.Position).Magnitude
-						> 1
-				then
-					model:PivotTo(
-						CFrame.lookAt(stand.Position, Vector3.new(center.X, stand.Y, center.Z))
-					)
+				-- Every figure faces straight away from his wall, into the building, so whoever walks
+				-- inside sees his face.
+				if gate and bounds then
+					local inside =
+						inwardDirection(gate.CFrame:PointToObjectSpace(stand.Position), bounds)
+					local ahead = stand.Position + gate.CFrame:VectorToWorldSpace(inside)
+					model:PivotTo(CFrame.lookAt(stand.Position, ahead))
 				else
 					model:PivotTo(stand)
 				end
