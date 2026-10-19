@@ -12,11 +12,15 @@ local NumberFormat = require(ReplicatedStorage.Shared.NumberFormat)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
 
-local PANEL_WIDTH = 240
-local TITLE_HEIGHT = 50
-local ROW_HEIGHT = 24
-local MAX_DISTANCE = 70
+-- Sized in studs (not pixels) so neighbouring panels never overlap: the capsules are about 21 studs
+-- apart. Every position inside is a fraction of the panel.
+local PANEL_STUDS = Vector2.new(19, 8)
+local OWNED_STUDS = Vector2.new(19, 4)
+local LIFT_STUDS = 10.5 -- above the middle of the glass, clear of the pad name and ring
+local MAX_DISTANCE = 60
 local ROW_COUNT = 3
+local ROW_TOP = 0.36
+local ROW_HEIGHT = 0.2
 
 type Row = { dot: Frame, text: TextLabel, count: TextLabel }
 type Panel = {
@@ -30,54 +34,76 @@ type Panel = {
 }
 
 local panels: { Panel } = {}
+local tracked: { [Instance]: boolean } = setmetatable({}, { __mode = "k" }) :: any
 
 local LegendPanels = {}
 
-local function text(parent: Instance, size: number, alignment: Enum.TextXAlignment): TextLabel
+local function text(
+	parent: Instance,
+	maxSize: number,
+	alignment: Enum.TextXAlignment,
+	position: UDim2,
+	size: UDim2
+): TextLabel
 	local label = Instance.new("TextLabel")
 	label.BackgroundTransparency = 1
 	label.Font = Style.font
-	label.TextSize = size
+	label.TextScaled = true
 	label.TextXAlignment = alignment
 	label.TextColor3 = Style.ui.text
+	label.Position = position
+	label.Size = size
 	label.Parent = parent
+	local limit = Instance.new("UITextSizeConstraint")
+	limit.MaxTextSize = maxSize
+	limit.Parent = label
 	return label
 end
 
 local function buildRow(parent: Instance, index: number): Row
-	local top = TITLE_HEIGHT + (index - 1) * ROW_HEIGHT
+	local top = ROW_TOP + (index - 1) * ROW_HEIGHT
 	local dot = Instance.new("Frame")
 	dot.Name = "Dot" .. index
 	dot.AnchorPoint = Vector2.new(0, 0.5)
-	dot.Position = UDim2.fromOffset(12, top + ROW_HEIGHT / 2)
-	dot.Size = UDim2.fromOffset(12, 12)
+	dot.Position = UDim2.fromScale(0.05, top + ROW_HEIGHT / 2)
+	dot.Size = UDim2.fromScale(0.04, 0.09)
 	dot.BorderSizePixel = 0
 	dot.Parent = parent
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(1, 0)
 	corner.Parent = dot
+	local ratio = Instance.new("UIAspectRatioConstraint")
+	ratio.Parent = dot
 
-	local label = text(parent, 15, Enum.TextXAlignment.Left)
+	local label = text(
+		parent,
+		40,
+		Enum.TextXAlignment.Left,
+		UDim2.fromScale(0.13, top),
+		UDim2.fromScale(0.61, ROW_HEIGHT)
+	)
 	label.Name = "Goal" .. index
-	label.Position = UDim2.fromOffset(32, top)
-	label.Size = UDim2.fromOffset(PANEL_WIDTH - 80, ROW_HEIGHT)
-
-	local count = text(parent, 15, Enum.TextXAlignment.Right)
+	local count = text(
+		parent,
+		40,
+		Enum.TextXAlignment.Right,
+		UDim2.fromScale(0.75, top),
+		UDim2.fromScale(0.2, ROW_HEIGHT)
+	)
 	count.Name = "Count" .. index
-	count.Position = UDim2.fromOffset(PANEL_WIDTH - 52, top)
-	count.Size = UDim2.fromOffset(40, ROW_HEIGHT)
 	return { dot = dot, text = label, count = count }
 end
 
 local function build(capsule: Instance, playerId: string): Panel?
-	local glass = capsule:FindFirstChild("Glass")
+	-- With streaming a capsule can arrive before its parts, so wait for the glass (bounded).
+	local glass = capsule:WaitForChild("Glass", 10)
 	if glass == nil or not glass:IsA("BasePart") then
 		return nil
 	end
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "LegendPanel"
-	billboard.Size = UDim2.fromOffset(PANEL_WIDTH, TITLE_HEIGHT + ROW_COUNT * ROW_HEIGHT + 8)
-	billboard.StudsOffset = Vector3.new(0, glass.Size.Y / 2 + 4, 0)
+	billboard.Size = UDim2.fromScale(PANEL_STUDS.X, PANEL_STUDS.Y)
+	billboard.StudsOffset = Vector3.new(0, LIFT_STUDS, 0)
 	billboard.LightInfluence = 0
 	billboard.MaxDistance = MAX_DISTANCE
 	billboard.ResetOnSpawn = false
@@ -94,14 +120,22 @@ local function build(capsule: Instance, playerId: string): Panel?
 	corner.CornerRadius = UDim.new(0, 8)
 	corner.Parent = frame
 
-	local name = text(frame, 22, Enum.TextXAlignment.Left)
+	local name = text(
+		frame,
+		60,
+		Enum.TextXAlignment.Left,
+		UDim2.fromScale(0.05, 0.04),
+		UDim2.fromScale(0.9, 0.18)
+	)
 	name.Name = "Name"
-	name.Position = UDim2.fromOffset(12, 4)
-	name.Size = UDim2.fromOffset(PANEL_WIDTH - 24, 26)
-	local price = text(frame, 16, Enum.TextXAlignment.Left)
+	local price = text(
+		frame,
+		40,
+		Enum.TextXAlignment.Left,
+		UDim2.fromScale(0.05, 0.22),
+		UDim2.fromScale(0.9, 0.12)
+	)
 	price.Name = "Price"
-	price.Position = UDim2.fromOffset(12, 28)
-	price.Size = UDim2.fromOffset(PANEL_WIDTH - 24, 20)
 
 	local rows: { Row } = {}
 	for index = 1, ROW_COUNT do
@@ -152,20 +186,27 @@ local function refresh(panel: Panel)
 			row.count.TextColor3 = row.text.TextColor3
 		end
 	end
-	local rowsShown = if owned then 0 else #goals
-	panel.billboard.Size = UDim2.fromOffset(PANEL_WIDTH, TITLE_HEIGHT + rowsShown * ROW_HEIGHT + 8)
+	local studs = if owned then OWNED_STUDS else PANEL_STUDS
+	panel.billboard.Size = UDim2.fromScale(studs.X, studs.Y)
+	-- The title keeps its size in studs: a shorter panel needs a taller share for it.
+	panel.name.Size = UDim2.fromScale(0.9, if owned then 0.4 else 0.18)
+	panel.price.Position = UDim2.fromScale(0.05, if owned then 0.46 else 0.22)
+	panel.price.Size = UDim2.fromScale(0.9, if owned then 0.3 else 0.12)
 end
 
 local function track(capsule: Instance)
 	local playerId = capsule:GetAttribute("PlayerId")
-	if type(playerId) ~= "string" or capsule:FindFirstChild("LegendPanel") then
+	if type(playerId) ~= "string" or tracked[capsule] then
 		return
 	end
-	local panel = build(capsule, playerId)
-	if panel then
-		table.insert(panels, panel)
-		refresh(panel)
-	end
+	tracked[capsule] = true
+	task.spawn(function()
+		local panel = build(capsule, playerId)
+		if panel then
+			table.insert(panels, panel)
+			refresh(panel)
+		end
+	end)
 end
 
 function LegendPanels.init()
