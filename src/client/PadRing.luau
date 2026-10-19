@@ -26,6 +26,7 @@ local RING_RADIUS = 40
 local SHOWN_KINDS = {
 	claim = true,
 	player = true,
+	legend = true,
 	store = true,
 	stadium = true,
 	penalty = true,

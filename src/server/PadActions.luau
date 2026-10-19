@@ -5,6 +5,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Actions = require(script.Parent.Actions)
+local Legends = require(ReplicatedStorage.Shared.Legends)
 local Pads = require(script.Parent.Pads)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Roster = require(ReplicatedStorage.Shared.Roster)
@@ -39,6 +40,27 @@ local builders: { [string]: Builder } = {
 					Actions.levelUp(session, padId, nil)
 				else
 					Actions.buyPlayer(session, padId)
+				end
+			end,
+			owned
+	end,
+	-- A Legend: cash once floor 4 is reached and the trial goals are done, then TP levels like anyone.
+	legend = function(session, _part, padId)
+		local function owned(): boolean
+			return Roster.owns(session.data, padId)
+		end
+		return function()
+			if owned() then
+				local status = Progress.levelStatus(session.data, padId)
+				return if status == "ready" or status == "cannotAfford" then status else "owned"
+			end
+			return Legends.status(session.data, padId)
+		end,
+			function()
+				if owned() then
+					Actions.levelUp(session, padId, nil)
+				else
+					Actions.buyLegend(session, padId)
 				end
 			end,
 			owned

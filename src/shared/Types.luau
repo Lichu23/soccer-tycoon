@@ -19,6 +19,8 @@ export type ProgressData = {
 	storeLevels: StoreLevels,
 	fieldStarted: boolean,
 	players: { [string]: OwnedPlayer },
+	-- Legend Trial goals reached so far, by Legend and goal id. Never unset (a New Season keeps them).
+	trials: { [string]: { [string]: boolean } }?,
 }
 
 return {}

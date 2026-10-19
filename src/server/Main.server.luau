@@ -10,6 +10,7 @@ local DailyActions = require(script.Parent.DailyActions)
 local DevTools = require(script.Parent.DevTools)
 local Match = require(script.Parent.Match)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Legends = require(ReplicatedStorage.Shared.Legends)
 local Offline = require(script.Parent.Offline)
 local Pads = require(script.Parent.Pads)
 local Plots = require(script.Parent.Plots)
@@ -33,6 +34,7 @@ RevealActions.start()
 
 -- Whatever a player buys: tell their client, redraw their capsules and log the funnel.
 Actions.onChange = function(session, what, id)
+	Legends.record(session.data) -- Legend Trial goals are kept the moment they are reached
 	Sync.all(session)
 	if what == "stadium" then
 		-- Before the refresh, so the refresh waits for the new pitch instead of building it at once.
@@ -76,6 +78,7 @@ Session.onLoaded(function(session)
 		Sync.offline(session.player, earned, secondsAway)
 		Analytics.event(session, "offline_earnings")
 	end
+	Legends.record(session.data)
 	Sync.all(session)
 	session.player:SetAttribute("profileLoaded", true)
 	Analytics.event(session, "joined")

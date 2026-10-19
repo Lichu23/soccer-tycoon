@@ -20,6 +20,7 @@ State.data = {
 	storeLevels = { cashPerMatch = 0, matchSpeed = 0, hatTrick = 0, offline = 0 },
 	fieldStarted = false,
 	players = {},
+	trials = {},
 } :: Types.ProgressData
 
 -- True once the first snapshot from the server has arrived (before it the data is empty).
@@ -66,6 +67,9 @@ local function applySnapshot(snapshot: any)
 	end
 	if type(snapshot.players) == "table" then
 		data.players = snapshot.players
+	end
+	if type(snapshot.trials) == "table" then
+		data.trials = snapshot.trials
 	end
 	State.loaded = true
 end

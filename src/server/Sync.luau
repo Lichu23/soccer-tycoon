@@ -43,7 +43,12 @@ function Sync.snapshot(session: Session.Session)
 	for id, owned in data.players do
 		players[id] = { level = owned.level, stars = owned.stars }
 	end
+	local trials = {}
+	for legendId, goals in data.trials do
+		trials[legendId] = table.clone(goals)
+	end
 	Remotes.fireClient("Snapshot", session.player, {
+		trials = trials,
 		cash = data.cash,
 		tp = data.tp,
 		stadiumTier = data.stadiumTier,

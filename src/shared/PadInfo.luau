@@ -4,6 +4,7 @@
 -- decides every purchase. Pure, so it is unit tested.
 
 local Config = require(script.Parent.Config)
+local Legends = require(script.Parent.Legends)
 local NumberFormat = require(script.Parent.NumberFormat)
 local Progress = require(script.Parent.Progress)
 local Roster = require(script.Parent.Roster)
@@ -102,6 +103,43 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 			}
 		end
 		return { title = def.name, price = NumberFormat.money(def.price), note = "", state = status }
+	elseif kind == "legend" then
+		local def = Config.PlayersById[padId]
+		if def == nil then
+			return { title = "?", price = "", note = "", state = "locked" }
+		end
+		local status = Legends.status(data, padId)
+		if status == "owned" then
+			if not Progress.trainingUnlocked(data) then
+				return { title = def.name, price = "OWNED", note = "", state = "owned" }
+			end
+			return PadInfo.levelUp(data, def)
+		end
+		local price = NumberFormat.money(def.price)
+		if status == "locked" then
+			return {
+				title = def.name,
+				price = price,
+				note = "Finish floor 3 first",
+				state = "locked",
+			}
+		elseif status == "goals" then
+			local done, total = Legends.goalCount(data, padId)
+			return {
+				title = def.name,
+				price = price,
+				note = `Trial goals {done}/{total}`,
+				state = "locked",
+			}
+		elseif status == "cannotAfford" then
+			return {
+				title = def.name,
+				price = price,
+				note = missing(def.price, data.cash),
+				state = status,
+			}
+		end
+		return { title = def.name, price = price, note = "", state = status }
 	elseif kind == "store" then
 		if not isStoreId(padId) then
 			return { title = padId, price = "", note = "", state = "locked" }

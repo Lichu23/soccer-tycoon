@@ -42,6 +42,13 @@ export type StadiumTierDef = {
 	courtWidth: number,
 }
 
+export type TrialGoal = {
+	id: string,
+	kind: "ownFloors" | "trained" | "tier",
+	target: number,
+	level: number?, -- for "trained": the level each of the `target` players must reach
+}
+
 local function player(
 	id: string,
 	name: string,
@@ -309,6 +316,39 @@ Config.Training = {
 Config.Season = {
 	bonusPerSeason = 0.5, -- permanent multiplier: season 2 = x1.5, season 3 = x2.0
 }
+
+-- The Legend Trials (docs/PLAN.md, Step 1): goals that use only training, owned players and stadium
+-- tiers, never stars. Each Legend also has its cash price. Provisional, tune in the simulation: the
+-- first Legend asks for floors 1 to 3, three players at level 5 and tier 4, later ones ask for more.
+-- `ownFloors`: every player of floors 1 to `target`; `trained`: `target` players at `level` or more;
+-- `tier`: the stadium at tier `target`.
+Config.LegendTrials = {
+	ronaldinho = {
+		{ id = "own", kind = "ownFloors", target = 3 },
+		{ id = "train", kind = "trained", target = 3, level = 5 },
+		{ id = "tier", kind = "tier", target = 4 },
+	},
+	zidane = {
+		{ id = "own", kind = "ownFloors", target = 3 },
+		{ id = "train", kind = "trained", target = 5, level = 5 },
+		{ id = "tier", kind = "tier", target = 4 },
+	},
+	ronaldo_nazario = {
+		{ id = "own", kind = "ownFloors", target = 3 },
+		{ id = "train", kind = "trained", target = 5, level = 10 },
+		{ id = "tier", kind = "tier", target = 5 },
+	},
+	maradona = {
+		{ id = "own", kind = "ownFloors", target = 3 },
+		{ id = "train", kind = "trained", target = 8, level = 10 },
+		{ id = "tier", kind = "tier", target = 5 },
+	},
+	pele = {
+		{ id = "own", kind = "ownFloors", target = 3 },
+		{ id = "train", kind = "trained", target = 10, level = 15 },
+		{ id = "tier", kind = "tier", target = 5 },
+	},
+} :: { [string]: { TrialGoal } }
 
 Config.Store = {
 	cashPerMatch = {

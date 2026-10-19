@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Boosts = require(script.Parent.Boosts)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Economy = require(script.Parent.Economy)
+local Legends = require(ReplicatedStorage.Shared.Legends)
 local NewSeason = require(script.Parent.NewSeason)
 local ProfileSchema = require(script.Parent.ProfileSchema)
 local Progress = require(ReplicatedStorage.Shared.Progress)
@@ -39,6 +40,22 @@ function Actions.buyPlayer(session: ActionSession, id: string): (boolean, string
 	-- The first player goes straight onto the court and the matches start: there is no extra
 	-- button to find (the match loop starts when fieldStarted is true and the plot exists).
 	data.fieldStarted = true
+	Actions.onChange(session, "player", id)
+	return true, nil
+end
+
+-- Buys a Legend with cash once floor 4 is reached and every goal of its trial is done.
+function Actions.buyLegend(session: ActionSession, id: string): (boolean, string?)
+	local data = session.data
+	local status = Legends.status(data, id)
+	if status ~= "ready" then
+		return false, status
+	end
+	local def = Config.PlayersById[id]
+	if not Economy.spend(data, def.price) then
+		return false, "cannotAfford"
+	end
+	Reveals.grant(data, id, false)
 	Actions.onChange(session, "player", id)
 	return true, nil
 end

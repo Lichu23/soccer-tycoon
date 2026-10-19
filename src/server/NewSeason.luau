@@ -5,6 +5,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Legends = require(ReplicatedStorage.Shared.Legends)
 local ProfileSchema = require(script.Parent.ProfileSchema)
 local Roster = require(ReplicatedStorage.Shared.Roster)
 local Season = require(ReplicatedStorage.Shared.Season)
@@ -26,6 +27,8 @@ function NewSeason.start(data: ProfileSchema.Profile, seasonSeen: number?): (Res
 	if seasonSeen ~= nil and seasonSeen ~= finished then
 		return nil, "stale"
 	end
+	-- Goals reached so far are kept for good before the stadium, levels and floors are reset.
+	Legends.record(data)
 
 	local template = ProfileSchema.newProfile()
 	for id in data.players do
