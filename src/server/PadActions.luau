@@ -88,6 +88,11 @@ local builders: { [string]: Builder } = {
 	end,
 }
 
+-- The pads that buy or upgrade something are small round discs (drawn by the client): the part that
+-- the server tests a player against shrinks to match.
+local PAD_STUDS = 5
+local SMALL_KINDS = { player = true, legend = true, store = true, stadium = true }
+
 -- Registers the pads of a freshly placed plot for its owner.
 function PadActions.registerPlot(session: Session.Session, plot: Model)
 	local markers = plot:FindFirstChild("Markers")
@@ -98,6 +103,9 @@ function PadActions.registerPlot(session: Session.Session, plot: Model)
 			local padId = part:GetAttribute("PadId")
 			local build = if type(kind) == "string" then builders[kind] else nil
 			if build and type(padId) == "string" then
+				if SMALL_KINDS[kind] then
+					part.Size = Vector3.new(PAD_STUDS, part.Size.Y, PAD_STUDS)
+				end
 				local status, complete, repeats = build(session, part, padId)
 				local pad: Pads.Pad = {
 					key = plot.Name .. ":" .. part.Name,

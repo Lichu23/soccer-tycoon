@@ -189,12 +189,18 @@ T.test("the profile still validates with trial flags", function()
 end)
 
 T.test(
-	"pad text: floor 3 first, goals count, price missing, ready, then the level-up text",
+	"pad text: floor 3 first, goal lines, missing cash, ready, then the level-up text",
 	function()
 		local data = ProfileSchema.newProfile()
-		T.eq(PadInfo.describe("legend", "ronaldinho", data).note, "Finish floor 3 first")
+		local locked = PadInfo.describe("legend", "ronaldinho", data)
+		T.eq(locked.note, "Finish floor 3 first")
+		T.eq(locked.state, "locked")
+		T.eq(#locked.lines, 3)
 		ownFloors(data, 3)
-		T.eq(PadInfo.describe("legend", "ronaldinho", data).note, "Trial goals 1/3")
+		local goals = PadInfo.describe("legend", "ronaldinho", data)
+		T.eq(goals.state, "locked")
+		T.eq(goals.lines[1].done, true)
+		T.eq(goals.lines[2].done, false)
 		local met = ready()
 		met.cash = 0
 		T.eq(PadInfo.describe("legend", "ronaldinho", met).state, "cannotAfford")

@@ -1,9 +1,10 @@
 --!strict
--- The text and the circular ring above every pad (docs/PLAN.md, Step 1 and 7). The server times the
--- hold; this only draws it from the player's attributes: padKey, padState, padStart and padHold.
--- Layout: the name above, the ring with the price inside it, and a short note under the ring.
--- The ring fills clockwise, is fully red when the player cannot afford the pad, and stays empty on
--- pads that cannot be used. Only pads close to the player show, so neighbours never overlap.
+-- What every pad looks like (docs/PLAN.md, Step 1 and 7). Pads that buy or upgrade something are
+-- small round discs coloured by what the player can do: green = can use it now, red = it is open but
+-- costs more than the player has, grey = not open yet (a floor or the goals of a Legend). Above each
+-- pad sits a dark label with the name, the price and a short note (the goals, for a Legend). The
+-- server times the hold; this only draws it from the player's attributes: padKey, padState, padStart
+-- and padHold, as a thin bar at the bottom of the label.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -18,11 +19,6 @@ local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
 
-local SEGMENTS = 36
-local BOARD_WIDTH = 170
-local BOARD_HEIGHT = 176
-local RING_CENTER = Vector2.new(BOARD_WIDTH / 2, 98)
-local RING_RADIUS = 40
 local SHOWN_KINDS = {
 	claim = true,
 	player = true,
@@ -32,71 +28,78 @@ local SHOWN_KINDS = {
 	penalty = true,
 	training = true,
 }
+-- These kinds are drawn as a round disc; the others keep the glowing square of the template.
+local DISC_KINDS = { player = true, legend = true, store = true, stadium = true }
 local MAX_DISTANCE = 30
 local STADIUM_MAX_DISTANCE = 140
+local LABEL_WIDTH = 190
+local DISC_THICKNESS = 0.5
+local MAX_LINES = 3
+
+local COLORS = {
+	ready = Color3.fromRGB(70, 200, 105),
+	cannotAfford = Color3.fromRGB(225, 70, 70),
+	idle = Color3.fromRGB(125, 130, 145),
+}
+local TITLE_COLOR = Color3.fromRGB(190, 210, 240)
 
 type Entry = {
 	part: BasePart,
 	billboard: BillboardGui,
-	segments: { Frame },
+	disc: BasePart?,
 	title: TextLabel,
 	price: TextLabel,
 	note: TextLabel,
+	lines: { TextLabel },
+	track: Frame,
+	fill: Frame,
 	kind: string,
 	padId: string,
 	key: string,
-	filled: number,
-	color: Color3,
+	fraction: number,
 }
 
 local entries: { [BasePart]: Entry } = {}
 
 local PadRing = {}
 
-local DIM = Color3.fromRGB(60, 66, 85)
-
-local function ringColor(state: string): Color3
+local function padColor(state: string): Color3
 	if state == "ready" then
-		return Style.ui.good
+		return COLORS.ready
 	elseif state == "cannotAfford" then
-		return Style.ui.bad
+		return COLORS.cannotAfford
 	end
-	return Style.ui.idle
+	return COLORS.idle
 end
 
-local function label(
-	parent: Instance,
-	name: string,
-	position: Vector2,
-	size: Vector2,
-	maxSize: number
-): TextLabel
+local function label(parent: Instance, name: string, size: number, color: Color3): TextLabel
 	local text = Instance.new("TextLabel")
 	text.Name = name
-	text.AnchorPoint = Vector2.new(0.5, 0.5)
-	text.Position = UDim2.fromOffset(position.X, position.Y)
-	text.Size = UDim2.fromOffset(size.X, size.Y)
 	text.BackgroundTransparency = 1
-	text.TextScaled = true
+	text.Size = UDim2.fromScale(1, 0)
+	text.AutomaticSize = Enum.AutomaticSize.Y
 	text.TextWrapped = true
 	text.Font = Style.font
-	text.TextColor3 = Style.ui.text
-	text.TextStrokeTransparency = 0.25
-	text.TextStrokeColor3 = Style.ui.dark
+	text.TextSize = size
+	text.TextColor3 = color
 	text.Parent = parent
-	local limit = Instance.new("UITextSizeConstraint")
-	limit.MaxTextSize = maxSize
-	limit.MinTextSize = 9
-	limit.Parent = text
 	return text
 end
 
-local function buildBillboard(
-	part: BasePart
-): (BillboardGui, { Frame }, TextLabel, TextLabel, TextLabel)
+-- The dark label above the pad. It grows upward from its bottom edge, so a Legend's goal rows sit
+-- above the name and the price stays close to the pad.
+local function buildBillboard(part: BasePart): (
+	BillboardGui,
+	TextLabel,
+	TextLabel,
+	TextLabel,
+	{ TextLabel },
+	Frame,
+	Frame
+)
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "PadBillboard"
-	billboard.Size = UDim2.fromOffset(BOARD_WIDTH, BOARD_HEIGHT)
+	billboard.Size = UDim2.fromOffset(LABEL_WIDTH, 190)
 	billboard.StudsOffset = Vector3.new(0, 5.5, 0)
 	billboard.MaxDistance = MAX_DISTANCE
 	billboard.AlwaysOnTop = false
@@ -104,56 +107,85 @@ local function buildBillboard(
 	billboard.ResetOnSpawn = false
 	billboard.Adornee = part
 
-	local segments: { Frame } = {}
-	local arc = math.pi * 2 * RING_RADIUS / SEGMENTS
-	for index = 1, SEGMENTS do
-		local angle = (index - 0.5) / SEGMENTS * math.pi * 2 -- clockwise from the top
-		local segment = Instance.new("Frame")
-		segment.Name = "Segment" .. index
-		segment.AnchorPoint = Vector2.new(0.5, 0.5)
-		segment.Size = UDim2.fromOffset(arc + 1, 8)
-		segment.Position = UDim2.fromOffset(
-			RING_CENTER.X + RING_RADIUS * math.sin(angle),
-			RING_CENTER.Y - RING_RADIUS * math.cos(angle)
-		)
-		segment.Rotation = math.deg(angle)
-		segment.BackgroundColor3 = DIM
-		segment.BackgroundTransparency = 0.3
-		segment.BorderSizePixel = 0
-		segment.Parent = billboard
-		table.insert(segments, segment)
+	local frame = Instance.new("Frame")
+	frame.Name = "Label"
+	frame.AnchorPoint = Vector2.new(0.5, 1)
+	frame.Position = UDim2.fromScale(0.5, 1)
+	frame.Size = UDim2.fromScale(1, 0)
+	frame.AutomaticSize = Enum.AutomaticSize.Y
+	frame.BackgroundColor3 = Style.ui.dark
+	frame.BackgroundTransparency = 0.3
+	frame.BorderSizePixel = 0
+	frame.Parent = billboard
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 10)
+	corner.Parent = frame
+	local padding = Instance.new("UIPadding")
+	padding.PaddingTop = UDim.new(0, 8)
+	padding.PaddingBottom = UDim.new(0, 8)
+	padding.PaddingLeft = UDim.new(0, 10)
+	padding.PaddingRight = UDim.new(0, 10)
+	padding.Parent = frame
+	local layout = Instance.new("UIListLayout")
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.Padding = UDim.new(0, 3)
+	layout.Parent = frame
+
+	local title = label(frame, "Title", 18, TITLE_COLOR)
+	title.LayoutOrder = 1
+	local price = label(frame, "Price", 22, Style.ui.money)
+	price.LayoutOrder = 2
+	local note = label(frame, "Note", 14, Style.ui.idle)
+	note.LayoutOrder = 3
+	local lines: { TextLabel } = {}
+	for index = 1, MAX_LINES do
+		local line = label(frame, "Line" .. index, 14, Style.ui.idle)
+		line.LayoutOrder = 3 + index
+		table.insert(lines, line)
 	end
 
-	-- The name above the ring, the price inside it, the note under it.
-	local title =
-		label(billboard, "Title", Vector2.new(RING_CENTER.X, 16), Vector2.new(BOARD_WIDTH, 30), 17)
-	local price = label(billboard, "Price", RING_CENTER, Vector2.new(62, 36), 24)
-	price.TextColor3 = Style.ui.money
-	local note =
-		label(billboard, "Note", Vector2.new(RING_CENTER.X, 156), Vector2.new(BOARD_WIDTH, 26), 15)
+	local track = Instance.new("Frame")
+	track.Name = "Track"
+	track.LayoutOrder = 9
+	track.Size = UDim2.new(1, 0, 0, 5)
+	track.BackgroundColor3 = Color3.fromRGB(60, 66, 85)
+	track.BorderSizePixel = 0
+	track.Visible = false
+	track.Parent = frame
+	local fill = Instance.new("Frame")
+	fill.Name = "Fill"
+	fill.Size = UDim2.fromScale(0, 1)
+	fill.BackgroundColor3 = COLORS.ready
+	fill.BorderSizePixel = 0
+	fill.Parent = track
 
 	billboard.Parent = part
-	return billboard, segments, title, price, note
+	return billboard, title, price, note, lines, track, fill
 end
 
-local function paintRing(entry: Entry, filled: number, color: Color3)
-	if entry.filled == filled and entry.color == color then
-		return
-	end
-	entry.filled = filled
-	entry.color = color
-	for index, segment in entry.segments do
-		if index <= filled then
-			segment.BackgroundColor3 = color
-			segment.BackgroundTransparency = 0
-		else
-			segment.BackgroundColor3 = DIM
-			segment.BackgroundTransparency = 0.3
-		end
-	end
+-- A flat round disc on top of the pad part, which is hidden for this player.
+local function buildDisc(part: BasePart): BasePart
+	local disc = Instance.new("Part")
+	disc.Name = "PadDisc"
+	disc.Shape = Enum.PartType.Cylinder
+	disc.Material = Enum.Material.Neon
+	disc.Anchored = true
+	disc.CanCollide = false
+	disc.CanQuery = false
+	disc.CanTouch = false
+	disc.CastShadow = false
+	disc.Size = Vector3.new(DISC_THICKNESS, part.Size.X, part.Size.X)
+	disc.CFrame = part.CFrame
+		* CFrame.new(0, part.Size.Y / 2 + DISC_THICKNESS / 2, 0)
+		* CFrame.Angles(0, 0, math.pi / 2)
+	disc.Color = COLORS.idle
+	disc.Parent = part
+	part.Transparency = 1
+	return disc
 end
 
--- Updates the text and visibility of one pad from the current state.
+-- Updates the text, the colour and the visibility of one pad from the current state.
 local function refresh(entry: Entry)
 	local info = PadInfo.describe(entry.kind, entry.padId, State.data)
 	if entry.kind == "penalty" and info.state == "ready" then
@@ -169,11 +201,24 @@ local function refresh(entry: Entry)
 			}
 		end
 	end
-	entry.title.Text = info.title
+	entry.title.Text = string.upper(info.title)
 	entry.price.Text = info.price
-	entry.note.Text = info.note
+	entry.price.Visible = info.price ~= ""
 	entry.price.TextColor3 = if info.state == "cannotAfford" then Style.ui.bad else Style.ui.money
+	entry.note.Text = info.note
+	entry.note.Visible = info.note ~= ""
 	entry.note.TextColor3 = if info.state == "cannotAfford" then Style.ui.bad else Style.ui.idle
+	for index, line in entry.lines do
+		local goal = if info.lines then info.lines[index] else nil
+		line.Visible = goal ~= nil
+		if goal then
+			line.Text = goal.text
+			line.TextColor3 = if goal.done then Style.ui.good else Style.ui.text
+		end
+	end
+	if entry.disc then
+		entry.disc.Color = padColor(info.state)
+	end
 	-- The claim rings of free plots only matter to a player who has no plot yet.
 	-- Locked Store pads stay hidden until they unlock, so the middle of the room is not cluttered.
 	-- Players on a floor that is not open yet stay visible (price and what to finish first), so
@@ -182,8 +227,8 @@ local function refresh(entry: Entry)
 		or (entry.kind == "store" and info.state == "locked")
 		or (entry.kind == "penalty" and info.price == "")
 	entry.billboard.Enabled = not hidden
-	if entry.filled == 0 then
-		entry.color = ringColor(info.state)
+	if entry.disc then
+		entry.disc.Transparency = if hidden then 1 else 0
 	end
 end
 
@@ -201,36 +246,47 @@ local function track(part: Instance)
 	if not SHOWN_KINDS[kind] then
 		return
 	end
-	-- Only the owner's pads and the public claim rings get a ring.
+	-- Only the owner's pads and the public claim rings get a label.
 	if ownerId ~= 0 and ownerId ~= player.UserId then
 		return
 	end
-	local billboard, segments, title, price, note = buildBillboard(part)
+	local billboard, title, price, note, lines, bar, fill = buildBillboard(part)
 	if kind == "stadium" then
 		billboard.MaxDistance = STADIUM_MAX_DISTANCE -- it stands far from the pitch, so show it from afar
 	end
 	local entry: Entry = {
 		part = part,
 		billboard = billboard,
-		segments = segments,
+		disc = if DISC_KINDS[kind] then buildDisc(part) else nil,
 		title = title,
 		price = price,
 		note = note,
+		lines = lines,
+		track = bar,
+		fill = fill,
 		kind = kind,
 		padId = padId,
 		key = key,
-		filled = -1,
-		color = DIM,
+		fraction = -1,
 	}
 	entries[part] = entry
 	refresh(entry)
-	paintRing(entry, 0, entry.color)
 end
 
 local function untrack(part: Instance)
 	if part:IsA("BasePart") then
 		entries[part] = nil
 	end
+end
+
+-- Shows the hold on the pad the player stands on: a thin bar that fills while the server times it.
+local function paintHold(entry: Entry, fraction: number)
+	if entry.fraction == fraction then
+		return
+	end
+	entry.fraction = fraction
+	entry.track.Visible = fraction > 0
+	entry.fill.Size = UDim2.fromScale(fraction, 1)
 end
 
 function PadRing.init()
@@ -264,16 +320,7 @@ function PadRing.init()
 			fraction = math.clamp((Workspace:GetServerTimeNow() - startedAt) / hold, 0, 1)
 		end
 		for _, entry in entries do
-			if entry.key == activeKey and type(state) == "string" then
-				if state == "cannotAfford" then
-					-- Standing on a pad that costs too much: a full red ring that does not fill.
-					paintRing(entry, SEGMENTS, ringColor(state))
-				else
-					paintRing(entry, math.floor(fraction * SEGMENTS + 0.5), ringColor(state))
-				end
-			else
-				paintRing(entry, 0, entry.color)
-			end
+			paintHold(entry, if entry.key == activeKey then fraction else 0)
 		end
 	end)
 end

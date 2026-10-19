@@ -117,9 +117,6 @@ function Plots.refresh(session: Session.Session)
 			local owned = Roster.owns(session.data, def.id)
 			local figure = capsule:FindFirstChild("Figure")
 			capsule:SetAttribute("Owned", owned)
-			if def.floor >= Config.LegendFloor then
-				CollectionService:AddTag(capsule, "LegendCapsule") -- the client draws its trial panel
-			end
 			if owned and figure == nil then
 				local model = Mannequin.build(def, nil, true)
 				model.Name = "Figure"
