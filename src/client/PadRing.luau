@@ -41,7 +41,13 @@ local COLORS = {
 	cannotAfford = Color3.fromRGB(225, 70, 70),
 	idle = Color3.fromRGB(125, 130, 145),
 }
-local TITLE_COLOR = Color3.fromRGB(190, 210, 240)
+-- Text colours on the solid black card, all above 7:1 contrast (WCAG AAA for normal text).
+local TITLE_COLOR = Color3.fromRGB(215, 230, 255)
+local NOTE_COLOR = Color3.fromRGB(215, 220, 232)
+local PRICE_COLOR = Color3.fromRGB(130, 240, 150)
+local BAD_COLOR = Color3.fromRGB(255, 130, 130)
+local GOAL_DONE_COLOR = Color3.fromRGB(130, 240, 150)
+local CARD_COLOR = Color3.fromRGB(0, 0, 0)
 
 type Entry = {
 	part: BasePart,
@@ -113,8 +119,8 @@ local function buildBillboard(part: BasePart): (
 	frame.Position = UDim2.fromScale(0.5, 1)
 	frame.Size = UDim2.fromScale(1, 0)
 	frame.AutomaticSize = Enum.AutomaticSize.Y
-	frame.BackgroundColor3 = Style.ui.dark
-	frame.BackgroundTransparency = 0.3
+	frame.BackgroundColor3 = CARD_COLOR
+	frame.BackgroundTransparency = 0
 	frame.BorderSizePixel = 0
 	frame.Parent = billboard
 	local corner = Instance.new("UICorner")
@@ -134,13 +140,13 @@ local function buildBillboard(part: BasePart): (
 
 	local title = label(frame, "Title", 18, TITLE_COLOR)
 	title.LayoutOrder = 1
-	local price = label(frame, "Price", 22, Style.ui.money)
+	local price = label(frame, "Price", 22, PRICE_COLOR)
 	price.LayoutOrder = 2
-	local note = label(frame, "Note", 14, Style.ui.idle)
+	local note = label(frame, "Note", 15, NOTE_COLOR)
 	note.LayoutOrder = 3
 	local lines: { TextLabel } = {}
 	for index = 1, MAX_LINES do
-		local line = label(frame, "Line" .. index, 14, Style.ui.idle)
+		local line = label(frame, "Line" .. index, 15, NOTE_COLOR)
 		line.LayoutOrder = 3 + index
 		table.insert(lines, line)
 	end
@@ -204,16 +210,16 @@ local function refresh(entry: Entry)
 	entry.title.Text = string.upper(info.title)
 	entry.price.Text = info.price
 	entry.price.Visible = info.price ~= ""
-	entry.price.TextColor3 = if info.state == "cannotAfford" then Style.ui.bad else Style.ui.money
+	entry.price.TextColor3 = if info.state == "cannotAfford" then BAD_COLOR else PRICE_COLOR
 	entry.note.Text = info.note
 	entry.note.Visible = info.note ~= ""
-	entry.note.TextColor3 = if info.state == "cannotAfford" then Style.ui.bad else Style.ui.idle
+	entry.note.TextColor3 = if info.state == "cannotAfford" then BAD_COLOR else NOTE_COLOR
 	for index, line in entry.lines do
 		local goal = if info.lines then info.lines[index] else nil
 		line.Visible = goal ~= nil
 		if goal then
 			line.Text = goal.text
-			line.TextColor3 = if goal.done then Style.ui.good else Style.ui.text
+			line.TextColor3 = if goal.done then GOAL_DONE_COLOR else Style.ui.text
 		end
 	end
 	if entry.disc then

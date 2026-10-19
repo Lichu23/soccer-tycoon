@@ -13,6 +13,7 @@ local Analytics = require(script.Parent.Analytics)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Mannequin = require(ReplicatedStorage.Shared.Mannequin)
 local PadActions = require(script.Parent.PadActions)
+local PlotLights = require(script.Parent.PlotLights)
 local Pads = require(script.Parent.Pads)
 local Roster = require(ReplicatedStorage.Shared.Roster)
 local Session = require(script.Parent.Session)
@@ -158,6 +159,7 @@ function Plots.assign(session: Session.Session, slotIndex: number?): boolean
 	plot:SetAttribute("OwnerUserId", player.UserId)
 	plot:SetAttribute("SlotIndex", index)
 	-- The template's origin is the middle of the gate, one stud above the ground reference.
+	local templatePivot = template:GetPivot()
 	plot:PivotTo(slotAnchor(index).CFrame * CFrame.new(0, 1, 0))
 	-- The claim ring part replaced the template's Claim marker while the slot was free.
 	-- The penalty kicks open from the HUD icon, so the old penalty marker is not needed.
@@ -169,6 +171,7 @@ function Plots.assign(session: Session.Session, slotIndex: number?): boolean
 	if claimMarker then
 		claimMarker:Destroy()
 	end
+	PlotLights.build(plot, templatePivot)
 	plot.Parent = plotsFolder
 
 	slotOwner[index] = player
