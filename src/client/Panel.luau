@@ -43,8 +43,7 @@ function Panel.build(gui: ScreenGui, title: string, heightScale: number, onClose
 	local backdrop = new("Frame", {
 		Name = "Backdrop",
 		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-		BackgroundTransparency = 0.45,
+		BackgroundTransparency = 1, -- no dimming; it only swallows taps
 		Visible = false,
 		Active = true, -- swallows taps so nothing behind it is pressed
 		ZIndex = 5,

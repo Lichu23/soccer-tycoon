@@ -307,9 +307,10 @@ function ShopUi.init()
 	end)
 
 	local function refresh()
-		local shown = player:GetAttribute("casesOpen") == true or Legends.reached(State.data)
-		locked = not shown
-		Dock.paint(tile, if shown then "open" else "locked")
+		-- The shop opens from the start. The rows still follow the server rules: the cases wait their
+		-- turn (with the reason shown), the match boost is there.
+		locked = false
+		Dock.paint(tile, "open")
 		if backdrop.Visible then
 			render()
 		end
