@@ -151,6 +151,8 @@ function DailyUi.init()
 
 	local caseIcon = buildIcon(gui, "CaseIcon", "CASE", 1, Color3.fromRGB(255, 150, 60), "case")
 	local kickIcon = buildIcon(gui, "KickIcon", "KICK", 2, Color3.fromRGB(110, 225, 130), "kick")
+	Dock.badge(caseIcon.tile, "case")
+	Dock.badge(kickIcon.tile, "kick")
 	CaseModal.init()
 	local toast = buildToast(gui)
 	local prize = buildPrize(gui)

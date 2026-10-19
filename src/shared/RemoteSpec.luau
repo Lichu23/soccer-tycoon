@@ -5,6 +5,7 @@
 -- remote.
 
 local Config = require(script.Parent.Config)
+local TileBadges = require(script.Parent.TileBadges)
 
 export type FieldSchema =
 	{ kind: "number", min: number?, max: number?, integer: boolean? }
@@ -88,6 +89,12 @@ RemoteSpec.remotes = {
 		args = { { kind = "boolean" } },
 		ratePerSecond = 1,
 		burst = 2,
+	},
+	SeenTile = {
+		direction = "toServer",
+		args = { { kind = "enum", values = TileBadges.ids } },
+		ratePerSecond = 2,
+		burst = 4,
 	},
 	StartNewSeason = {
 		direction = "toServer",

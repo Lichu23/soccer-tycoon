@@ -5,9 +5,11 @@
 -- (client/Icons), a picture above its label. The screens behind them are built by their own modules;
 -- this only draws the buttons and shows the reasons.
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Icons = require(script.Parent.Icons)
+local Net = require(script.Parent.Net)
 local Style = require(ReplicatedStorage.Shared.Style)
 
 local SIZE = 46
@@ -146,6 +148,39 @@ function Dock.build(
 		picture = picture,
 		reasonToken = 0,
 	}
+end
+
+-- The small red "1" at the top-right corner of a button, shown until the button is tapped for the first
+-- time. The server saves the tap (SeenTile) and says through the attribute tile_<id> (0 = not yet).
+function Dock.badge(tile: Tile, id: string)
+	local badge = new("TextLabel", {
+		Name = "Badge",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -3, 0, 3),
+		Size = UDim2.fromOffset(20, 20),
+		BackgroundColor3 = Color3.fromRGB(235, 60, 70),
+		Text = "1",
+		Font = Style.font,
+		TextSize = 14,
+		TextColor3 = Color3.fromRGB(255, 255, 255),
+		Visible = false,
+		ZIndex = 7,
+	}, tile.button)
+	new("UICorner", { CornerRadius = UDim.new(1, 0) }, badge)
+	new("UIStroke", { Color = Style.ui.dark, Thickness = 2 }, badge)
+	local player = Players.LocalPlayer
+	local attributeName = "tile_" .. id
+	local function refresh()
+		badge.Visible = player:GetAttribute(attributeName) == 0
+	end
+	refresh()
+	player:GetAttributeChangedSignal(attributeName):Connect(refresh)
+	tile.button.Activated:Connect(function()
+		if badge.Visible then
+			badge.Visible = false
+			Net.fire("SeenTile", id)
+		end
+	end)
 end
 
 -- Paints a button: "open" (normal), "ready" (open and something is waiting), "waiting" (open but

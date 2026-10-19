@@ -20,6 +20,7 @@ local Purchases = require(script.Parent.Purchases)
 local RevealActions = require(script.Parent.RevealActions)
 local Session = require(script.Parent.Session)
 local Stadium = require(script.Parent.Stadium)
+local TileBadges = require(ReplicatedStorage.Shared.TileBadges)
 local Training = require(script.Parent.Training)
 local TrainingActions = require(script.Parent.TrainingActions)
 local Sync = require(script.Parent.Sync)
@@ -139,6 +140,14 @@ Remotes.on("SetNotifications", function(player: Player, ...: any)
 	local session = Session.get(player)
 	if session and type(on) == "boolean" then
 		Actions.setNotifications(session, on)
+	end
+end)
+
+Remotes.on("SeenTile", function(player: Player, ...: any)
+	local id = select(1, ...)
+	local session = Session.get(player)
+	if session and type(id) == "string" and TileBadges.markSeen(session.data, id) then
+		Sync.scalars(session)
 	end
 end)
 
