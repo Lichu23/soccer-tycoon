@@ -13,6 +13,14 @@ T.test("a player always looks the same", function()
 	T.eq(a.hairColor[2], b.hairColor[2])
 end)
 
+T.test("every player has a chosen skin tone that is one of the six", function()
+	for _, def in Config.Players do
+		local index = Look.skinOf[def.id]
+		T.eq(index ~= nil and index >= 1 and index <= #Look.skinTones, true, def.id)
+		T.eq(Look.of(def.id).skin, Look.skinTones[index])
+	end
+end)
+
 T.test("the 35 players show real variety: skin tones, hair styles and kit patterns", function()
 	local skins, hairs, patterns = {}, {}, {}
 	local count = 0
