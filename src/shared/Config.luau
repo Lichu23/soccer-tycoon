@@ -314,6 +314,20 @@ Config.Offline = {
 	capSeconds = 4 * 60 * 60,
 }
 
+-- Reminders for players who opted in (docs/PLAN.md, Step 3, Notifications): the offline bank is full or
+-- the free case is ready. At most one a day, and they stop when several in a row are ignored.
+Config.Reminders = {
+	minGapSeconds = 22 * 60 * 60, -- between two reminders to the same player (Roblox allows 1 a day)
+	minAwaySeconds = 60 * 60, -- a free-case reminder never comes sooner than this after leaving
+	stopAfterIgnored = 3, -- reminders in a row that were not followed by a return
+	respondedWithinSeconds = 6 * 60 * 60, -- a return within this long after a reminder counts as an answer
+	queueSeconds = 3 * 24 * 60 * 60, -- a reminder that was not sent in this long is dropped
+	sweepSeconds = 60, -- how often a server looks for reminders that are due
+	-- Notification string asset ids from the Creator Hub (Notifications). Empty until they are created;
+	-- nothing is sent for a kind without one.
+	messages = { bank = "", case = "" } :: { [string]: string },
+}
+
 Config.Stars = {
 	bonusPerStar = 0.10,
 	maxStars = 5,

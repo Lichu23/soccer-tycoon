@@ -21,6 +21,9 @@ function Notifications.set(data: Data, on: boolean): boolean
 	end
 	data.flags.notificationAsked = true
 	data.flags.notificationsOn = on
+	if on then
+		data.flags.reminderIgnored = 0 -- turning it on again starts fresh
+	end
 	return true
 end
 

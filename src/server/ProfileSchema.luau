@@ -43,6 +43,8 @@ export type Profile = {
 		firstHatTrickDone: boolean,
 		notificationAsked: boolean,
 		notificationsOn: boolean, -- the reminder opt-in answer (off until the player turns it on)
+		reminderIgnored: number, -- reminders in a row that were not followed by a return
+		reminderLastSentAt: number, -- os.time() of the last reminder sent to this player, 0 = never
 		hasClaimedPlot: boolean, -- a returning player gets a plot at once, without the claim ring
 		milestones: { [string]: number }, -- first_purchase, first_match... -> os.time() when first reached
 	},
@@ -80,6 +82,8 @@ function ProfileSchema.newProfile(): Profile
 			firstHatTrickDone = false,
 			notificationAsked = false,
 			notificationsOn = false,
+			reminderIgnored = 0,
+			reminderLastSentAt = 0,
 			hasClaimedPlot = false,
 			milestones = {},
 		},

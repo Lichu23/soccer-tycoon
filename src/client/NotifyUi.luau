@@ -3,6 +3,7 @@
 -- opens once the player has bought their first player. Nothing pops up by itself; the player turns
 -- reminders on or off here at any time. The server saves the answer; this only asks and shows it.
 
+local ExperienceNotificationService = game:GetService("ExperienceNotificationService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -161,7 +162,22 @@ function NotifyUi.init()
 		toggle.Text = if isOn() then "Turn off" else "Turn on"
 	end
 	toggle.Activated:Connect(function()
-		Net.fire("SetNotifications", not isOn())
+		local turningOn = not isOn()
+		Net.fire("SetNotifications", turningOn)
+		if turningOn then
+			-- Roblox sends notifications only to players who agreed in its own prompt (it shows only
+			-- when it is allowed and not asked in the last 30 days).
+			task.spawn(function()
+				local ok, can = pcall(function()
+					return ExperienceNotificationService:CanPromptOptInAsync()
+				end)
+				if ok and can then
+					pcall(function()
+						ExperienceNotificationService:PromptOptIn()
+					end)
+				end
+			end)
+		end
 	end)
 	local function hide()
 		backdrop.Visible = false
