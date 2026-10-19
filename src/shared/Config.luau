@@ -253,7 +253,6 @@ Config.Daily = {
 	penaltyMultiplier = 1.5,
 	-- Seconds of boost for the number of goals scored out of 3 kicks.
 	penaltyBoostSeconds = { [0] = 0, [1] = 180, [2] = 300, [3] = 600 } :: { [number]: number },
-	unlockTier = 2, -- the daily icons and the penalty pad open with the first stadium upgrade
 	-- Chance that a kick goes wide or over before the keeper is even asked, by aim zone. Corners
 	-- are riskier than the middle; the keeper then dives to a random zone.
 	zoneMissChance = {
@@ -559,6 +558,14 @@ Config.Store = {
 
 -- The upgrade cinematic (docs/PLAN.md, Step 7). The server builds the new pitch after
 -- buildDelaySeconds, when the camera has arrived. The client unlocks by itself after maxSeconds.
+-- The two intro cinematics (client): a 5 second tour when the plot is claimed for the first time, and
+-- the camera on the pitch from the first player bought until the first match ends (skippable).
+Config.Intro = {
+	tourSeconds = 5,
+	firstMatchMaxSeconds = 60, -- never longer than this, whatever happens
+	firstMatchHoldSeconds = 1.5, -- after the result, so the victory and the payout are seen
+}
+
 Config.Cinematic = {
 	seconds = 6.5,
 	maxSeconds = 9,

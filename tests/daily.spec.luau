@@ -13,12 +13,11 @@ local HOUR = 3600
 local COOLDOWN = Config.Daily.cooldownSeconds
 local T0 = 1_000_000
 
--- A player past the first stadium upgrade, with a player on the field.
+-- A player with their first player bought and on the field.
 local function playing()
 	local data = ProfileSchema.newProfile()
 	Roster.add(data, "rashford")
 	data.fieldStarted = true
-	data.stadiumTier = Config.Daily.unlockTier
 	return data
 end
 
@@ -26,7 +25,7 @@ end
 local GOAL_ROLLS = { miss = 0.99, keeper = 0 }
 local SAVE_ROLLS = { miss = 0.99, keeper = 0.99 }
 
-T.test("nothing is open before the first stadium upgrade", function()
+T.test("nothing is open before the first player is bought", function()
 	local data = ProfileSchema.newProfile()
 	T.eq(Daily.unlocked(data), false)
 	local prize, why = Daily.claimCase(data, T0, 0.9)
@@ -120,11 +119,12 @@ T.test("a case boost keeps the longer timer instead of adding", function()
 	T.eq(data.boosts.stadiumBoostLeft, 180)
 end)
 
-T.test("a cash reward with no income yet becomes a boost", function()
+T.test("right after the first player, a cash reward pays real cash", function()
 	local data = ProfileSchema.newProfile()
-	data.stadiumTier = Config.Daily.unlockTier
+	Roster.add(data, "rashford")
 	local prize = Daily.claimCase(data, T0, ROLL.cashSmall)
-	T.eq(prize.kind, "boost")
+	T.eq(prize.kind, "cash")
+	T.eq(prize.amount >= 1, true)
 end)
 
 T.test("three kicks, then nothing until 20 hours after the first kick", function()

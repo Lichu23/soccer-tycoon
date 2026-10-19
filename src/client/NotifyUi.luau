@@ -38,7 +38,7 @@ function NotifyUi.init()
 	}, player:WaitForChild("PlayerGui"))
 
 	local tile =
-		Dock.build(gui, "RemindersIcon", 5, "ALERTS", Color3.fromRGB(200, 130, 255), "alerts")
+		Dock.build(gui, "RemindersIcon", 4, "ALERTS", Color3.fromRGB(200, 130, 255), "alerts")
 	local icon = tile.button
 	local locked = true
 

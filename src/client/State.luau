@@ -4,6 +4,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local Net = require(script.Parent.Net)
 local Types = require(ReplicatedStorage.Shared.Types)
@@ -36,6 +37,78 @@ local function notify()
 	for _, listener in listeners do
 		task.spawn(listener)
 	end
+end
+
+-- The reward hold: while the free case spins, the HUD keeps showing what the player had before it, so
+-- the prize is not given away before the roulette lands. The server pays at once; this only delays
+-- what the screen shows, and always ends (the roulette ends it, or a timeout).
+local HOLD_TIMEOUT_SECONDS = 15
+local hold: { cash: number, tp: number, boostWasActive: boolean, prize: any? }? = nil
+
+function State.holdReward()
+	local boostEnds = player:GetAttribute("boostEndsAt")
+	local active = type(boostEnds) == "number" and boostEnds > Workspace:GetServerTimeNow()
+	local mine =
+		{ cash = State.data.cash, tp = State.data.tp, boostWasActive = active, prize = nil }
+	hold = mine
+	task.delay(HOLD_TIMEOUT_SECONDS, function()
+		if hold == mine then
+			State.releaseReward()
+		end
+	end)
+end
+
+-- The prize the server rolled: from now the HUD shows the real values minus this prize.
+function State.setHeldPrize(prize: any)
+	if hold then
+		hold.prize = prize
+	end
+end
+
+function State.releaseReward()
+	if hold == nil then
+		return
+	end
+	hold = nil
+	notify()
+end
+
+-- The cash and the training points the HUD shows.
+function State.shownCash(): number
+	local held = hold
+	if held == nil then
+		return State.data.cash
+	end
+	local prize = held.prize
+	if prize == nil then
+		return held.cash
+	end
+	return if prize.kind == "cash" and type(prize.amount) == "number"
+		then math.max(State.data.cash - prize.amount, 0)
+		else State.data.cash
+end
+
+function State.shownTp(): number
+	local held = hold
+	if held == nil then
+		return State.data.tp
+	end
+	local prize = held.prize
+	if prize == nil then
+		return held.tp
+	end
+	return if prize.kind == "tp" and type(prize.amount) == "number"
+		then math.max(State.data.tp - prize.amount, 0)
+		else State.data.tp
+end
+
+-- True while a boost that only the held prize can have started should stay off the badge.
+function State.boostHeld(): boolean
+	local held = hold
+	if held == nil or held.boostWasActive then
+		return false
+	end
+	return held.prize == nil or held.prize.kind == "boost"
 end
 
 function State.hasPlot(): boolean

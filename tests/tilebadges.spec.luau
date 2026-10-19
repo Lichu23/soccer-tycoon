@@ -12,7 +12,7 @@ T.test("a new profile has every badge unseen, and tapping saves it for good", fu
 	end
 	T.eq(TileBadges.markSeen(data, "shop"), true)
 	T.eq(TileBadges.seen(data, "shop"), true)
-	T.eq(TileBadges.seen(data, "case"), false)
+	T.eq(TileBadges.seen(data, "kick"), false)
 	T.eq(ProfileSchema.validate(data), true)
 end)
 

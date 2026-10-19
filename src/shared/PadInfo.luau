@@ -164,7 +164,7 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 		return { title = title, price = "TP", note = note, state = "info" }
 	elseif kind == "penalty" then
 		-- Whether kicks are left today is the server's call (the client shows the wait time).
-		if data.stadiumTier < Config.Daily.unlockTier then
+		if Roster.ownedCount(data) < 1 then
 			return { title = "Penalty kicks", price = "", note = "", state = "locked" }
 		end
 		return { title = "Penalty kicks", price = "KICK", note = "", state = "ready" }

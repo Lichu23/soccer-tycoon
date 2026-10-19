@@ -14,6 +14,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local Mannequin = require(ReplicatedStorage.Shared.Mannequin)
 local PadActions = require(script.Parent.PadActions)
+local Remotes = require(script.Parent.Remotes)
 local PlotLights = require(script.Parent.PlotLights)
 local Pads = require(script.Parent.Pads)
 local Roster = require(ReplicatedStorage.Shared.Roster)
@@ -82,6 +83,141 @@ local function createRing(index: number)
 	})
 end
 
+local OWNED_GLASS_TRANSPARENCY = 0.78
+local LOCKED_GLASS_TRANSPARENCY = 0.88
+local LOCKED_GLASS_COLOR = Color3.fromRGB(215, 225, 238)
+local CAPSULE_LIGHT_COLOR = Color3.fromRGB(255, 247, 232)
+local RING_LOCKED_COLOR = Color3.fromRGB(170, 185, 210)
+
+-- Turns a part into a cylinder that stands upright: `height` along the cylinder's axis, `diameter`
+-- across, at `position`. (A Roblox cylinder lies along its X axis, so it is turned a quarter turn.)
+local function makeUpright(part: BasePart, position: Vector3, height: number, diameter: number)
+	if part:IsA("Part") then
+		part.Shape = Enum.PartType.Cylinder
+	end
+	part.Size = Vector3.new(height, diameter, diameter)
+	part.CFrame = CFrame.new(position) * CFrame.Angles(0, 0, math.pi / 2)
+end
+
+-- The glowing ring on the floor of a capsule: a thin neon disc under a slightly smaller dark one, so
+-- only a ring of light shows around the player's feet. Soft light, tinted by the rarity once owned.
+local function updateFloorRing(capsule: Instance, pedestal: BasePart, color: Color3, owned: boolean)
+	local ring = capsule:FindFirstChild("FloorRing")
+	if ring == nil then
+		local top = pedestal.Position + Vector3.new(0, 0.5, 0)
+		local neon = Instance.new("Part")
+		neon.Name = "FloorRing"
+		neon.Shape = Enum.PartType.Cylinder
+		neon.Material = Enum.Material.Neon
+		neon.Anchored = true
+		neon.CanCollide = false
+		neon.CanQuery = false
+		neon.CanTouch = false
+		neon.CastShadow = false
+		neon.Size = Vector3.new(0.1, 4.5, 4.5)
+		neon.CFrame = CFrame.new(top + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+		local glow = Instance.new("PointLight")
+		glow.Range = 7
+		glow.Brightness = 0.5
+		glow.Shadows = false
+		glow.Parent = neon
+		neon.Parent = capsule
+		local inner = Instance.new("Part")
+		inner.Name = "FloorInner"
+		inner.Shape = Enum.PartType.Cylinder
+		inner.Material = Enum.Material.SmoothPlastic
+		inner.Color = pedestal.Color
+		inner.Anchored = true
+		inner.CanCollide = false
+		inner.CanQuery = false
+		inner.CanTouch = false
+		inner.Size = Vector3.new(0.12, 3.7, 3.7)
+		inner.CFrame = CFrame.new(top + Vector3.new(0, 0.06, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+		inner.Parent = capsule
+		ring = neon
+	end
+	local neon = ring :: BasePart
+	neon.Color = color
+	neon.Transparency = if owned then 0.2 else 0.6
+	local glow = neon:FindFirstChildOfClass("PointLight")
+	if glow then
+		glow.Color = color
+		glow.Brightness = if owned then 0.5 else 0.2
+	end
+end
+
+-- A spotlight from the top of the capsule down on the figure, so he is lit and his colours show. It is
+-- made once per capsule and goes away with the plot.
+local function addCapsuleLight(capsule: Instance, glass: BasePart)
+	if capsule:FindFirstChild("Spot") then
+		return
+	end
+	local spot = Instance.new("Part")
+	spot.Name = "Spot"
+	spot.Size = Vector3.new(0.5, 0.2, 0.5)
+	spot.Transparency = 1
+	spot.Anchored = true
+	spot.CanCollide = false
+	spot.CanQuery = false
+	spot.CanTouch = false
+	spot.CastShadow = false
+	spot.CFrame = CFrame.new(
+		glass.Position
+			+ Vector3.new(0, math.max(glass.Size.X, glass.Size.Y, glass.Size.Z) / 2 - 0.4, 0)
+	)
+	local light = Instance.new("SpotLight")
+	light.Face = Enum.NormalId.Bottom
+	light.Angle = 85
+	light.Range = 16
+	light.Brightness = 1.0
+	light.Color = CAPSULE_LIGHT_COLOR
+	light.Shadows = false
+	light.Parent = spot
+	spot.Parent = capsule
+end
+
+type Bounds = { minX: number, maxX: number, minZ: number, maxZ: number }
+
+-- The walls of the building in plot space (x to the right of the gate, z towards the stadium): the
+-- extremes of the building parts. nil when the plot has no building parts.
+local function buildingBounds(plot: Model, gate: BasePart): Bounds?
+	local building = plot:FindFirstChild("Building")
+	if building == nil then
+		return nil
+	end
+	local bounds: Bounds =
+		{ minX = math.huge, maxX = -math.huge, minZ = math.huge, maxZ = -math.huge }
+	local any = false
+	for _, descendant in building:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			any = true
+			local inPlot = gate.CFrame:PointToObjectSpace(descendant.Position)
+			bounds.minX = math.min(bounds.minX, inPlot.X)
+			bounds.maxX = math.max(bounds.maxX, inPlot.X)
+			bounds.minZ = math.min(bounds.minZ, inPlot.Z)
+			bounds.maxZ = math.max(bounds.maxZ, inPlot.Z)
+		end
+	end
+	return if any then bounds else nil
+end
+
+-- The way a capsule faces: straight away from the wall it stands against, into the building (a plot
+-- space direction, one of the four axes). The wall is the nearest one.
+local function inwardDirection(position: Vector3, bounds: Bounds): Vector3
+	local nearest = position.X - bounds.minX
+	local direction = Vector3.new(1, 0, 0) -- the front glass wall: face the building
+	if bounds.maxX - position.X < nearest then
+		nearest, direction = bounds.maxX - position.X, Vector3.new(-1, 0, 0)
+	end
+	if position.Z - bounds.minZ < nearest then
+		nearest, direction = position.Z - bounds.minZ, Vector3.new(0, 0, 1)
+	end
+	if bounds.maxZ - position.Z < nearest then
+		direction = Vector3.new(0, 0, -1)
+	end
+	return direction
+end
+
 -- Lights the capsules of owned players (glass tinted by rarity, a figure inside) and clears the
 -- ones that are no longer owned.
 function Plots.refresh(session: Session.Session)
@@ -116,6 +252,11 @@ function Plots.refresh(session: Session.Session)
 	if capsules == nil then
 		return
 	end
+	local gateInstance = plot:FindFirstChild("Gate")
+	local gate: BasePart? = if gateInstance and gateInstance:IsA("BasePart")
+		then gateInstance
+		else nil
+	local bounds = if gate then buildingBounds(plot, gate) else nil
 	for _, capsule in capsules:GetChildren() do
 		local playerId = capsule:GetAttribute("PlayerId")
 		local def = if type(playerId) == "string" then Config.PlayersById[playerId] else nil
@@ -123,18 +264,69 @@ function Plots.refresh(session: Session.Session)
 		local glass = capsule:FindFirstChild("Glass")
 		if def and pedestal and pedestal:IsA("BasePart") and glass and glass:IsA("BasePart") then
 			local owned = Roster.owns(session.data, def.id)
-			local figure = capsule:FindFirstChild("Figure")
 			capsule:SetAttribute("Owned", owned)
-			if owned and figure == nil then
-				local model = Mannequin.build(def, nil, true)
-				model.Name = "Figure"
-				model:PivotTo(pedestal.CFrame * CFrame.new(0, 0.5 + Mannequin.FEET_TO_TORSO, 0))
-				model.Parent = capsule
-				glass.Color = Style.rarityColors[def.rarity] or glass.Color
-				glass.Transparency = 0.55
-			elseif not owned and figure then
-				figure:Destroy()
+			-- Every player stands in his capsule: in full colour once owned, washed out before.
+			-- The Glass material hides the name and number printed on the shirt behind it; a plain
+			-- material with the same transparency shows them.
+			glass.Material = Enum.Material.SmoothPlastic
+			-- The capsule and its floor are round, not boxes (done once; the pedestal is 1 stud thick).
+			if capsule:GetAttribute("Round") ~= true then
+				capsule:SetAttribute("Round", true)
+				makeUpright(
+					glass,
+					glass.Position,
+					glass.Size.Y,
+					math.min(glass.Size.X, glass.Size.Z)
+				)
+				makeUpright(
+					pedestal,
+					pedestal.Position,
+					pedestal.Size.Y,
+					math.min(pedestal.Size.X, pedestal.Size.Z)
+				)
 			end
+			local figure = capsule:FindFirstChild("Figure")
+			if figure and figure:GetAttribute("Owned") ~= owned then
+				figure:Destroy()
+				figure = nil
+			end
+			if figure == nil then
+				local model =
+					Mannequin.build(def, nil, false, { detailed = true, locked = not owned })
+				model.Name = "Figure"
+				model:SetAttribute("Owned", owned)
+				local stand =
+					CFrame.new(pedestal.Position + Vector3.new(0, 0.5 + Mannequin.FEET_TO_TORSO, 0))
+				-- Every figure faces straight away from his wall, into the building, so whoever walks
+				-- inside sees his face.
+				if gate and bounds then
+					local inside =
+						inwardDirection(gate.CFrame:PointToObjectSpace(stand.Position), bounds)
+					local ahead = stand.Position + gate.CFrame:VectorToWorldSpace(inside)
+					model:PivotTo(CFrame.lookAt(stand.Position, ahead))
+				else
+					model:PivotTo(stand)
+				end
+				model.Parent = capsule
+			end
+			-- The glass is tinted by the rarity once owned, but clear enough to see the real colours of the
+			-- kit; an empty capsule is nearly clear.
+			if owned then
+				glass.Color = Style.rarityColors[def.rarity] or LOCKED_GLASS_COLOR
+				glass.Transparency = OWNED_GLASS_TRANSPARENCY
+			else
+				glass.Color = LOCKED_GLASS_COLOR
+				glass.Transparency = LOCKED_GLASS_TRANSPARENCY
+			end
+			addCapsuleLight(capsule, glass)
+			updateFloorRing(
+				capsule,
+				pedestal,
+				if owned
+					then Style.rarityColors[def.rarity] or RING_LOCKED_COLOR
+					else RING_LOCKED_COLOR,
+				owned
+			)
 		end
 	end
 end
@@ -185,6 +377,7 @@ function Plots.assign(session: Session.Session, slotIndex: number?): boolean
 	session.runtime.plot = plot
 	session.runtime.slotIndex = index
 	player:SetAttribute("plotSlot", index)
+	local firstClaim = not session.data.flags.hasClaimedPlot
 	session.data.flags.hasClaimedPlot = true
 
 	local ring = rings[index]
@@ -198,6 +391,10 @@ function Plots.assign(session: Session.Session, slotIndex: number?): boolean
 	Plots.refresh(session)
 	Analytics.milestone(session, "claimed_plot")
 	Sync.all(session)
+	if firstClaim then
+		-- The first claim ever: the client plays the 5 second tour of the building, stadium and training.
+		Remotes.fireClient("Notice", player, { kind = "plotTour" })
+	end
 	return true
 end
 

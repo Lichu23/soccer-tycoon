@@ -90,23 +90,6 @@ local function swingLimb(limb: BasePart, joint: Vector3, angle: number, reach: n
 	limb.CFrame = CFrame.new(joint) * CFrame.Angles(angle, 0, 0) * CFrame.new(0, reach, 0)
 end
 
--- Two small dark eyes on the front of the head (the front is the -Z side), so the way it faces is
--- clear. The head is a ball centred at (0, 1.7, 0).
-local function addEyes(model: Model)
-	for _, side in { -1, 1 } do
-		new("Part", {
-			Name = "Eye",
-			Size = Vector3.new(0.18, 0.24, 0.06),
-			Color = Style.ui.dark,
-			Anchored = true,
-			CanCollide = false,
-			CanQuery = false,
-			CanTouch = false,
-			CFrame = CFrame.new(side * 0.28, 1.8, -0.62),
-		}, model)
-	end
-end
-
 -- The player juggling in a small 3D view, facing the camera: the right foot kicks the ball up and
 -- catches it on the way down. Returns the update function to call every frame (nil when still).
 local function buildTrick(parent: Instance, def: Config.PlayerDef, animated: boolean): (() -> ())?
@@ -120,7 +103,6 @@ local function buildTrick(parent: Instance, def: Config.PlayerDef, animated: boo
 		LightColor = Color3.fromRGB(255, 255, 255),
 	}, parent)
 	local model = Mannequin.build(def, nil, false)
-	addEyes(model)
 	model.Parent = view
 	local ball = new("Part", {
 		Name = "Ball",
@@ -147,6 +129,8 @@ local function buildTrick(parent: Instance, def: Config.PlayerDef, animated: boo
 	if rightLeg == nil or leftArm == nil or rightArm == nil then
 		return nil
 	end
+	local leftSleeve = model:FindFirstChild("LeftSleeve") :: BasePart?
+	local rightSleeve = model:FindFirstChild("RightSleeve") :: BasePart?
 	-- One clock drives both: the ball leaves the foot at phase 0 and comes back at phase 1, and the
 	-- leg swings through the ball exactly at that moment. The figure itself never turns.
 	local startedAt = os.clock()
@@ -158,6 +142,11 @@ local function buildTrick(parent: Instance, def: Config.PlayerDef, animated: boo
 		swingLimb(rightLeg, HIP_RIGHT, swing, -1)
 		swingLimb(leftArm, SHOULDER_LEFT, -swing * 0.4, -0.9)
 		swingLimb(rightArm, SHOULDER_RIGHT, swing * 0.4, -0.9)
+		-- The sleeves swing with the arms (their middle is 0.45 below the shoulder).
+		if leftSleeve and rightSleeve then
+			swingLimb(leftSleeve, SHOULDER_LEFT, -swing * 0.4, -0.45)
+			swingLimb(rightSleeve, SHOULDER_RIGHT, swing * 0.4, -0.45)
+		end
 	end
 end
 
