@@ -150,7 +150,7 @@ function Dock.build(
 	}
 end
 
--- The small red "1" at the top-right corner of a button, shown until the button is tapped for the first
+-- The small red "1" at the top-right corner of a button, shown until the open button is tapped for the first
 -- time. The server saves the tap (SeenTile) and says through the attribute tile_<id> (0 = not yet).
 function Dock.badge(tile: Tile, id: string)
 	local badge = new("TextLabel", {
@@ -176,7 +176,8 @@ function Dock.badge(tile: Tile, id: string)
 	refresh()
 	player:GetAttributeChangedSignal(attributeName):Connect(refresh)
 	tile.button.Activated:Connect(function()
-		if badge.Visible then
+		-- A closed button keeps its "1" until it opens and is tapped.
+		if badge.Visible and not tile.lock.Visible then
 			badge.Visible = false
 			Net.fire("SeenTile", id)
 		end

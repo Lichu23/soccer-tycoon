@@ -432,17 +432,17 @@ function ShopUi.init()
 	end
 	icon.Activated:Connect(function()
 		if locked then
-			Dock.reason(tile, "Opens a little later.")
+			Dock.reason(tile, "Claim your plot first.")
 		else
 			open()
 		end
 	end)
 
 	local function refresh()
-		-- The shop opens from the start. The rows still follow the server rules: the cases wait their
+		-- The shop opens with the plot. The cards still follow the server rules: the cases wait their
 		-- turn (with the reason shown), the match boost is there.
-		locked = false
-		Dock.paint(tile, "open")
+		locked = not State.hasPlot()
+		Dock.paint(tile, if locked then "locked" else "open")
 		if backdrop.Visible then
 			render()
 		end

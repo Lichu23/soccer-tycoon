@@ -17,6 +17,7 @@ local DailyInfo = require(ReplicatedStorage.Shared.DailyInfo)
 local NumberFormat = require(ReplicatedStorage.Shared.NumberFormat)
 local PenaltyUi = require(script.Parent.PenaltyUi)
 local Net = require(script.Parent.Net)
+local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
@@ -93,13 +94,22 @@ local function paintIcon(icon: Icon, status: string)
 	end
 end
 
+-- The short line of a closed icon: the plot comes first, then the stadium tier.
+local function closedReason(): string
+	if not State.hasPlot() then
+		return "Claim your plot first."
+	end
+	return "Opens at stadium tier " .. Config.Daily.unlockTier .. "."
+end
+
 local function readyAt(attribute: string): number
 	local value = player:GetAttribute(attribute)
 	return if type(value) == "number" then value else 0
 end
 
 local function iconStatus(attribute: string): string
-	local unlocked = player:GetAttribute("dailyUnlocked") == true
+	-- Nothing opens before the plot is claimed: the icons belong to the player's own plot.
+	local unlocked = State.hasPlot() and player:GetAttribute("dailyUnlocked") == true
 	return DailyInfo.status(unlocked, readyAt(attribute), Workspace:GetServerTimeNow())
 end
 
@@ -216,7 +226,7 @@ function DailyUi.init()
 	-- Taps -------------------------------------------------------------------------------------
 	caseIcon.button.Activated:Connect(function()
 		if caseIcon.status == "locked" then
-			Dock.reason(caseIcon.tile, "Opens at stadium tier " .. Config.Daily.unlockTier .. ".")
+			Dock.reason(caseIcon.tile, closedReason())
 			return
 		end
 		-- The icon opens the cases screen; it says when the free case is ready and opens it.
@@ -224,7 +234,7 @@ function DailyUi.init()
 	end)
 	kickIcon.button.Activated:Connect(function()
 		if kickIcon.status == "locked" then
-			Dock.reason(kickIcon.tile, "Opens at stadium tier " .. Config.Daily.unlockTier .. ".")
+			Dock.reason(kickIcon.tile, closedReason())
 			return
 		end
 		if kickIcon.status == "ready" then
