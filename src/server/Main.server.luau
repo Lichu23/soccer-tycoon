@@ -132,6 +132,14 @@ Remotes.on("SetCosmetic", function(player: Player, ...: any)
 	end
 end)
 
+Remotes.on("SetNotifications", function(player: Player, ...: any)
+	local on = select(1, ...)
+	local session = Session.get(player)
+	if session and type(on) == "boolean" then
+		Actions.setNotifications(session, on)
+	end
+end)
+
 Remotes.on("BuyStoreUpgrade", function(player: Player, ...: any)
 	local id, levelSeen = select(1, ...)
 	local session = Session.get(player)

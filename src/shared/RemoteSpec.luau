@@ -83,6 +83,12 @@ RemoteSpec.remotes = {
 		ratePerSecond = 2,
 		burst = 4,
 	},
+	SetNotifications = {
+		direction = "toServer",
+		args = { { kind = "boolean" } },
+		ratePerSecond = 1,
+		burst = 2,
+	},
 	StartNewSeason = {
 		direction = "toServer",
 		-- The season number the client saw, so a double tap cannot reset twice.

@@ -1,0 +1,36 @@
+--!nocheck
+local T = require("./framework")
+local Notifications = T.load("shared/Notifications")
+local ProfileSchema = T.load("server/ProfileSchema")
+local Roster = T.load("shared/Roster")
+
+T.suite("notifications opt-in")
+
+T.test("the opt-in opens with the first player bought, not before", function()
+	local data = ProfileSchema.newProfile()
+	T.eq(Notifications.unlocked(data), false)
+	T.eq(Notifications.set(data, true), false)
+	T.eq(data.flags.notificationsOn, false)
+	T.eq(data.flags.notificationAsked, false)
+	Roster.add(data, "rashford")
+	T.eq(Notifications.unlocked(data), true)
+end)
+
+T.test("the answer is saved, can be changed, and is a valid profile", function()
+	local data = ProfileSchema.newProfile()
+	Roster.add(data, "rashford")
+	T.eq(Notifications.set(data, true), true)
+	T.eq(data.flags.notificationsOn, true)
+	T.eq(data.flags.notificationAsked, true)
+	T.eq(Notifications.set(data, false), true)
+	T.eq(data.flags.notificationsOn, false)
+	T.eq(data.flags.notificationAsked, true)
+	T.eq(ProfileSchema.validate(data), true)
+end)
+
+T.test("an old profile without the flag gets it filled in as off", function()
+	local stored = { version = 1, flags = { notificationAsked = true } }
+	ProfileSchema.reconcile(stored, ProfileSchema.newProfile())
+	T.eq(stored.flags.notificationsOn, false)
+	T.eq(stored.flags.notificationAsked, true)
+end)

@@ -177,11 +177,15 @@ function SeasonUi.init()
 			return
 		end
 		local size = camera.ViewportSize
+		if size.X < 100 or size.Y < 100 then
+			return -- the viewport is not ready yet; the next fit (when the card opens) corrects it
+		end
 		local naturalHeight = card.AbsoluteSize.Y / scale.Scale
 		scale.Scale =
 			math.min(1, size.X / (CARD_W + 40), size.Y * 0.92 / math.max(naturalHeight, 1))
 	end
 	card:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+	backdrop:GetPropertyChangedSignal("Visible"):Connect(fit)
 
 	local order = 0
 	local function line(text: string, props: { [string]: any }?)

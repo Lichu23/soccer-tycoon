@@ -24,6 +24,7 @@ function Sync.scalars(session: Session.Session)
 	player:SetAttribute("stadiumTier", data.stadiumTier)
 	player:SetAttribute("seasonNumber", data.season.number)
 	player:SetAttribute("fieldStarted", data.fieldStarted)
+	player:SetAttribute("notificationsOn", data.flags.notificationsOn)
 	-- The badge shows the multiplier of all running boosts and the time until the next one ends.
 	local left = Boosts.nextEnd(data)
 	player:SetAttribute("boostEndsAt", if left > 0 then Workspace:GetServerTimeNow() + left else 0)

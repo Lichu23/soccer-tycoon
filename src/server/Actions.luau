@@ -11,6 +11,7 @@ local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local Economy = require(script.Parent.Economy)
 local Legends = require(ReplicatedStorage.Shared.Legends)
 local NewSeason = require(script.Parent.NewSeason)
+local Notifications = require(ReplicatedStorage.Shared.Notifications)
 local ProfileSchema = require(script.Parent.ProfileSchema)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Reveals = require(script.Parent.Reveals)
@@ -73,6 +74,15 @@ function Actions.setCosmetic(session: ActionSession, slot: string, id: string): 
 	end
 	Actions.onChange(session, "cosmetic", id)
 	return true, nil
+end
+
+-- The reminder opt-in. Only records the answer; it opens with the first player bought.
+function Actions.setNotifications(session: ActionSession, on: boolean): boolean
+	if not Notifications.set(session.data, on) then
+		return false
+	end
+	Actions.onChange(session, "notifications", if on then "on" else "off")
+	return true
 end
 
 -- Spends TP on the next level of an owned player (the level-up pad). `levelSeen` (when given) must

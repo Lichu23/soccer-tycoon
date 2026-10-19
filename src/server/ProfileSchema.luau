@@ -42,6 +42,7 @@ export type Profile = {
 	flags: {
 		firstHatTrickDone: boolean,
 		notificationAsked: boolean,
+		notificationsOn: boolean, -- the reminder opt-in answer (off until the player turns it on)
 		hasClaimedPlot: boolean, -- a returning player gets a plot at once, without the claim ring
 		milestones: { [string]: number }, -- first_purchase, first_match... -> os.time() when first reached
 	},
@@ -78,6 +79,7 @@ function ProfileSchema.newProfile(): Profile
 		flags = {
 			firstHatTrickDone = false,
 			notificationAsked = false,
+			notificationsOn = false,
 			hasClaimedPlot = false,
 			milestones = {},
 		},
