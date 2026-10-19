@@ -21,6 +21,8 @@ export type Runtime = {
 	matchesPlayed: number,
 	nextMatchAt: number, -- os.clock() when the next match ends, 0 when none is scheduled
 	upgrading: boolean, -- a stadium upgrade is waiting to build its pitch
+	sessionCases: number, -- Robux cases bought in this visit, for the confirm screen total
+	sessionRobux: number, -- Robux spent in this visit
 }
 
 export type Session = {
@@ -124,6 +126,8 @@ local function startOne(player: Player): Session?
 			matchesPlayed = 0,
 			nextMatchAt = 0,
 			upgrading = false,
+			sessionCases = 0,
+			sessionRobux = 0,
 		},
 	}
 	sessions[player] = session

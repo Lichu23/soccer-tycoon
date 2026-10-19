@@ -42,6 +42,24 @@ export type StadiumTierDef = {
 	courtWidth: number,
 }
 
+export type CaseDef = {
+	id: string,
+	name: string,
+	floorsComplete: number, -- floors completed to unlock it
+	legendChance: number, -- the share of a pull that is a Legend (fixed, taken off the top)
+	-- Shares of the rest: a player of the floors reached, of the next floor, of the floors further on.
+	odds: { reached: number, nextFloor: number, further: number },
+}
+
+export type ProductDef = {
+	key: string,
+	kind: "case" | "boost" | "legend",
+	robux: number, -- the price shown on the button (the real price is set on the dashboard)
+	productId: number, -- the Developer Product id, 0 until it is created on the dashboard
+	caseId: string?,
+	playerId: string?,
+}
+
 export type TrialGoal = {
 	id: string,
 	kind: "ownFloors" | "trained" | "tier",
@@ -312,6 +330,81 @@ Config.Training = {
 	drillBaseTp = 1,
 	drillHitBonusTp = 0.3,
 }
+
+-- The Robux cases (docs/PLAN.md, Step 3). Within a floor a cheaper player is likelier (each step up
+-- the slot order is `slotDecay` as likely as the one before). Odds, the chance of a duplicate and
+-- the star rule are shown before the purchase, from these same numbers.
+Config.Cases = {
+	standard = {
+		id = "standard",
+		name = "Standard Case",
+		floorsComplete = 1,
+		legendChance = 0.005,
+		odds = { reached = 0.70, nextFloor = 0.25, further = 0.05 },
+	},
+	elite = {
+		id = "elite",
+		name = "Elite Case",
+		floorsComplete = 2,
+		legendChance = 0.02,
+		odds = { reached = 0.40, nextFloor = 0.40, further = 0.20 },
+	},
+} :: { [string]: CaseDef }
+
+Config.CaseRules = {
+	slotDecay = 0.7,
+	noOfferSeconds = 30 * 60, -- no case offer until this long after the first purchase
+	duplicateCashMinutes = 5, -- a duplicate past the star cap pays this much income instead
+}
+
+-- Developer Products. `productId` stays 0 until the product exists on the dashboard (then the
+-- server only simulates the purchase in Studio). Prices are placeholders to set in Step 8.
+Config.Products = {
+	caseStandard = {
+		key = "caseStandard",
+		kind = "case",
+		robux = 49,
+		productId = 0,
+		caseId = "standard",
+	},
+	caseElite = { key = "caseElite", kind = "case", robux = 149, productId = 0, caseId = "elite" },
+	matchBoost = { key = "matchBoost", kind = "boost", robux = 39, productId = 0 },
+	legend_ronaldinho = {
+		key = "legend_ronaldinho",
+		kind = "legend",
+		robux = 799,
+		productId = 0,
+		playerId = "ronaldinho",
+	},
+	legend_zidane = {
+		key = "legend_zidane",
+		kind = "legend",
+		robux = 1199,
+		productId = 0,
+		playerId = "zidane",
+	},
+	legend_ronaldo_nazario = {
+		key = "legend_ronaldo_nazario",
+		kind = "legend",
+		robux = 1799,
+		productId = 0,
+		playerId = "ronaldo_nazario",
+	},
+	legend_maradona = {
+		key = "legend_maradona",
+		kind = "legend",
+		robux = 2499,
+		productId = 0,
+		playerId = "maradona",
+	},
+	legend_pele = {
+		key = "legend_pele",
+		kind = "legend",
+		robux = 3499,
+		productId = 0,
+		playerId = "pele",
+	},
+} :: { [string]: ProductDef }
 
 Config.Season = {
 	bonusPerSeason = 0.5, -- permanent multiplier: season 2 = x1.5, season 3 = x2.0

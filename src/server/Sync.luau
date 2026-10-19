@@ -13,6 +13,7 @@ local Formulas = require(ReplicatedStorage.Shared.Formulas)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Remotes = require(script.Parent.Remotes)
 local Session = require(script.Parent.Session)
+local ShopRules = require(script.Parent.ShopRules)
 
 local Sync = {}
 
@@ -29,6 +30,11 @@ function Sync.scalars(session: Session.Session)
 	player:SetAttribute("boostMultiplier", Formulas.boostMultiplier(Boosts.active(data)))
 	player:SetAttribute("trainingUnlocked", Progress.trainingUnlocked(data))
 	player:SetAttribute("staminaMax", Config.Training.staminaSeconds)
+	-- The shop: whether cases are on offer yet, the banked boost matches and this visit's total.
+	player:SetAttribute("casesOpen", ShopRules.casesOpen(data, os.time()))
+	player:SetAttribute("bankedMatches", data.boosts.bankedMatches)
+	player:SetAttribute("sessionCases", session.runtime.sessionCases)
+	player:SetAttribute("sessionRobux", session.runtime.sessionRobux)
 	-- The daily icons: when each one is ready (os.time(), 0 = now), and whether they exist yet.
 	player:SetAttribute("dailyUnlocked", Daily.unlocked(data))
 	player:SetAttribute("caseReadyAt", Daily.caseReadyAt(data))

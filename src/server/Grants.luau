@@ -1,0 +1,88 @@
+--!strict
+-- What a Robux purchase gives (docs/PLAN.md, Steps 3 and 5), in one step on the profile with the
+-- receipt recorded by its PurchaseId, so a resent receipt grants nothing a second time. Pure, so it
+-- is unit tested; Purchases decides when to call it and confirms the receipt after the save.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Cases = require(ReplicatedStorage.Shared.Cases)
+local Config = require(ReplicatedStorage.Shared.Config)
+local Daily = require(script.Parent.Daily)
+local Economy = require(script.Parent.Economy)
+local ProfileSchema = require(script.Parent.ProfileSchema)
+local Reveals = require(script.Parent.Reveals)
+
+type Profile = ProfileSchema.Profile
+
+local Grants = {}
+
+-- Grants a product once for this PurchaseId and records the receipt in the profile. A resent
+-- receipt grants nothing again and returns the saved result with `false`. `roll` is a number in
+-- [0, 1) for the case pick. Returns (result, granted).
+function Grants.apply(
+	data: Profile,
+	product: Config.ProductDef,
+	purchaseId: string,
+	now: number,
+	roll: number
+): ({ [string]: any }, boolean)
+	local existing = data.receipts[purchaseId]
+	if existing then
+		return existing.result, false
+	end
+
+	local result: { [string]: any }
+	if product.kind == "case" then
+		local entries = Cases.odds(data, product.caseId or "")
+		local id = Cases.pick(entries, roll)
+		local before = data.players[id]
+		local wasMaxed = before ~= nil and before.stars >= Config.Stars.maxStars
+		Reveals.grant(data, id, true)
+		result = {
+			kind = "case",
+			caseId = product.caseId,
+			playerId = id,
+			isNew = before == nil,
+			stars = data.players[id].stars,
+		}
+		if wasMaxed then
+			-- A duplicate past the star cap is never dead: it pays a few minutes of income.
+			local cash = Daily.caseCash(data, Config.CaseRules.duplicateCashMinutes)
+			Economy.grant(data, cash)
+			result.cash = cash
+		end
+	elseif product.kind == "boost" then
+		-- Granted in full even when the bank has filled up since the prompt.
+		data.boosts.bankedMatches += Config.Boost.matchPackSize
+		result = { kind = "boost", matches = Config.Boost.matchPackSize }
+	else
+		local id = product.playerId or ""
+		local owned = data.players[id] ~= nil
+		-- Already owned (bought with cash in between): the Robux are not wasted, it adds a star.
+		Reveals.grant(data, id, owned)
+		result = { kind = "legend", playerId = id, isNew = not owned }
+	end
+	data.receipts[purchaseId] = { at = now, result = result }
+	return result, true
+end
+
+-- Grants and saves one purchase. `save` stores the profile and returns true once the receipt is in
+-- the saved data. Returns the result and whether it was granted just now, or nil when the save
+-- failed: the receipt then stays unconfirmed (Roblox asks again), and the retry finds the receipt in
+-- the profile, grants nothing again and only tries the save again.
+function Grants.process(
+	data: Profile,
+	product: Config.ProductDef,
+	purchaseId: string,
+	now: number,
+	roll: number,
+	save: () -> boolean
+): ({ [string]: any }?, boolean)
+	local result, granted = Grants.apply(data, product, purchaseId, now, roll)
+	if not save() then
+		return nil, granted
+	end
+	return result, granted
+end
+
+return Grants

@@ -119,6 +119,7 @@ RemoteSpec.remotes = {
 					"resetDaily",
 					"grantTp",
 					"revealRarity",
+					"offerWait",
 				},
 			},
 			{ kind = "number", min = 0, max = 1e15 },

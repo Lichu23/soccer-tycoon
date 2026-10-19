@@ -15,6 +15,7 @@ local Offline = require(script.Parent.Offline)
 local Pads = require(script.Parent.Pads)
 local Plots = require(script.Parent.Plots)
 local Remotes = require(script.Parent.Remotes)
+local Purchases = require(script.Parent.Purchases)
 local RevealActions = require(script.Parent.RevealActions)
 local Session = require(script.Parent.Session)
 local Stadium = require(script.Parent.Stadium)
@@ -31,6 +32,7 @@ Match.start()
 DailyActions.start()
 TrainingActions.start()
 RevealActions.start()
+Purchases.start()
 
 -- Whatever a player buys: tell their client, redraw their capsules and log the funnel.
 Actions.onChange = function(session, what, id)
@@ -42,7 +44,9 @@ Actions.onChange = function(session, what, id)
 		Stadium.upgraded(session, first)
 	end
 	Plots.refresh(session)
-	if what == "player" then
+	if what == "case" then
+		RevealActions.send(session, id) -- a case win: the reveal plays after the result is saved
+	elseif what == "player" then
 		RevealActions.send(session, id)
 		Analytics.milestone(session, "first_purchase")
 	elseif what == "store" then
