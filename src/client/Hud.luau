@@ -21,6 +21,8 @@ local player = Players.LocalPlayer
 
 local COLUMN_WIDTH = 230
 local BOX_HEIGHT = 44
+local MATCH_BAR_HEIGHT = 8
+local MONEY_Y = MATCH_BAR_HEIGHT + 5 -- the money box under the match bar
 local BADGE_SIZE = 30
 local TP_GAIN_HOLD_SECONDS = 1.2 -- how long "+N TP" stays after the last gain
 local AWAY_HOLD_SECONDS = 5 -- how long "+$N while you were away" stays
@@ -156,8 +158,8 @@ function Hud.build(parent: Instance): any
 		DisplayOrder = 1,
 	}, parent)
 
-	-- One compact column at the top right: the money box, the match bar, the TP box and the boost
-	-- badge. Both boxes share one design; the middle of the screen stays clear.
+	-- One compact column at the top right: the match bar (once the first player is bought), the money
+	-- box, the TP box and the boost badge. Both boxes share one design; the middle of the screen stays clear.
 	local top = new("Frame", {
 		Name = "Top",
 		AnchorPoint = Vector2.new(1, 0),
@@ -166,15 +168,13 @@ function Hud.build(parent: Instance): any
 		BackgroundTransparency = 1,
 	}, gui)
 
-	local _, money = statBox(top, "MoneyRow", 0, Style.ui.money, "$", "cash", "Money")
-	money.Text = "$0"
-
 	local matchBar = new("Frame", {
 		Name = "MatchBar",
-		Position = UDim2.fromOffset(0, BOX_HEIGHT + 5),
-		Size = UDim2.new(1, 0, 0, 8),
+		Position = UDim2.fromOffset(0, 0),
+		Size = UDim2.new(1, 0, 0, MATCH_BAR_HEIGHT),
 		BackgroundColor3 = Style.ui.dark,
 		BackgroundTransparency = 0.2,
+		Visible = false, -- shown once the team plays
 	}, top)
 	rounded(matchBar, 4)
 	stroke(matchBar, Style.ui.idle, 1)
@@ -186,15 +186,20 @@ function Hud.build(parent: Instance): any
 	}, matchBar)
 	rounded(matchFill, 4)
 
+	-- The money sits under the match bar. The bar's place stays free before the first player.
+	local _, money = statBox(top, "MoneyRow", MONEY_Y, Style.ui.money, "$", "cash", "Money")
+	money.Text = "$0"
+
 	-- Training points: same design as the money, always shown (the points are farmed from the start).
-	local _, tpValue = statBox(top, "Tp", BOX_HEIGHT + 20, Style.ui.bar, "TP", "tp", "Value")
+	local _, tpValue =
+		statBox(top, "Tp", MONEY_Y + BOX_HEIGHT + 6, Style.ui.bar, "TP", "tp", "Value")
 	tpValue.Text = "0"
 
 	-- "+$N" sits right next to the money amount (its position is set from the money text width).
 	local payout = new("TextLabel", {
 		Name = "Payout",
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.fromOffset(COLUMN_WIDTH - 90, 8),
+		Position = UDim2.fromOffset(COLUMN_WIDTH - 90, MONEY_Y + 8),
 		Size = UDim2.fromOffset(110, 28),
 		BackgroundTransparency = 1,
 		Text = "",
@@ -211,7 +216,7 @@ function Hud.build(parent: Instance): any
 	local boost = new("TextLabel", {
 		Name = "BoostBadge",
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, 0, 0, 2 * BOX_HEIGHT + 28),
+		Position = UDim2.new(1, 0, 0, MONEY_Y + 2 * BOX_HEIGHT + 15),
 		Size = UDim2.fromOffset(96, 26),
 		BackgroundColor3 = Style.ui.panel,
 		BackgroundTransparency = 0.15,
@@ -241,7 +246,7 @@ function Hud.build(parent: Instance): any
 	local tpGain = new("TextLabel", {
 		Name = "TpGain",
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, 0, 0, 2 * BOX_HEIGHT + 24),
+		Position = UDim2.new(1, 0, 0, MONEY_Y + 2 * BOX_HEIGHT + 11),
 		Size = UDim2.fromOffset(120, 24),
 		BackgroundTransparency = 1,
 		Text = "",
@@ -298,6 +303,13 @@ function Hud.init()
 	local boost, banner = top.BoostBadge, gui.Banner
 	local tpValue = top.Tp.Value
 
+	-- The match bar shows from the first player on (the team plays from then).
+	local function showMatchBar()
+		top.MatchBar.Visible = State.data.fieldStarted
+	end
+	showMatchBar()
+	State.onChange(showMatchBar)
+
 	-- Money counts up towards the real value; the real value is never delayed.
 	local shownCash = State.data.cash
 	local function setMoney()
@@ -320,7 +332,7 @@ function Hud.init()
 
 		payout.Text = "+" .. NumberFormat.money(info.payout)
 		-- Right next to the money text, which is right aligned in the column.
-		payout.Position = UDim2.fromOffset(COLUMN_WIDTH - money.TextBounds.X - 22, 8)
+		payout.Position = UDim2.fromOffset(COLUMN_WIDTH - money.TextBounds.X - 22, MONEY_Y + 8)
 		fadeIn(payout)
 
 		task.delay(RESULT_HOLD_SECONDS, function()
