@@ -54,22 +54,17 @@ local function durationText(seconds: number): string
 	return string.format("%.1f h", seconds / 3600)
 end
 
--- What the season after this one takes away, in words ("floors 2 and 3" for a one-floor head start).
+-- The floors a season restarts, and what stays, in a few words.
 local function lostText(finished: number): string
 	local kept = Season.keptFloors(finished)
-	local floors = if kept == 0
-		then "floors 1 to 3"
-		elseif kept == 1 then "floors 2 and 3"
-		else "floor 3"
-	return `Cash, TP, Store upgrades, the stadium tier and the players of {floors}`
+	local floors = if kept == 0 then "floors 1-3" elseif kept == 1 then "floors 2-3" else "floor 3"
+	return `cash, upgrades, {floors}`
 end
 
 local function keptText(finished: number): string
 	local kept = Season.keptFloors(finished)
-	if kept == 0 then
-		return "No head start"
-	end
-	return `The players of floor{if kept > 1 then "s 1 to " .. kept else " 1"} start owned, at level 0`
+	local head = if kept == 0 then "" elseif kept == 1 then "floor 1, " else "floors 1-2, "
+	return head .. "Legends, Robux items, trophies"
 end
 
 local function currentSeason(): number
@@ -210,52 +205,29 @@ function SeasonUi.init()
 		clear()
 		local season = currentSeason()
 		local state = Season.state(State.data)
-		line(if state == "ready" then "Start a New Season?" else "New Season", {
-			TextSize = 24,
-			TextColor3 = Style.ui.gold,
-		})
-		line(
-			`Season {season} · {multiplierText(season)} now, {multiplierText(season + 1)} after the next`,
-			{ TextColor3 = Style.ui.idle }
-		)
-		if season > 1 then
-			local names = {}
-			for finished = 1, season - 1 do
-				table.insert(names, Season.trophyName(finished))
-			end
-			line("Trophies: " .. table.concat(names, ", "), { TextColor3 = Style.ui.gold })
-		end
+		line("New Season", { TextSize = 24, TextColor3 = Style.ui.gold })
 		if state == "hidden" then
-			line("Complete floor 3 to unlock the next New Season. Nothing to do until then.")
+			line("Finish floor 3 to unlock it.", { TextColor3 = Style.ui.idle })
 			addButton("Close", Style.ui.idle, close)
 			return
 		end
-
-		line(
-			`You gain: income {multiplierText(season + 1)} for good, the {Season.trophyName(season)} trophy. {keptText(
-				season
-			)}.`,
-			{ TextColor3 = Style.ui.good }
-		)
-		line(`You start again without: {lostText(season)}.`, { TextColor3 = Style.ui.bad })
-		line(
-			"You keep: Legends, anything bought with Robux, cosmetics, stars on Legends and trophies."
-		)
+		line(`Income {multiplierText(season + 1)} forever · {Season.trophyName(season)}`, {
+			TextColor3 = Style.ui.good,
+		})
+		line(`Restarts: {lostText(season)}`)
+		line(`Kept: {keptText(season)}`)
 		if state == "locked" then
 			local owned, total = Season.lastFloorProgress(State.data)
 			line(
-				`Floor 3 is open: {total - owned} of {total} players left to unlock it. It stays optional.`,
+				`Unlocks when floor 3 is done ({total - owned} left).`,
 				{ TextColor3 = Style.ui.idle }
 			)
 			addButton("Close", Style.ui.idle, close)
 			return
 		end
-		line(
-			`Floor 3 again takes about {durationText(Season.estimateSeconds(season))} at {multiplierText(
-				season + 1
-			)}.`,
-			{ TextColor3 = Style.ui.idle }
-		)
+		line(`Floor 3 again: about {durationText(Season.estimateSeconds(season))}`, {
+			TextColor3 = Style.ui.idle,
+		})
 		local start: TextButton
 		start = addButton("Start New Season", Style.ui.good, function()
 			if starting then
