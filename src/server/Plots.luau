@@ -83,6 +83,38 @@ local function createRing(index: number)
 	})
 end
 
+local OWNED_GLASS_TRANSPARENCY = 0.78
+local LOCKED_GLASS_TRANSPARENCY = 0.88
+local LOCKED_GLASS_COLOR = Color3.fromRGB(215, 225, 238)
+local CAPSULE_LIGHT_COLOR = Color3.fromRGB(255, 247, 232)
+
+-- A spotlight from the top of the capsule down on the figure, so he is lit and his colours show. It is
+-- made once per capsule and goes away with the plot.
+local function addCapsuleLight(capsule: Instance, glass: BasePart)
+	if capsule:FindFirstChild("Spot") then
+		return
+	end
+	local spot = Instance.new("Part")
+	spot.Name = "Spot"
+	spot.Size = Vector3.new(0.5, 0.2, 0.5)
+	spot.Transparency = 1
+	spot.Anchored = true
+	spot.CanCollide = false
+	spot.CanQuery = false
+	spot.CanTouch = false
+	spot.CastShadow = false
+	spot.CFrame = CFrame.new(glass.Position + Vector3.new(0, glass.Size.Y / 2 - 0.4, 0))
+	local light = Instance.new("SpotLight")
+	light.Face = Enum.NormalId.Bottom
+	light.Angle = 85
+	light.Range = 16
+	light.Brightness = 2.2
+	light.Color = CAPSULE_LIGHT_COLOR
+	light.Shadows = false
+	light.Parent = spot
+	spot.Parent = capsule
+end
+
 type Bounds = { minX: number, maxX: number, minZ: number, maxZ: number }
 
 -- The walls of the building in plot space (x to the right of the gate, z towards the stadium): the
@@ -173,10 +205,6 @@ function Plots.refresh(session: Session.Session)
 			local owned = Roster.owns(session.data, def.id)
 			capsule:SetAttribute("Owned", owned)
 			-- Every player stands in his capsule: in full colour once owned, washed out before.
-			if glass:GetAttribute("BaseColor") == nil then
-				glass:SetAttribute("BaseColor", glass.Color)
-				glass:SetAttribute("BaseTransparency", glass.Transparency)
-			end
 			-- The Glass material hides the name and number printed on the shirt behind it; a plain
 			-- material with the same transparency shows them.
 			glass.Material = Enum.Material.SmoothPlastic
@@ -203,19 +231,16 @@ function Plots.refresh(session: Session.Session)
 				end
 				model.Parent = capsule
 			end
+			-- The glass is tinted by the rarity once owned, but clear enough to see the real colours of the
+			-- kit; an empty capsule is nearly clear.
 			if owned then
-				glass.Color = Style.rarityColors[def.rarity] or glass.Color
-				glass.Transparency = 0.55
+				glass.Color = Style.rarityColors[def.rarity] or LOCKED_GLASS_COLOR
+				glass.Transparency = OWNED_GLASS_TRANSPARENCY
 			else
-				local baseColor = glass:GetAttribute("BaseColor")
-				local baseTransparency = glass:GetAttribute("BaseTransparency")
-				if typeof(baseColor) == "Color3" then
-					glass.Color = baseColor
-				end
-				if type(baseTransparency) == "number" then
-					glass.Transparency = baseTransparency
-				end
+				glass.Color = LOCKED_GLASS_COLOR
+				glass.Transparency = LOCKED_GLASS_TRANSPARENCY
 			end
+			addCapsuleLight(capsule, glass)
 		end
 	end
 end
