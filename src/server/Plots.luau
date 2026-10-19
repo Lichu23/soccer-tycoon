@@ -83,6 +83,25 @@ local function createRing(index: number)
 	})
 end
 
+-- The middle of the building, seen from above (nil when the plot has no building parts).
+local function buildingCenter(plot: Model): Vector3?
+	local building = plot:FindFirstChild("Building")
+	if building == nil then
+		return nil
+	end
+	local low, high = Vector3.new(math.huge, 0, math.huge), Vector3.new(-math.huge, 0, -math.huge)
+	local any = false
+	for _, descendant in building:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			any = true
+			local position = descendant.Position
+			low = Vector3.new(math.min(low.X, position.X), 0, math.min(low.Z, position.Z))
+			high = Vector3.new(math.max(high.X, position.X), 0, math.max(high.Z, position.Z))
+		end
+	end
+	return if any then (low + high) / 2 else nil
+end
+
 -- Lights the capsules of owned players (glass tinted by rarity, a figure inside) and clears the
 -- ones that are no longer owned.
 function Plots.refresh(session: Session.Session)
@@ -117,6 +136,7 @@ function Plots.refresh(session: Session.Session)
 	if capsules == nil then
 		return
 	end
+	local center = buildingCenter(plot)
 	for _, capsule in capsules:GetChildren() do
 		local playerId = capsule:GetAttribute("PlayerId")
 		local def = if type(playerId) == "string" then Config.PlayersById[playerId] else nil
@@ -143,7 +163,19 @@ function Plots.refresh(session: Session.Session)
 					Mannequin.build(def, nil, false, { detailed = true, locked = not owned })
 				model.Name = "Figure"
 				model:SetAttribute("Owned", owned)
-				model:PivotTo(pedestal.CFrame * CFrame.new(0, 0.5 + Mannequin.FEET_TO_TORSO, 0))
+				local stand = pedestal.CFrame * CFrame.new(0, 0.5 + Mannequin.FEET_TO_TORSO, 0)
+				-- Every figure faces the middle of the building, so whoever walks inside sees his face.
+				if
+					center
+					and (Vector3.new(center.X, stand.Y, center.Z) - stand.Position).Magnitude
+						> 1
+				then
+					model:PivotTo(
+						CFrame.lookAt(stand.Position, Vector3.new(center.X, stand.Y, center.Z))
+					)
+				else
+					model:PivotTo(stand)
+				end
 				model.Parent = capsule
 			end
 			if owned then

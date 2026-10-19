@@ -90,23 +90,6 @@ local function swingLimb(limb: BasePart, joint: Vector3, angle: number, reach: n
 	limb.CFrame = CFrame.new(joint) * CFrame.Angles(angle, 0, 0) * CFrame.new(0, reach, 0)
 end
 
--- Two small dark eyes on the front of the head (the front is the -Z side), so the way it faces is
--- clear. The head is a ball centred at (0, 1.7, 0).
-local function addEyes(model: Model)
-	for _, side in { -1, 1 } do
-		new("Part", {
-			Name = "Eye",
-			Size = Vector3.new(0.18, 0.24, 0.06),
-			Color = Style.ui.dark,
-			Anchored = true,
-			CanCollide = false,
-			CanQuery = false,
-			CanTouch = false,
-			CFrame = CFrame.new(side * 0.28, 1.8, -0.62),
-		}, model)
-	end
-end
-
 -- The player juggling in a small 3D view, facing the camera: the right foot kicks the ball up and
 -- catches it on the way down. Returns the update function to call every frame (nil when still).
 local function buildTrick(parent: Instance, def: Config.PlayerDef, animated: boolean): (() -> ())?
@@ -120,7 +103,6 @@ local function buildTrick(parent: Instance, def: Config.PlayerDef, animated: boo
 		LightColor = Color3.fromRGB(255, 255, 255),
 	}, parent)
 	local model = Mannequin.build(def, nil, false)
-	addEyes(model)
 	model.Parent = view
 	local ball = new("Part", {
 		Name = "Ball",
