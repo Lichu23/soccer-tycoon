@@ -102,6 +102,21 @@ Remotes.on("UpgradeStadium", function(player: Player, ...: any)
 	end
 end)
 
+Remotes.on("StartNewSeason", function(player: Player, ...: any)
+	local seasonSeen = select(1, ...)
+	local session = Session.get(player)
+	if session == nil then
+		return
+	end
+	local result = Actions.startSeason(session, seasonSeen)
+	if result then
+		session.runtime.matchesInRow = 0
+		session.runtime.nextMatchAt = 0
+		Remotes.fireClient("SeasonStarted", player, result)
+		Analytics.event(session, "new_season")
+	end
+end)
+
 Remotes.on("BuyStoreUpgrade", function(player: Player, ...: any)
 	local id, levelSeen = select(1, ...)
 	local session = Session.get(player)

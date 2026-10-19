@@ -139,6 +139,7 @@ RemoteSpec.remotes = {
 	MatchResult = { direction = "toClient", args = {} },
 	Reveal = { direction = "toClient", args = {} },
 	StadiumUpgraded = { direction = "toClient", args = {} },
+	SeasonStarted = { direction = "toClient", args = {} },
 	Notice = { direction = "toClient", args = {} },
 } :: { [string]: RemoteDef }
 

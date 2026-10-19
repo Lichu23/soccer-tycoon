@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Boosts = require(script.Parent.Boosts)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Economy = require(script.Parent.Economy)
+local NewSeason = require(script.Parent.NewSeason)
 local ProfileSchema = require(script.Parent.ProfileSchema)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Reveals = require(script.Parent.Reveals)
@@ -104,6 +105,19 @@ function Actions.upgradeStadium(session: ActionSession, tierSeen: number?): (boo
 	Boosts.startStadium(data) -- every upgrade gives a free x2 for 5 minutes, reset not added
 	Actions.onChange(session, "stadium", nil)
 	return true, nil
+end
+
+-- Starts the next season (floor 3 must be complete). `seasonSeen` is the season the client saw.
+function Actions.startSeason(
+	session: ActionSession,
+	seasonSeen: number?
+): (NewSeason.Result?, string?)
+	local result, reason = NewSeason.start(session.data, seasonSeen)
+	if result == nil then
+		return nil, reason
+	end
+	Actions.onChange(session, "season", nil)
+	return result, nil
 end
 
 return Actions

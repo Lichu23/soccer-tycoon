@@ -21,6 +21,7 @@ function Sync.scalars(session: Session.Session)
 	local player, data = session.player, session.data
 	Economy.publish(player, data)
 	player:SetAttribute("stadiumTier", data.stadiumTier)
+	player:SetAttribute("seasonNumber", data.season.number)
 	player:SetAttribute("fieldStarted", data.fieldStarted)
 	-- The badge shows the multiplier of all running boosts and the time until the next one ends.
 	local left = Boosts.nextEnd(data)
