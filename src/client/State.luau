@@ -21,6 +21,7 @@ State.data = {
 	fieldStarted = false,
 	players = {},
 	trials = {},
+	cosmetics = { owned = {}, chosen = {} },
 } :: Types.ProgressData
 
 -- True once the first snapshot from the server has arrived (before it the data is empty).
@@ -70,6 +71,9 @@ local function applySnapshot(snapshot: any)
 	end
 	if type(snapshot.trials) == "table" then
 		data.trials = snapshot.trials
+	end
+	if type(snapshot.cosmetics) == "table" then
+		data.cosmetics = snapshot.cosmetics
 	end
 	State.loaded = true
 end

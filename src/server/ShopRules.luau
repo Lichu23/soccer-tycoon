@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Cases = require(ReplicatedStorage.Shared.Cases)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local Legends = require(ReplicatedStorage.Shared.Legends)
 local ProfileSchema = require(script.Parent.ProfileSchema)
 local Roster = require(ReplicatedStorage.Shared.Roster)
@@ -25,7 +26,7 @@ function ShopRules.casesOpen(data: Profile, now: number): boolean
 end
 
 -- Whether a product may be offered now: true, or false and the reason ("unknown", "off", "early",
--- "locked", "full", "owned").
+-- "locked", "tier", "full", "owned").
 function ShopRules.canOffer(data: Profile, key: string, now: number): (boolean, string?)
 	local product = Config.Products[key]
 	if product == nil then
@@ -45,6 +46,16 @@ function ShopRules.canOffer(data: Profile, key: string, now: number): (boolean, 
 		-- The bank has room for another pack (it never expires, and is capped at 60).
 		if data.boosts.bankedMatches + Config.Boost.matchPackSize > Config.Boost.matchBankMax then
 			return false, "full"
+		end
+	elseif product.kind == "cosmetic" then
+		-- Direct purchase of a visible style, only for tiers reached and never in the first 30 minutes.
+		local first = data.flags.milestones["first_purchase"]
+		if first == nil or now - first < Config.CaseRules.noOfferSeconds then
+			return false, "early"
+		end
+		local ok, reason = Cosmetics.canBuy(data, product.cosmeticId or "")
+		if not ok then
+			return false, reason
 		end
 	elseif product.kind == "legend" then
 		if not Legends.reached(data) then

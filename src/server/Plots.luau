@@ -11,6 +11,7 @@ local Workspace = game:GetService("Workspace")
 
 local Analytics = require(script.Parent.Analytics)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local Mannequin = require(ReplicatedStorage.Shared.Mannequin)
 local PadActions = require(script.Parent.PadActions)
 local PlotLights = require(script.Parent.PlotLights)
@@ -89,6 +90,12 @@ function Plots.refresh(session: Session.Session)
 		return
 	end
 	Stadium.ensure(session)
+	-- The kit the owner chose, for everyone who watches the match (the client draws the shirts).
+	-- Before a choice the shirts keep their rarity colours.
+	local kit = if session.data.cosmetics.chosen["kit"]
+		then Cosmetics.chosen(session.data, "kit")
+		else nil
+	plot:SetAttribute("KitId", if kit then kit.id else "")
 
 	-- The stairs are always walkable (the owner wants to see every floor). The gate marker at the
 	-- bottom of each flight only carries the label; Open says whether buying there is unlocked.

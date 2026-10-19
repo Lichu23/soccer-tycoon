@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Boosts = require(script.Parent.Boosts)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local Economy = require(script.Parent.Economy)
 local Legends = require(ReplicatedStorage.Shared.Legends)
 local NewSeason = require(script.Parent.NewSeason)
@@ -57,6 +58,20 @@ function Actions.buyLegend(session: ActionSession, id: string): (boolean, string
 	end
 	Reveals.grant(data, id, false)
 	Actions.onChange(session, "player", id)
+	return true, nil
+end
+
+-- Picks a style (the Locker room). The tier must be reached and a premium style owned.
+function Actions.setCosmetic(session: ActionSession, slot: string, id: string): (boolean, string?)
+	local def = Config.CosmeticsById[id]
+	if def == nil or def.slot ~= slot then
+		return false, "unknown"
+	end
+	local ok, reason = Cosmetics.choose(session.data, id)
+	if not ok then
+		return false, reason
+	end
+	Actions.onChange(session, "cosmetic", id)
 	return true, nil
 end
 

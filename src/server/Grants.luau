@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Cases = require(ReplicatedStorage.Shared.Cases)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local Daily = require(script.Parent.Daily)
 local Economy = require(script.Parent.Economy)
 local ProfileSchema = require(script.Parent.ProfileSchema)
@@ -55,6 +56,12 @@ function Grants.apply(
 		-- Granted in full even when the bank has filled up since the prompt.
 		data.boosts.bankedMatches += Config.Boost.matchPackSize
 		result = { kind = "boost", matches = Config.Boost.matchPackSize }
+	elseif product.kind == "cosmetic" then
+		-- Owned for good (a New Season keeps it) and put on at once; a resent receipt never reaches here.
+		local id = product.cosmeticId or ""
+		Cosmetics.grant(data, id)
+		Cosmetics.choose(data, id)
+		result = { kind = "cosmetic", cosmeticId = id }
 	else
 		local id = product.playerId or ""
 		local owned = data.players[id] ~= nil

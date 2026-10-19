@@ -50,6 +50,8 @@ local function announce(
 	local playerId = result.playerId
 	if type(playerId) == "string" then
 		Actions.onChange(session, "case", playerId)
+	elseif product.kind == "cosmetic" then
+		Actions.onChange(session, "cosmetic", result.cosmeticId) -- the plot shows the new kit
 	else
 		Sync.all(session)
 	end

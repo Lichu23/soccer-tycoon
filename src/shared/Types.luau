@@ -21,6 +21,8 @@ export type ProgressData = {
 	players: { [string]: OwnedPlayer },
 	-- Legend Trial goals reached so far, by Legend and goal id. Never unset (a New Season keeps them).
 	trials: { [string]: { [string]: boolean } }?,
+	-- Owned premium styles and the chosen style of each slot (see Cosmetics).
+	cosmetics: { owned: { [string]: boolean }, chosen: { [string]: string } },
 }
 
 return {}

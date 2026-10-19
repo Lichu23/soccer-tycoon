@@ -124,6 +124,14 @@ Remotes.on("StartNewSeason", function(player: Player, ...: any)
 	end
 end)
 
+Remotes.on("SetCosmetic", function(player: Player, ...: any)
+	local slot, id = select(1, ...)
+	local session = Session.get(player)
+	if session and type(slot) == "string" and type(id) == "string" then
+		Actions.setCosmetic(session, slot, id)
+	end
+end)
+
 Remotes.on("BuyStoreUpgrade", function(player: Player, ...: any)
 	local id, levelSeen = select(1, ...)
 	local session = Session.get(player)

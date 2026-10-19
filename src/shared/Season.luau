@@ -121,6 +121,7 @@ function Season.estimateSeconds(finished: number): number
 		storeLevels = { cashPerMatch = 0, matchSpeed = 0, hatTrick = 0, offline = 0 },
 		fieldStarted = true,
 		players = players,
+		cosmetics = { owned = {}, chosen = {} },
 	}
 	local seconds = 0
 	for _ = 1, 300 do

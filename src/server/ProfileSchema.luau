@@ -240,8 +240,11 @@ function ProfileSchema.validate(profile: { [string]: any }): (boolean, string?)
 	end
 	if
 		not isCount(profile.boosts.bankedMatches, 10_000)
-		or not isCount(profile.boosts.stadiumBoostLeft)
-		or not isCount(profile.boosts.penaltyBoostLeft)
+		-- Seconds left, counted down in fractions while a boost runs.
+		or not isFiniteNumber(profile.boosts.stadiumBoostLeft)
+		or profile.boosts.stadiumBoostLeft < 0
+		or not isFiniteNumber(profile.boosts.penaltyBoostLeft)
+		or profile.boosts.penaltyBoostLeft < 0
 	then
 		return false, "profile.boosts is out of range"
 	end

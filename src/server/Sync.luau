@@ -54,6 +54,10 @@ function Sync.snapshot(session: Session.Session)
 		trials[legendId] = table.clone(goals)
 	end
 	Remotes.fireClient("Snapshot", session.player, {
+		cosmetics = {
+			owned = table.clone(data.cosmetics.owned),
+			chosen = table.clone(data.cosmetics.chosen),
+		},
 		trials = trials,
 		cash = data.cash,
 		tp = data.tp,
