@@ -129,6 +129,8 @@ local function buildTrick(parent: Instance, def: Config.PlayerDef, animated: boo
 	if rightLeg == nil or leftArm == nil or rightArm == nil then
 		return nil
 	end
+	local leftSleeve = model:FindFirstChild("LeftSleeve") :: BasePart?
+	local rightSleeve = model:FindFirstChild("RightSleeve") :: BasePart?
 	-- One clock drives both: the ball leaves the foot at phase 0 and comes back at phase 1, and the
 	-- leg swings through the ball exactly at that moment. The figure itself never turns.
 	local startedAt = os.clock()
@@ -140,6 +142,11 @@ local function buildTrick(parent: Instance, def: Config.PlayerDef, animated: boo
 		swingLimb(rightLeg, HIP_RIGHT, swing, -1)
 		swingLimb(leftArm, SHOULDER_LEFT, -swing * 0.4, -0.9)
 		swingLimb(rightArm, SHOULDER_RIGHT, swing * 0.4, -0.9)
+		-- The sleeves swing with the arms (their middle is 0.45 below the shoulder).
+		if leftSleeve and rightSleeve then
+			swingLimb(leftSleeve, SHOULDER_LEFT, -swing * 0.4, -0.45)
+			swingLimb(rightSleeve, SHOULDER_RIGHT, swing * 0.4, -0.45)
+		end
 	end
 end
 

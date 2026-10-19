@@ -23,7 +23,7 @@ local random = Random.new()
 
 local COURT_CENTER_Z = CourtPlan.CENTER_Z -- the middle of every pitch, in plot space
 local TORSO_HEIGHT = 0.7 + Mannequin.FEET_TO_TORSO - 1 -- in gate space (the gate is 1 stud up)
-local RIVAL_KIT = Color3.fromRGB(215, 70, 70)
+local RIVAL_KIT = Color3.fromRGB(70, 190, 100) -- a green no team of ours wears, so the rivals always stand out
 local SPEED = 5 -- studs per second while jogging
 local FAR_AWAY = 240 -- studs from the camera: do not animate
 local OTHER_PLOT_SECONDS = 40

@@ -6,6 +6,7 @@
 
 local BackPrint = require(script.Parent.BackPrint)
 local Config = require(script.Parent.Config)
+local Kits = require(script.Parent.Kits)
 local Look = require(script.Parent.Look)
 local Style = require(script.Parent.Style)
 
@@ -151,14 +152,26 @@ function Mannequin.build(
 	local function tone(color: Color3): Color3
 		return if locked then color:Lerp(LOCKED_GREY, LOCKED_BLEND) else color
 	end
-	local shirt = tone(kit or Style.rarityColors[def.rarity] or Style.rarityColors.Common)
-	local trim = if brightness(shirt) > 0.55
-		then shirt:Lerp(Color3.new(0, 0, 0), 0.25)
+	-- With no kit given the player wears the colours of his team (Kits); a kit given (the owner's chosen
+	-- kit, the rival team) overrides the shirt only. Without a team the shirt follows the rarity.
+	local team = if kit == nil then Kits.of(def.id) else nil
+	local shirt = tone(
+		kit
+			or (if team then rgb(team.shirt) else nil)
+			or Style.rarityColors[def.rarity]
+			or Style.rarityColors.Common
+	)
+	local trim = if team
+		then tone(rgb(team.trim))
+		elseif brightness(shirt) > 0.55 then shirt:Lerp(Color3.new(0, 0, 0), 0.25)
 		else shirt:Lerp(Color3.new(1, 1, 1), 0.3)
-	local shorts = tone(Color3.fromRGB(35, 40, 60))
+	local pattern = if team then team.pattern else look.pattern
+	local shorts = tone(if team then rgb(team.shorts) else Color3.fromRGB(35, 40, 60))
 	local skin = tone(rgb(look.skin))
 	local hair = tone(rgb(look.hairColor))
-	local socks = shirt:Lerp(Color3.fromRGB(255, 255, 255), 0.25)
+	local socks = if team
+		then tone(rgb(team.socks))
+		else shirt:Lerp(Color3.fromRGB(255, 255, 255), 0.25)
 	local boots = tone(Color3.fromRGB(25, 25, 30))
 	local model = Instance.new("Model")
 	model.Name = "Mannequin_" .. def.id
@@ -167,7 +180,7 @@ function Mannequin.build(
 	part(model, "Head", Vector3.new(1.3, 1.3, 1.3), Vector3.new(0, 1.7, 0), skin)
 	addFace(model, hair, skin)
 	addHair(model, look.hair, hair)
-	addPattern(model, look.pattern, trim)
+	addPattern(model, pattern, trim)
 	if detailed then
 		for _, side in { { name = "Left", x = -1 }, { name = "Right", x = 1 } } do
 			part(
@@ -211,6 +224,9 @@ function Mannequin.build(
 		part(model, "RightLeg", Vector3.new(0.9, 2, 0.9), Vector3.new(0.5, -2, 0), shorts)
 		part(model, "LeftArm", Vector3.new(0.8, 1.8, 0.8), Vector3.new(-1.4, 0.1, 0), skin)
 		part(model, "RightArm", Vector3.new(0.8, 1.8, 0.8), Vector3.new(1.4, 0.1, 0), skin)
+		-- Short sleeves over the top of the arms, so the shoulders are covered by the shirt.
+		part(model, "LeftSleeve", Vector3.new(0.9, 0.85, 0.9), Vector3.new(-1.4, 0.55, 0), shirt)
+		part(model, "RightSleeve", Vector3.new(0.9, 0.85, 0.9), Vector3.new(1.4, 0.55, 0), shirt)
 	end
 	model.PrimaryPart = torso
 
