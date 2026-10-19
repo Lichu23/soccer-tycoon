@@ -88,3 +88,8 @@ The first set is imported and wired in `src/client/Icons.luau`: tiles for case (
 locker and alerts; tiles for cash and tp (new versions, a square tile at the left of the money and TP boxes instead of the round badge); the trophy tile replaces the drawn cup on the New Season badge (the badge keeps its shape, place and rules). The
 source files are in `OneDrive/Imágenes/Roblox Soccer Tycoon/icon_set_v2` (tiles, icons and the SVGs).
 A closed button shows its tile greyed with the padlock at the bottom-right corner.
+
+The second set (12 tiles) is imported and listed in `Icons.luau`: boost (the boost badge), case_standard and
+case_elite (Shop rows, one chest shape in two tiers), the five Locker slots (kit, crest, banners, floodlights,
+scoreboard) and the four store tiles (cash per match, match speed, hat-trick, offline). The store tiles
+wait for a screen that lists the upgrades. Still to check: the crest and floodlight tiles at 46 px on the phone.

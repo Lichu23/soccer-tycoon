@@ -222,6 +222,20 @@ function Hud.build(parent: Instance): any
 		Visible = false,
 	}, top)
 	rounded(boost, 8)
+	local boostPicture = Icons.id("boost")
+	if boostPicture ~= "" then
+		-- The arrows tile sits at the left; the text keeps the right part of the badge.
+		boost.TextXAlignment = Enum.TextXAlignment.Right
+		new("UIPadding", { PaddingRight = UDim.new(0, 8) }, boost)
+		new("ImageLabel", {
+			Name = "Picture",
+			Position = UDim2.fromOffset(-2, -2),
+			Size = UDim2.fromOffset(30, 30),
+			BackgroundTransparency = 1,
+			Image = boostPicture,
+			ZIndex = 5,
+		}, boost)
+	end
 
 	-- "+N TP" under the TP badge whenever training points come in (like "+$N" next to the money).
 	local tpGain = new("TextLabel", {

@@ -18,6 +18,20 @@ Icons.ids = {
 	cash = "rbxassetid://119841301152540",
 	tp = "rbxassetid://118070040795011",
 	trophy = "rbxassetid://78532583067328",
+	-- Priority 2 tiles: the Shop and Locker rows and the boost badge. The four store tiles
+	-- (cash per match, match speed, hat-trick, offline) wait for a screen that lists the upgrades.
+	boost = "rbxassetid://105120001433741",
+	case_standard = "rbxassetid://94582616552217",
+	case_elite = "rbxassetid://120989645259700",
+	store_cash = "rbxassetid://74944480644094",
+	store_speed = "rbxassetid://137959507635232",
+	store_hattrick = "rbxassetid://122151226082113",
+	store_offline = "rbxassetid://98470084289543",
+	slot_kit = "rbxassetid://85241712062584",
+	slot_crest = "rbxassetid://125907228919138",
+	slot_banners = "rbxassetid://134767133460346",
+	slot_floodlights = "rbxassetid://111556608763634",
+	slot_scoreboard = "rbxassetid://128404299109983",
 } :: { [string]: string }
 
 function Icons.id(name: string): string

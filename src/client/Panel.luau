@@ -5,6 +5,7 @@
 -- close it, so a stray tap outside never loses the player's place. Text colours are dark, for contrast
 -- on the light panel.
 
+local Icons = require(script.Parent.Icons)
 local Style = require(game:GetService("ReplicatedStorage").Shared.Style)
 
 local PANEL_COLOR = Color3.fromRGB(226, 216, 255)
@@ -127,6 +128,24 @@ function Panel.build(gui: ScreenGui, title: string, heightScale: number, onClose
 			titleLabel.Text = text
 		end,
 	}
+end
+
+-- Puts the picture of `iconName` at the left of a 44 px row and moves the text right. No id, no change.
+function Panel.rowIcon(item: TextButton, iconName: string)
+	local id = Icons.id(iconName)
+	if id == "" then
+		return
+	end
+	item.TextXAlignment = Enum.TextXAlignment.Left
+	new("UIPadding", { PaddingLeft = UDim.new(0, 52) }, item)
+	new("ImageLabel", {
+		Name = "Picture",
+		Position = UDim2.fromOffset(-48, 4),
+		Size = UDim2.fromOffset(36, 36),
+		BackgroundTransparency = 1,
+		Image = id,
+		ZIndex = 8,
+	}, item)
 end
 
 return Panel

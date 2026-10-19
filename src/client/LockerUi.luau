@@ -176,25 +176,27 @@ function LockerUi.init()
 		for _, slot in Config.CosmeticSlots do
 			if Cosmetics.slotOpen(State.data, slot.id) then
 				local chosen = Cosmetics.chosen(State.data, slot.id)
-				row(
+				local item = row(
 					"Slot_" .. slot.id,
 					`{slot.name}: {if chosen then chosen.name else "-"}`,
 					Style.ui.gold,
-					if chosen then swatchColor(chosen) else nil,
+					nil,
 					function()
 						slotView, message = slot.id, nil
 						render()
 					end
 				)
+				Panel.rowIcon(item, "slot_" .. slot.id)
 			else
-				row(
+				local item = row(
 					"Slot_" .. slot.id,
 					`{slot.name}   Stadium tier {slot.tier}`,
 					Color3.fromRGB(70, 74, 90),
 					nil,
 					nil
-				).TextColor3 =
-					TEXT_COLOR
+				)
+				item.TextColor3 = TEXT_COLOR
+				Panel.rowIcon(item, "slot_" .. slot.id)
 			end
 		end
 	end

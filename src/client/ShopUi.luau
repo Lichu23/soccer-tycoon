@@ -21,6 +21,12 @@ local player = Players.LocalPlayer
 
 local WAIT_SECONDS = 4
 
+local ROW_ICONS: { [string]: string } = {
+	caseStandard = "case_standard",
+	caseElite = "case_elite",
+	matchBoost = "boost",
+}
+
 local REFUSALS: { [string]: string } = {
 	early = "Cases open a little later.",
 	locked = "Not unlocked yet.",
@@ -172,20 +178,25 @@ function ShopUi.init()
 		elseif State.data.players[product.playerId or ""] ~= nil then
 			ok, reason = false, "owned"
 		end
+		local row
 		if ok then
-			button("Row_" .. key, `{text}   {product.robux} Robux`, Style.ui.gold, function()
+			row = button("Row_" .. key, `{text}   {product.robux} Robux`, Style.ui.gold, function()
 				view = key
 				message = nil
 				render()
 			end)
 		else
-			button(
+			row = button(
 				"Row_" .. key,
 				`{text}   {REFUSALS[reason or "locked"]}`,
 				Color3.fromRGB(70, 74, 90),
 				nil
-			).TextColor3 =
-				Color3.fromRGB(215, 220, 232)
+			)
+			row.TextColor3 = Color3.fromRGB(215, 220, 232)
+		end
+		local iconName = ROW_ICONS[key]
+		if iconName then
+			Panel.rowIcon(row, iconName)
 		end
 	end
 
