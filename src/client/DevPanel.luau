@@ -25,6 +25,11 @@ local BUTTONS: { DevButton } = {
 	{ label = "Away 8 hours", command = "simulateAway", amount = 8 },
 	{ label = "+1000 TP", command = "grantTp", amount = 1000 },
 	{ label = "Daily ready again", command = "resetDaily", amount = 0 },
+	{ label = "Reveal Common", command = "revealRarity", amount = 1 },
+	{ label = "Reveal Rare", command = "revealRarity", amount = 2 },
+	{ label = "Reveal Very Rare", command = "revealRarity", amount = 3 },
+	{ label = "Reveal Epic", command = "revealRarity", amount = 4 },
+	{ label = "Reveal Legend", command = "revealRarity", amount = 5 },
 	{ label = "Reset profile", command = "resetProfile", amount = 0 },
 }
 

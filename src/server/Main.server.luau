@@ -14,6 +14,7 @@ local Offline = require(script.Parent.Offline)
 local Pads = require(script.Parent.Pads)
 local Plots = require(script.Parent.Plots)
 local Remotes = require(script.Parent.Remotes)
+local RevealActions = require(script.Parent.RevealActions)
 local Session = require(script.Parent.Session)
 local Stadium = require(script.Parent.Stadium)
 local Training = require(script.Parent.Training)
@@ -28,9 +29,10 @@ Plots.init()
 Match.start()
 DailyActions.start()
 TrainingActions.start()
+RevealActions.start()
 
 -- Whatever a player buys: tell their client, redraw their capsules and log the funnel.
-Actions.onChange = function(session, what, _id)
+Actions.onChange = function(session, what, id)
 	Sync.all(session)
 	if what == "stadium" then
 		-- Before the refresh, so the refresh waits for the new pitch instead of building it at once.
@@ -39,6 +41,7 @@ Actions.onChange = function(session, what, _id)
 	end
 	Plots.refresh(session)
 	if what == "player" then
+		RevealActions.send(session, id)
 		Analytics.milestone(session, "first_purchase")
 	elseif what == "store" then
 		Analytics.milestone(session, "first_upgrade")
@@ -87,6 +90,7 @@ Remotes.on("ClientReady", function(player: Player)
 	local session = Session.await(player, 30)
 	if session then
 		Sync.all(session)
+		RevealActions.send(session) -- reveals the player has not seen yet (a rejoin)
 	end
 end)
 

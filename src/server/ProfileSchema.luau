@@ -15,6 +15,10 @@ export type Receipt = {
 export type PendingReveal = {
 	playerId: string,
 	isNew: boolean,
+	firstOfRarity: boolean?, -- the first player of this rarity the player ever owned
+	short: boolean?, -- the first purchase: a shorter reveal that never blocks movement
+	starsGained: number?, -- a duplicate from a case: the star it added (0 at the cap)
+	stars: number?, -- the player's stars after a duplicate
 }
 
 export type Profile = {

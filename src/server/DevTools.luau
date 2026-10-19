@@ -11,6 +11,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local DevCommands = require(script.Parent.DevCommands)
 local Offline = require(script.Parent.Offline)
 local Remotes = require(script.Parent.Remotes)
+local Reveals = require(script.Parent.Reveals)
 local Session = require(script.Parent.Session)
 local Sync = require(script.Parent.Sync)
 
@@ -32,6 +33,32 @@ function DevTools.start()
 				session.data.stadiumTier += 1
 				Boosts.startStadium(session.data)
 				Actions.onChange(session, "stadium", nil)
+			end
+		elseif command == "revealRarity" then
+			-- Grants the cheapest unowned player of rarity number `amount` (1 Common to 5 Legend) as
+			-- a first of that rarity won from a case. With all of them owned it is a duplicate star.
+			local rarity = Config.RarityOrder[math.floor(amount)]
+			if rarity == nil then
+				return
+			end
+			local target: string? = nil
+			for _, def in Config.Players do
+				if def.rarity == rarity then
+					target = target or def.id
+					if session.data.players[def.id] == nil then
+						target = def.id
+						break
+					end
+				end
+			end
+			if target then
+				if session.data.players[target] == nil then
+					session.data.seenRarities[rarity] = nil
+				end
+				Reveals.grant(session.data, target, true)
+				session.data.fieldStarted = true
+				session.runtime.nextMatchAt = 0
+				Actions.onChange(session, "player", target)
 			end
 		elseif command == "simulateAway" then
 			-- Pretends the player was away for `amount` hours and pays it the way a join does.

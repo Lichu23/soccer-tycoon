@@ -118,6 +118,7 @@ RemoteSpec.remotes = {
 					"stadiumUp",
 					"resetDaily",
 					"grantTp",
+					"revealRarity",
 				},
 			},
 			{ kind = "number", min = 0, max = 1e15 },

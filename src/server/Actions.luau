@@ -10,7 +10,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Economy = require(script.Parent.Economy)
 local ProfileSchema = require(script.Parent.ProfileSchema)
 local Progress = require(ReplicatedStorage.Shared.Progress)
-local Roster = require(ReplicatedStorage.Shared.Roster)
+local Reveals = require(script.Parent.Reveals)
 
 export type ActionSession = { data: ProfileSchema.Profile }
 
@@ -34,7 +34,7 @@ function Actions.buyPlayer(session: ActionSession, id: string): (boolean, string
 	if not Economy.spend(data, def.price) then
 		return false, "cannotAfford"
 	end
-	Roster.add(data, id)
+	Reveals.grant(data, id, false)
 	-- The first player goes straight onto the court and the matches start: there is no extra
 	-- button to find (the match loop starts when fieldStarted is true and the plot exists).
 	data.fieldStarted = true
