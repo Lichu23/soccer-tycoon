@@ -11,6 +11,8 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local CaseModal = require(script.Parent.CaseModal)
+local Config = require(ReplicatedStorage.Shared.Config)
+local Dock = require(script.Parent.Dock)
 local DailyInfo = require(ReplicatedStorage.Shared.DailyInfo)
 local NumberFormat = require(ReplicatedStorage.Shared.NumberFormat)
 local PenaltyUi = require(script.Parent.PenaltyUi)
@@ -19,8 +21,6 @@ local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
 
-local ICON_SIZE = 52
-local ICON_GAP = 8
 local GLOW_SECONDS = 4 -- how long a newly ready icon pulses
 local TOAST_SECONDS = 2.5
 local PRIZE_SECONDS = 4
@@ -52,40 +52,30 @@ local function outline(parent: Instance, color: Color3, thickness: number): any
 end
 
 type Icon = {
+	tile: Dock.Tile,
 	button: TextButton,
-	dot: Frame,
 	glow: UIStroke,
 	status: string,
 	glowUntil: number,
 }
 
-local function buildIcon(parent: Instance, name: string, text: string, order: number): Icon
-	local button = new("TextButton", {
-		Name = name,
-		Position = UDim2.fromOffset(8, 8 + (order - 1) * (ICON_SIZE + ICON_GAP)),
-		Size = UDim2.fromOffset(ICON_SIZE, ICON_SIZE),
-		BackgroundColor3 = Style.ui.panel,
-		Text = text,
-		Font = Style.font,
-		TextSize = 14,
-		TextColor3 = Style.ui.text,
-		AutoButtonColor = false,
-		Visible = false,
-	}, parent)
-	rounded(button, 12)
-	local glow = outline(button, Style.ui.gold, 2)
-	glow.Transparency = 1
-	local dot = new("Frame", {
-		Name = "ReadyDot",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(1, -4, 0, 4),
-		Size = UDim2.fromOffset(14, 14),
-		BackgroundColor3 = Style.ui.gold,
-		Visible = false,
-	}, button)
-	rounded(dot, 7)
-	outline(dot, Style.ui.dark, 2)
-	return { button = button, dot = dot, glow = glow, status = "locked", glowUntil = 0 }
+local function buildIcon(
+	parent: Instance,
+	name: string,
+	text: string,
+	slot: number,
+	accent: Color3,
+	iconName: string
+): Icon
+	local tile = Dock.build(parent, name, slot, text, accent, iconName)
+	Dock.paint(tile, "locked")
+	return {
+		tile = tile,
+		button = tile.button,
+		glow = tile.accent,
+		status = "locked",
+		glowUntil = 0,
+	}
 end
 
 -- Paints an icon for its status. A newly ready icon pulses for a few seconds, then stays still.
@@ -95,15 +85,11 @@ local function paintIcon(icon: Icon, status: string)
 	end
 	local becameReady = status == "ready" and icon.status ~= "ready"
 	icon.status = status
-	icon.button.Visible = status ~= "locked"
-	icon.dot.Visible = status == "ready"
-	icon.button.BackgroundTransparency = if status == "ready" then 0.1 else 0.55
-	icon.button.TextColor3 = if status == "ready" then Style.ui.text else Style.ui.idle
+	Dock.paint(icon.tile, status)
 	if becameReady then
 		icon.glowUntil = os.clock() + GLOW_SECONDS
 	elseif status ~= "ready" then
 		icon.glowUntil = 0
-		icon.glow.Transparency = 1
 	end
 end
 
@@ -121,7 +107,7 @@ end
 local function buildToast(parent: Instance): TextLabel
 	local toast = new("TextLabel", {
 		Name = "Toast",
-		Position = UDim2.fromOffset(8 + ICON_SIZE + 8, 8),
+		Position = UDim2.fromOffset(8 + Dock.SIZE + 10, 14),
 		Size = UDim2.fromOffset(230, 30),
 		BackgroundColor3 = Style.ui.dark,
 		BackgroundTransparency = 0.2,
@@ -163,8 +149,8 @@ function DailyUi.init()
 		DisplayOrder = 2,
 	}, player:WaitForChild("PlayerGui"))
 
-	local caseIcon = buildIcon(gui, "CaseIcon", "CASE", 1)
-	local kickIcon = buildIcon(gui, "KickIcon", "KICK", 2)
+	local caseIcon = buildIcon(gui, "CaseIcon", "CASE", 1, Color3.fromRGB(255, 150, 60), "case")
+	local kickIcon = buildIcon(gui, "KickIcon", "KICK", 2, Color3.fromRGB(110, 225, 130), "kick")
 	CaseModal.init()
 	local toast = buildToast(gui)
 	local prize = buildPrize(gui)
@@ -227,10 +213,18 @@ function DailyUi.init()
 
 	-- Taps -------------------------------------------------------------------------------------
 	caseIcon.button.Activated:Connect(function()
+		if caseIcon.status == "locked" then
+			Dock.reason(caseIcon.tile, "Opens at stadium tier " .. Config.Daily.unlockTier .. ".")
+			return
+		end
 		-- The icon opens the cases screen; it says when the free case is ready and opens it.
 		CaseModal.open()
 	end)
 	kickIcon.button.Activated:Connect(function()
+		if kickIcon.status == "locked" then
+			Dock.reason(kickIcon.tile, "Opens at stadium tier " .. Config.Daily.unlockTier .. ".")
+			return
+		end
 		if kickIcon.status == "ready" then
 			-- The icon opens the kick screen with the kicks left today.
 			local kicks = player:GetAttribute("penaltyKicksLeft")
@@ -249,7 +243,7 @@ function DailyUi.init()
 				local wave = (math.sin(os.clock() * 6) + 1) / 2
 				icon.glow.Transparency = 0.6 - wave * 0.6
 			elseif icon.status == "ready" then
-				icon.glow.Transparency = 0.5 -- a soft steady outline, no more pulsing
+				icon.glow.Transparency = 0 -- steady, no more pulsing
 			end
 		end
 	end)

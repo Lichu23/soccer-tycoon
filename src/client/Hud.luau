@@ -11,6 +11,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
+local Icons = require(script.Parent.Icons)
 local Net = require(script.Parent.Net)
 local NumberFormat = require(ReplicatedStorage.Shared.NumberFormat)
 local State = require(script.Parent.State)
@@ -19,6 +20,8 @@ local Style = require(ReplicatedStorage.Shared.Style)
 local player = Players.LocalPlayer
 
 local COLUMN_WIDTH = 230
+local BOX_HEIGHT = 44
+local BADGE_SIZE = 30
 local TP_GAIN_HOLD_SECONDS = 1.2 -- how long "+N TP" stays after the last gain
 local AWAY_HOLD_SECONDS = 5 -- how long "+$N while you were away" stays
 local RESULT_HOLD_SECONDS = 0.65 -- the result texts are fully visible for this long...
@@ -69,6 +72,77 @@ local function fadeOut(label: any)
 	TweenService:Create(label.Outline, info, { Transparency = 1 }):Play()
 end
 
+-- A stat box (money, training points): dark, a coloured outline, a round badge on the left and the
+-- value on the right. Both boxes use it, so they look like one family. Returns the box and the value.
+local function statBox(
+	parent: Instance,
+	name: string,
+	y: number,
+	accent: Color3,
+	badgeText: string,
+	iconName: string,
+	valueName: string
+): (any, any)
+	local box = new("Frame", {
+		Name = name,
+		Position = UDim2.fromOffset(0, y),
+		Size = UDim2.new(1, 0, 0, BOX_HEIGHT),
+		BackgroundColor3 = Style.ui.panel,
+		BackgroundTransparency = 0.05,
+	}, parent)
+	rounded(box, 12)
+	new("UIStroke", {
+		Color = accent,
+		Thickness = 3,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+	}, box)
+	new("UIGradient", {
+		Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(175, 180, 200)),
+		Rotation = 90,
+	}, box)
+	local badge = new("Frame", {
+		Name = "Badge",
+		Position = UDim2.fromOffset(7, (BOX_HEIGHT - BADGE_SIZE) / 2),
+		Size = UDim2.fromOffset(BADGE_SIZE, BADGE_SIZE),
+		BackgroundColor3 = accent,
+		ZIndex = 2,
+	}, box)
+	rounded(badge, BADGE_SIZE / 2)
+	local imageId = Icons.id(iconName)
+	if imageId ~= "" then
+		new("ImageLabel", {
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			Image = imageId,
+			ZIndex = 3,
+		}, badge)
+	else
+		new("TextLabel", {
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			Text = badgeText,
+			Font = Style.font,
+			TextSize = 15,
+			TextColor3 = Style.ui.dark,
+			ZIndex = 3,
+		}, badge)
+	end
+	local value = new("TextLabel", {
+		Name = valueName,
+		Position = UDim2.fromOffset(BADGE_SIZE + 12, 0),
+		Size = UDim2.new(1, -(BADGE_SIZE + 24), 1, 0),
+		BackgroundTransparency = 1,
+		Text = "0",
+		TextXAlignment = Enum.TextXAlignment.Right,
+		Font = Style.font,
+		TextSize = 26,
+		TextColor3 = accent,
+		ZIndex = 2,
+	}, box)
+	stroke(value, Style.ui.dark, 2)
+	return box, value
+end
+
 -- Builds the interface. Returns the root ScreenGui (also used by the layout previews).
 function Hud.build(parent: Instance): any
 	local gui = new("ScreenGui", {
@@ -78,41 +152,27 @@ function Hud.build(parent: Instance): any
 		DisplayOrder = 1,
 	}, parent)
 
-	-- One compact column at the top right: the money with the match bar under it, then the boost
-	-- badge.
+	-- One compact column at the top right: the money box, the match bar, the TP box and the boost
+	-- badge. Both boxes share one design; the middle of the screen stays clear.
 	local top = new("Frame", {
 		Name = "Top",
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -10, 0, 6),
-		Size = UDim2.fromOffset(COLUMN_WIDTH, 148),
+		Size = UDim2.fromOffset(COLUMN_WIDTH, 170),
 		BackgroundTransparency = 1,
 	}, gui)
 
-	local moneyRow = new("Frame", {
-		Name = "MoneyRow",
-		Size = UDim2.new(1, 0, 0, 54),
-		BackgroundTransparency = 1,
-	}, top)
-	local money = new("TextLabel", {
-		Name = "Money",
-		Size = UDim2.new(1, 0, 0, 40),
-		BackgroundTransparency = 1,
-		Text = "$0",
-		TextXAlignment = Enum.TextXAlignment.Right,
-		Font = Style.font,
-		TextSize = 32,
-		TextColor3 = Style.ui.money,
-	}, moneyRow)
-	stroke(money, Style.ui.dark, 2)
+	local _, money = statBox(top, "MoneyRow", 0, Style.ui.money, "$", "cash", "Money")
+	money.Text = "$0"
 
 	local matchBar = new("Frame", {
 		Name = "MatchBar",
-		Position = UDim2.fromOffset(0, 42),
-		Size = UDim2.new(1, 0, 0, 10),
+		Position = UDim2.fromOffset(0, BOX_HEIGHT + 5),
+		Size = UDim2.new(1, 0, 0, 8),
 		BackgroundColor3 = Style.ui.dark,
 		BackgroundTransparency = 0.2,
-	}, moneyRow)
-	rounded(matchBar, 5)
+	}, top)
+	rounded(matchBar, 4)
 	stroke(matchBar, Style.ui.idle, 1)
 	local matchFill = new("Frame", {
 		Name = "Fill",
@@ -120,13 +180,17 @@ function Hud.build(parent: Instance): any
 		BackgroundColor3 = Style.ui.bar,
 		BorderSizePixel = 0,
 	}, matchBar)
-	rounded(matchFill, 5)
+	rounded(matchFill, 4)
+
+	-- Training points: same design as the money, always shown (the points are farmed from the start).
+	local _, tpValue = statBox(top, "Tp", BOX_HEIGHT + 20, Style.ui.bar, "TP", "tp", "Value")
+	tpValue.Text = "0"
 
 	-- "+$N" sits right next to the money amount (its position is set from the money text width).
 	local payout = new("TextLabel", {
 		Name = "Payout",
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.fromOffset(COLUMN_WIDTH - 90, 6),
+		Position = UDim2.fromOffset(COLUMN_WIDTH - 90, 8),
 		Size = UDim2.fromOffset(110, 28),
 		BackgroundTransparency = 1,
 		Text = "",
@@ -135,15 +199,15 @@ function Hud.build(parent: Instance): any
 		TextSize = 22,
 		TextColor3 = Style.ui.gold,
 		Visible = false,
-		ZIndex = 3,
+		ZIndex = 4,
 	}, top)
 	stroke(payout, Style.ui.dark, 2)
 
-	-- The boost badge sits under the match bar, at the right edge of the column.
+	-- The boost badge sits under the TP box, at the right edge of the column.
 	local boost = new("TextLabel", {
 		Name = "BoostBadge",
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, 0, 0, 60),
+		Position = UDim2.new(1, 0, 0, 2 * BOX_HEIGHT + 28),
 		Size = UDim2.fromOffset(96, 26),
 		BackgroundColor3 = Style.ui.panel,
 		BackgroundTransparency = 0.15,
@@ -155,45 +219,11 @@ function Hud.build(parent: Instance): any
 	}, top)
 	rounded(boost, 8)
 
-	-- Training points and the stamina bar, under the boost badge. They show once training is open.
-	local tp = new("TextLabel", {
-		Name = "Tp",
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, 0, 0, 92),
-		Size = UDim2.fromOffset(96, 26),
-		BackgroundColor3 = Style.ui.panel,
-		BackgroundTransparency = 0.15,
-		Text = "TP 0",
-		Font = Style.font,
-		TextSize = 14,
-		TextColor3 = Style.ui.bar,
-		Visible = false,
-	}, top)
-	rounded(tp, 8)
-	local stamina = new("Frame", {
-		Name = "Stamina",
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -104, 0, 100),
-		Size = UDim2.fromOffset(100, 10),
-		BackgroundColor3 = Style.ui.dark,
-		BackgroundTransparency = 0.2,
-		Visible = false,
-	}, top)
-	rounded(stamina, 5)
-	stroke(stamina, Style.ui.idle, 1)
-	local staminaFill = new("Frame", {
-		Name = "Fill",
-		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = Style.ui.bar,
-		BorderSizePixel = 0,
-	}, stamina)
-	rounded(staminaFill, 5)
-
 	-- "+N TP" under the TP badge whenever training points come in (like "+$N" next to the money).
 	local tpGain = new("TextLabel", {
 		Name = "TpGain",
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, 0, 0, 122),
+		Position = UDim2.new(1, 0, 0, 2 * BOX_HEIGHT + 24),
 		Size = UDim2.fromOffset(120, 24),
 		BackgroundTransparency = 1,
 		Text = "",
@@ -246,10 +276,9 @@ function Hud.init()
 	local playerGui = player:WaitForChild("PlayerGui")
 	local gui = Hud.build(playerGui)
 	local top = gui.Top
-	local money, matchFill, payout = top.MoneyRow.Money, top.MoneyRow.MatchBar.Fill, top.Payout
+	local money, matchFill, payout = top.MoneyRow.Money, top.MatchBar.Fill, top.Payout
 	local boost, banner = top.BoostBadge, gui.Banner
-	local tp, stamina = top.Tp, top.Stamina
-	local staminaFill = stamina.Fill
+	local tpValue = top.Tp.Value
 
 	-- Money counts up towards the real value; the real value is never delayed.
 	local shownCash = State.data.cash
@@ -273,7 +302,7 @@ function Hud.init()
 
 		payout.Text = "+" .. NumberFormat.money(info.payout)
 		-- Right next to the money text, which is right aligned in the column.
-		payout.Position = UDim2.fromOffset(COLUMN_WIDTH - money.TextBounds.X - 8, 6)
+		payout.Position = UDim2.fromOffset(COLUMN_WIDTH - money.TextBounds.X - 22, 8)
 		fadeIn(payout)
 
 		task.delay(RESULT_HOLD_SECONDS, function()
@@ -379,21 +408,7 @@ function Hud.init()
 			matchFill.Size = UDim2.fromScale(0, 1)
 		end
 
-		-- TP and stamina (the bar is blue while training, grey while it refills).
-		local trainingOpen = player:GetAttribute("trainingUnlocked") == true
-		tp.Visible = trainingOpen
-		stamina.Visible = trainingOpen
-		if trainingOpen then
-			tp.Text = "TP " .. NumberFormat.short(State.data.tp)
-			local left = player:GetAttribute("staminaLeft")
-			local most = player:GetAttribute("staminaMax")
-			if type(left) == "number" and type(most) == "number" and most > 0 then
-				staminaFill.Size = UDim2.fromScale(math.clamp(left / most, 0, 1), 1)
-			end
-			staminaFill.BackgroundColor3 = if player:GetAttribute("training") == true
-				then Style.ui.bar
-				else Style.ui.idle
-		end
+		tpValue.Text = NumberFormat.short(State.data.tp)
 
 		local boostEnds = player:GetAttribute("boostEndsAt")
 		if type(boostEnds) == "number" and boostEnds > now then

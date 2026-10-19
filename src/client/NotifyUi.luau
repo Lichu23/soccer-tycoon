@@ -7,6 +7,7 @@ local ExperienceNotificationService = game:GetService("ExperienceNotificationSer
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Dock = require(script.Parent.Dock)
 local Net = require(script.Parent.Net)
 local Notifications = require(ReplicatedStorage.Shared.Notifications)
 local Panel = require(script.Parent.Panel)
@@ -14,9 +15,6 @@ local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
-
-local ICON_SIZE = 52
-local ICON_TOP = 8 + 4 * (ICON_SIZE + 8) -- under the case, kick, shop and locker icons
 
 local NotifyUi = {}
 
@@ -39,19 +37,10 @@ function NotifyUi.init()
 		DisplayOrder = 4,
 	}, player:WaitForChild("PlayerGui"))
 
-	local icon = new("TextButton", {
-		Name = "RemindersIcon",
-		Position = UDim2.fromOffset(8, ICON_TOP),
-		Size = UDim2.fromOffset(ICON_SIZE, ICON_SIZE),
-		BackgroundColor3 = Style.ui.panel,
-		Text = "ALERTS",
-		Font = Style.font,
-		TextSize = 12,
-		TextColor3 = Style.ui.text,
-		AutoButtonColor = false,
-		Visible = false,
-	}, gui)
-	new("UICorner", { CornerRadius = UDim.new(0, 12) }, icon)
+	local tile =
+		Dock.build(gui, "RemindersIcon", 5, "ALERTS", Color3.fromRGB(200, 130, 255), "alerts")
+	local icon = tile.button
+	local locked = true
 
 	local backdrop: Frame
 	local function hide()
@@ -117,12 +106,17 @@ function NotifyUi.init()
 		end
 	end)
 	icon.Activated:Connect(function()
+		if locked then
+			Dock.reason(tile, "Buy your first player first.")
+			return
+		end
 		render()
 		backdrop.Visible = true
 	end)
 
 	local function refresh()
-		icon.Visible = Notifications.unlocked(State.data)
+		locked = not Notifications.unlocked(State.data)
+		Dock.paint(tile, if locked then "locked" else "open")
 		if backdrop.Visible then
 			render()
 		end

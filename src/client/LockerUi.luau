@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
+local Dock = require(script.Parent.Dock)
 local Net = require(script.Parent.Net)
 local Panel = require(script.Parent.Panel)
 local State = require(script.Parent.State)
@@ -17,8 +18,6 @@ local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
 
-local ICON_SIZE = 52
-local ICON_TOP = 8 + 3 * (ICON_SIZE + 8) -- under the case, kick and shop icons
 local WAIT_SECONDS = 4
 local NOTE_SECONDS = 8
 local TEXT_COLOR = Color3.fromRGB(215, 220, 232)
@@ -56,24 +55,17 @@ function LockerUi.init()
 		DisplayOrder = 4,
 	}, player:WaitForChild("PlayerGui"))
 
-	local icon = new("TextButton", {
-		Name = "LockerIcon",
-		Position = UDim2.fromOffset(8, ICON_TOP),
-		Size = UDim2.fromOffset(ICON_SIZE, ICON_SIZE),
-		BackgroundColor3 = Style.ui.panel,
-		Text = "LOCKER",
-		Font = Style.font,
-		TextSize = 12,
-		TextColor3 = Style.ui.text,
-		AutoButtonColor = false,
-		Visible = false,
-	}, gui)
-	new("UICorner", { CornerRadius = UDim.new(0, 12) }, icon)
+	local tile = Dock.build(gui, "LockerIcon", 4, "LOCKER", Style.ui.bar, "locker")
+	local icon = tile.button
+	local locked = true
 
 	-- The small note that a new slot opened: beside the icon, never blocking, gone after a few seconds.
 	local note = new("TextLabel", {
 		Name = "Note",
-		Position = UDim2.fromOffset(8 + ICON_SIZE + 6, ICON_TOP + 14),
+		Position = UDim2.fromOffset(
+			Dock.position(4).X.Offset + Dock.SIZE + 10,
+			Dock.position(4).Y.Offset + 10
+		),
 		Size = UDim2.fromOffset(120, 24),
 		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
 		Text = "New styles",
@@ -294,6 +286,10 @@ function LockerUi.init()
 	end
 
 	icon.Activated:Connect(function()
+		if locked then
+			Dock.reason(tile, "Put a player on the field first.")
+			return
+		end
 		slotView, previewId, message = nil, nil, nil
 		render()
 		backdrop.Visible = true
@@ -303,7 +299,8 @@ function LockerUi.init()
 	local lastTier = 0
 	local noteToken = 0
 	local function refresh()
-		icon.Visible = State.data.fieldStarted
+		locked = not State.data.fieldStarted
+		Dock.paint(tile, if locked then "locked" else "open")
 		local tier = State.data.stadiumTier
 		if lastTier > 0 and tier > lastTier and Cosmetics.slotForTier(tier) then
 			noteToken += 1

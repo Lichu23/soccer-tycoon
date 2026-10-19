@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Cases = require(ReplicatedStorage.Shared.Cases)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Dock = require(script.Parent.Dock)
 local Legends = require(ReplicatedStorage.Shared.Legends)
 local Net = require(script.Parent.Net)
 local Panel = require(script.Parent.Panel)
@@ -18,8 +19,6 @@ local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
 
-local ICON_SIZE = 52
-local ICON_TOP = 8 + 2 * (ICON_SIZE + 8) -- under the case and kick icons
 local WAIT_SECONDS = 4
 
 local REFUSALS: { [string]: string } = {
@@ -66,19 +65,9 @@ function ShopUi.init()
 		DisplayOrder = 4,
 	}, player:WaitForChild("PlayerGui"))
 
-	local icon = new("TextButton", {
-		Name = "ShopIcon",
-		Position = UDim2.fromOffset(8, ICON_TOP),
-		Size = UDim2.fromOffset(ICON_SIZE, ICON_SIZE),
-		BackgroundColor3 = Style.ui.panel,
-		Text = "SHOP",
-		Font = Style.font,
-		TextSize = 14,
-		TextColor3 = Style.ui.text,
-		AutoButtonColor = false,
-		Visible = false,
-	}, gui)
-	rounded(icon, 12)
+	local tile = Dock.build(gui, "ShopIcon", 3, "SHOP", Style.ui.gold, "shop")
+	local icon = tile.button
+	local locked = true
 
 	local close: () -> ()
 	local built = Panel.build(gui, "Shop", 0.84, function()
@@ -298,11 +287,18 @@ function ShopUi.init()
 		render()
 		backdrop.Visible = true
 	end
-	icon.Activated:Connect(open)
+	icon.Activated:Connect(function()
+		if locked then
+			Dock.reason(tile, "Opens a little later.")
+		else
+			open()
+		end
+	end)
 
 	local function refresh()
 		local shown = player:GetAttribute("casesOpen") == true or Legends.reached(State.data)
-		icon.Visible = shown
+		locked = not shown
+		Dock.paint(tile, if shown then "open" else "locked")
 		if backdrop.Visible then
 			render()
 		end
