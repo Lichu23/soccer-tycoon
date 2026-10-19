@@ -124,17 +124,40 @@ function Plots.refresh(session: Session.Session)
 		local glass = capsule:FindFirstChild("Glass")
 		if def and pedestal and pedestal:IsA("BasePart") and glass and glass:IsA("BasePart") then
 			local owned = Roster.owns(session.data, def.id)
-			local figure = capsule:FindFirstChild("Figure")
 			capsule:SetAttribute("Owned", owned)
-			if owned and figure == nil then
-				local model = Mannequin.build(def, nil, true)
+			-- Every player stands in his capsule: in full colour once owned, washed out before.
+			if glass:GetAttribute("BaseColor") == nil then
+				glass:SetAttribute("BaseColor", glass.Color)
+				glass:SetAttribute("BaseTransparency", glass.Transparency)
+			end
+			-- The Glass material hides the name and number printed on the shirt behind it; a plain
+			-- material with the same transparency shows them.
+			glass.Material = Enum.Material.SmoothPlastic
+			local figure = capsule:FindFirstChild("Figure")
+			if figure and figure:GetAttribute("Owned") ~= owned then
+				figure:Destroy()
+				figure = nil
+			end
+			if figure == nil then
+				local model =
+					Mannequin.build(def, nil, false, { detailed = true, locked = not owned })
 				model.Name = "Figure"
+				model:SetAttribute("Owned", owned)
 				model:PivotTo(pedestal.CFrame * CFrame.new(0, 0.5 + Mannequin.FEET_TO_TORSO, 0))
 				model.Parent = capsule
+			end
+			if owned then
 				glass.Color = Style.rarityColors[def.rarity] or glass.Color
 				glass.Transparency = 0.55
-			elseif not owned and figure then
-				figure:Destroy()
+			else
+				local baseColor = glass:GetAttribute("BaseColor")
+				local baseTransparency = glass:GetAttribute("BaseTransparency")
+				if typeof(baseColor) == "Color3" then
+					glass.Color = baseColor
+				end
+				if type(baseTransparency) == "number" then
+					glass.Transparency = baseTransparency
+				end
 			end
 		end
 	end
