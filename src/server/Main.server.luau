@@ -10,12 +10,17 @@ local DailyActions = require(script.Parent.DailyActions)
 local DevTools = require(script.Parent.DevTools)
 local Match = require(script.Parent.Match)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Legends = require(ReplicatedStorage.Shared.Legends)
 local Offline = require(script.Parent.Offline)
 local Pads = require(script.Parent.Pads)
 local Plots = require(script.Parent.Plots)
+local ReminderService = require(script.Parent.ReminderService)
 local Remotes = require(script.Parent.Remotes)
+local Purchases = require(script.Parent.Purchases)
+local RevealActions = require(script.Parent.RevealActions)
 local Session = require(script.Parent.Session)
 local Stadium = require(script.Parent.Stadium)
+local TileBadges = require(ReplicatedStorage.Shared.TileBadges)
 local Training = require(script.Parent.Training)
 local TrainingActions = require(script.Parent.TrainingActions)
 local Sync = require(script.Parent.Sync)
@@ -28,9 +33,13 @@ Plots.init()
 Match.start()
 DailyActions.start()
 TrainingActions.start()
+RevealActions.start()
+Purchases.start()
+ReminderService.start()
 
 -- Whatever a player buys: tell their client, redraw their capsules and log the funnel.
-Actions.onChange = function(session, what, _id)
+Actions.onChange = function(session, what, id)
+	Legends.record(session.data) -- Legend Trial goals are kept the moment they are reached
 	Sync.all(session)
 	if what == "stadium" then
 		-- Before the refresh, so the refresh waits for the new pitch instead of building it at once.
@@ -38,7 +47,10 @@ Actions.onChange = function(session, what, _id)
 		Stadium.upgraded(session, first)
 	end
 	Plots.refresh(session)
-	if what == "player" then
+	if what == "case" then
+		RevealActions.send(session, id) -- a case win: the reveal plays after the result is saved
+	elseif what == "player" then
+		RevealActions.send(session, id)
 		Analytics.milestone(session, "first_purchase")
 	elseif what == "store" then
 		Analytics.milestone(session, "first_upgrade")
@@ -73,6 +85,7 @@ Session.onLoaded(function(session)
 		Sync.offline(session.player, earned, secondsAway)
 		Analytics.event(session, "offline_earnings")
 	end
+	Legends.record(session.data)
 	Sync.all(session)
 	session.player:SetAttribute("profileLoaded", true)
 	Analytics.event(session, "joined")
@@ -87,6 +100,7 @@ Remotes.on("ClientReady", function(player: Player)
 	local session = Session.await(player, 30)
 	if session then
 		Sync.all(session)
+		RevealActions.send(session) -- reveals the player has not seen yet (a rejoin)
 	end
 end)
 
@@ -95,6 +109,45 @@ Remotes.on("UpgradeStadium", function(player: Player, ...: any)
 	local session = Session.get(player)
 	if session then
 		Actions.upgradeStadium(session, tierSeen)
+	end
+end)
+
+Remotes.on("StartNewSeason", function(player: Player, ...: any)
+	local seasonSeen = select(1, ...)
+	local session = Session.get(player)
+	if session == nil then
+		return
+	end
+	local result = Actions.startSeason(session, seasonSeen)
+	if result then
+		session.runtime.matchesInRow = 0
+		session.runtime.nextMatchAt = 0
+		Remotes.fireClient("SeasonStarted", player, result)
+		Analytics.event(session, "new_season")
+	end
+end)
+
+Remotes.on("SetCosmetic", function(player: Player, ...: any)
+	local slot, id = select(1, ...)
+	local session = Session.get(player)
+	if session and type(slot) == "string" and type(id) == "string" then
+		Actions.setCosmetic(session, slot, id)
+	end
+end)
+
+Remotes.on("SetNotifications", function(player: Player, ...: any)
+	local on = select(1, ...)
+	local session = Session.get(player)
+	if session and type(on) == "boolean" then
+		Actions.setNotifications(session, on)
+	end
+end)
+
+Remotes.on("SeenTile", function(player: Player, ...: any)
+	local id = select(1, ...)
+	local session = Session.get(player)
+	if session and type(id) == "string" and TileBadges.markSeen(session.data, id) then
+		Sync.scalars(session)
 	end
 end)
 

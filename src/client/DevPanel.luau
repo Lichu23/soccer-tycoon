@@ -25,12 +25,17 @@ local BUTTONS: { DevButton } = {
 	{ label = "Away 8 hours", command = "simulateAway", amount = 8 },
 	{ label = "+1000 TP", command = "grantTp", amount = 1000 },
 	{ label = "Daily ready again", command = "resetDaily", amount = 0 },
+	{ label = "Reveal Common", command = "revealRarity", amount = 1 },
+	{ label = "Reveal Rare", command = "revealRarity", amount = 2 },
+	{ label = "Reveal Very Rare", command = "revealRarity", amount = 3 },
+	{ label = "Reveal Epic", command = "revealRarity", amount = 4 },
+	{ label = "Reveal Legend", command = "revealRarity", amount = 5 },
+	{ label = "Cases open", command = "offerWait", amount = 0 },
 	{ label = "Reset profile", command = "resetProfile", amount = 0 },
 }
 
--- Two columns, so the panel stays low and never covers the daily icons at the top left.
-local COLUMNS = 2
-local ROWS = math.ceil(#BUTTONS / COLUMNS)
+local BAR_HEIGHT = 32
+local BUTTON_WIDTH = 124
 
 function DevPanel.init()
 	if not RunService:IsStudio() then
@@ -43,23 +48,35 @@ function DevPanel.init()
 	gui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
 	gui.Parent = player:WaitForChild("PlayerGui")
 
-	local frame = Instance.new("Frame")
-	-- Bottom left: below the daily icons at the top left, clear of the HUD column on the right.
+	-- One row of buttons along the bottom edge, scrolling sideways when the screen is narrow.
+	local frame = Instance.new("ScrollingFrame")
+	frame.Name = "Row"
 	frame.AnchorPoint = Vector2.new(0, 1)
-	frame.Position = UDim2.new(0, 6, 1, -6)
-	frame.Size = UDim2.fromOffset(8 + COLUMNS * 118, 8 + ROWS * 26)
+	frame.Position = UDim2.fromScale(0, 1)
+	frame.Size = UDim2.new(1, 0, 0, BAR_HEIGHT)
 	frame.BackgroundColor3 = Color3.fromRGB(20, 24, 35)
 	frame.BackgroundTransparency = 0.25
+	frame.BorderSizePixel = 0
+	frame.ScrollingDirection = Enum.ScrollingDirection.X
+	frame.AutomaticCanvasSize = Enum.AutomaticSize.X
+	frame.CanvasSize = UDim2.fromOffset(0, 0)
+	frame.ScrollBarThickness = 3
 	frame.Parent = gui
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 6)
-	corner.Parent = frame
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.Padding = UDim.new(0, 4)
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = frame
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, 4)
+	padding.PaddingRight = UDim.new(0, 4)
+	padding.Parent = frame
 
 	for index, entry in BUTTONS do
 		local button = Instance.new("TextButton")
-		local column, row = (index - 1) // ROWS, (index - 1) % ROWS
-		button.Position = UDim2.fromOffset(4 + column * 118, 4 + row * 26)
-		button.Size = UDim2.fromOffset(114, 22)
+		button.LayoutOrder = index
+		button.Size = UDim2.fromOffset(BUTTON_WIDTH, 22)
 		button.BackgroundColor3 = Color3.fromRGB(60, 66, 90)
 		button.TextColor3 = Color3.fromRGB(255, 255, 255)
 		button.Font = Enum.Font.GothamBold

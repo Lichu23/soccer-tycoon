@@ -384,3 +384,12 @@ T.test("more than 100 recent receipts are all kept", function()
 	end
 	T.eq(count, 150)
 end)
+
+T.test("a running boost with fractions of a second left is still a valid profile", function()
+	local data = ProfileSchema.newProfile()
+	data.boosts.stadiumBoostLeft = 123.456
+	data.boosts.penaltyBoostLeft = 0.25
+	T.eq(ProfileSchema.validate(data), true)
+	data.boosts.stadiumBoostLeft = -1
+	T.eq(ProfileSchema.validate(data), false)
+end)

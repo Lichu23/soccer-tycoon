@@ -13,6 +13,8 @@ local Formulas = require(ReplicatedStorage.Shared.Formulas)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Remotes = require(script.Parent.Remotes)
 local Session = require(script.Parent.Session)
+local ShopRules = require(script.Parent.ShopRules)
+local TileBadges = require(ReplicatedStorage.Shared.TileBadges)
 
 local Sync = {}
 
@@ -21,13 +23,24 @@ function Sync.scalars(session: Session.Session)
 	local player, data = session.player, session.data
 	Economy.publish(player, data)
 	player:SetAttribute("stadiumTier", data.stadiumTier)
+	player:SetAttribute("seasonNumber", data.season.number)
 	player:SetAttribute("fieldStarted", data.fieldStarted)
+	player:SetAttribute("notificationsOn", data.flags.notificationsOn)
+	-- The "1" on the Case, Kick and Shop buttons: 0 = not tapped yet, 1 = tapped.
+	for _, id in TileBadges.ids do
+		player:SetAttribute("tile_" .. id, if TileBadges.seen(data, id) then 1 else 0)
+	end
 	-- The badge shows the multiplier of all running boosts and the time until the next one ends.
 	local left = Boosts.nextEnd(data)
 	player:SetAttribute("boostEndsAt", if left > 0 then Workspace:GetServerTimeNow() + left else 0)
 	player:SetAttribute("boostMultiplier", Formulas.boostMultiplier(Boosts.active(data)))
 	player:SetAttribute("trainingUnlocked", Progress.trainingUnlocked(data))
 	player:SetAttribute("staminaMax", Config.Training.staminaSeconds)
+	-- The shop: whether cases are on offer yet, the banked boost matches and this visit's total.
+	player:SetAttribute("casesOpen", ShopRules.casesOpen(data, os.time()))
+	player:SetAttribute("bankedMatches", data.boosts.bankedMatches)
+	player:SetAttribute("sessionCases", session.runtime.sessionCases)
+	player:SetAttribute("sessionRobux", session.runtime.sessionRobux)
 	-- The daily icons: when each one is ready (os.time(), 0 = now), and whether they exist yet.
 	player:SetAttribute("dailyUnlocked", Daily.unlocked(data))
 	player:SetAttribute("caseReadyAt", Daily.caseReadyAt(data))
@@ -42,7 +55,16 @@ function Sync.snapshot(session: Session.Session)
 	for id, owned in data.players do
 		players[id] = { level = owned.level, stars = owned.stars }
 	end
+	local trials = {}
+	for legendId, goals in data.trials do
+		trials[legendId] = table.clone(goals)
+	end
 	Remotes.fireClient("Snapshot", session.player, {
+		cosmetics = {
+			owned = table.clone(data.cosmetics.owned),
+			chosen = table.clone(data.cosmetics.chosen),
+		},
+		trials = trials,
 		cash = data.cash,
 		tp = data.tp,
 		stadiumTier = data.stadiumTier,

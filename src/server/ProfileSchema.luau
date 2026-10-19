@@ -15,6 +15,10 @@ export type Receipt = {
 export type PendingReveal = {
 	playerId: string,
 	isNew: boolean,
+	firstOfRarity: boolean?, -- the first player of this rarity the player ever owned
+	short: boolean?, -- the first purchase: a shorter reveal that never blocks movement
+	starsGained: number?, -- a duplicate from a case: the star it added (0 at the cap)
+	stars: number?, -- the player's stars after a duplicate
 }
 
 export type Profile = {
@@ -38,6 +42,10 @@ export type Profile = {
 	flags: {
 		firstHatTrickDone: boolean,
 		notificationAsked: boolean,
+		notificationsOn: boolean, -- the reminder opt-in answer (off until the player turns it on)
+		reminderIgnored: number, -- reminders in a row that were not followed by a return
+		reminderLastSentAt: number, -- os.time() of the last reminder sent to this player, 0 = never
+		tilesSeen: { [string]: boolean }, -- the Case, Kick and Shop buttons the player has tapped (their "1" is gone)
 		hasClaimedPlot: boolean, -- a returning player gets a plot at once, without the claim ring
 		milestones: { [string]: number }, -- first_purchase, first_match... -> os.time() when first reached
 	},
@@ -74,6 +82,10 @@ function ProfileSchema.newProfile(): Profile
 		flags = {
 			firstHatTrickDone = false,
 			notificationAsked = false,
+			notificationsOn = false,
+			reminderIgnored = 0,
+			reminderLastSentAt = 0,
+			tilesSeen = {},
 			hasClaimedPlot = false,
 			milestones = {},
 		},
@@ -236,8 +248,11 @@ function ProfileSchema.validate(profile: { [string]: any }): (boolean, string?)
 	end
 	if
 		not isCount(profile.boosts.bankedMatches, 10_000)
-		or not isCount(profile.boosts.stadiumBoostLeft)
-		or not isCount(profile.boosts.penaltyBoostLeft)
+		-- Seconds left, counted down in fractions while a boost runs.
+		or not isFiniteNumber(profile.boosts.stadiumBoostLeft)
+		or profile.boosts.stadiumBoostLeft < 0
+		or not isFiniteNumber(profile.boosts.penaltyBoostLeft)
+		or profile.boosts.penaltyBoostLeft < 0
 	then
 		return false, "profile.boosts is out of range"
 	end

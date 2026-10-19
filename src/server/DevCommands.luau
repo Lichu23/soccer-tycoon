@@ -19,6 +19,7 @@ DevCommands.commands = {
 	"stadiumUp",
 	"resetDaily",
 	"grantTp",
+	"offerWait",
 }
 
 -- Applies one command. Returns false for an unknown command.
@@ -26,6 +27,7 @@ DevCommands.commands = {
 --   setCash n:    sets the cash (clamped to the maximum)
 --   grantTp n:    adds n training points
 --   resetDaily:   the free case and the penalty kicks are ready again
+--   offerWait:    the 30-minute wait before cases are offered has passed
 --   resetProfile: back to a brand-new profile
 function DevCommands.apply(data: ProfileSchema.Profile, command: string, amount: number): boolean
 	if command == "grantFloor" then
@@ -45,6 +47,9 @@ function DevCommands.apply(data: ProfileSchema.Profile, command: string, amount:
 	elseif command == "resetDaily" then
 		data.daily = { caseClaimedAt = 0, penaltyBatchAt = 0, kicksUsed = 0, goals = 0 }
 		data.boosts.penaltyBoostLeft = 0
+		return true
+	elseif command == "offerWait" then
+		data.flags.milestones["first_purchase"] = os.time() - Config.CaseRules.noOfferSeconds - 1
 		return true
 	elseif command == "resetProfile" then
 		local fresh = ProfileSchema.newProfile()

@@ -67,6 +67,21 @@ local function tierFor(count: number): Config.StadiumTierDef
 	return Config.StadiumTiers[#Config.StadiumTiers]
 end
 
+-- The kit the plot's owner chose (set by the server on the plot), nil = the rarity colours.
+local function kitOf(plot: Model): Color3?
+	local id = plot:GetAttribute("KitId")
+	local def = if type(id) == "string" then Config.CosmeticsById[id] else nil
+	if def == nil then
+		return nil
+	end
+	return Color3.fromRGB(def.color[1], def.color[2], def.color[3])
+end
+
+local function teamKey(plot: Model, fieldIds: { string }, tier: Config.StadiumTierDef): string
+	local kit = plot:GetAttribute("KitId")
+	return table.concat(fieldIds, ",") .. "|" .. tier.tier .. "|" .. tostring(kit)
+end
+
 local function opponentDef(index: number): Config.PlayerDef
 	return {
 		id = "rival" .. index,
@@ -112,7 +127,7 @@ local function buildTeam(plot: Model, fieldIds: { string }, tier: Config.Stadium
 	local team: Team = {
 		plot = plot,
 		gate = gate,
-		key = table.concat(fieldIds, ",") .. "|" .. tier.tier,
+		key = teamKey(plot, fieldIds, tier),
 		runners = {},
 		length = tier.courtLength,
 		width = tier.courtWidth,
@@ -125,7 +140,7 @@ local function buildTeam(plot: Model, fieldIds: { string }, tier: Config.Stadium
 	for index = 1, count do
 		local def = Config.PlayersById[fieldIds[index]]
 		if def then
-			local mine = Mannequin.build(def, nil, false)
+			local mine = Mannequin.build(def, kitOf(plot), false)
 			mine.Parent = folder
 			local home = Vector3.new(ours[index].x, 0, ours[index].z)
 			table.insert(team.runners, {
@@ -159,7 +174,7 @@ end
 -- The team of a plot, rebuilt when the players on the field changed.
 local function ensureTeam(plot: Model, fieldIds: { string }, tier: Config.StadiumTierDef): Team?
 	local existing = teams[plot]
-	local key = table.concat(fieldIds, ",") .. "|" .. tier.tier
+	local key = teamKey(plot, fieldIds, tier)
 	if existing and existing.key == key then
 		existing.lastUsed = os.clock()
 		return existing

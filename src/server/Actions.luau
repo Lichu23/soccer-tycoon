@@ -7,10 +7,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Boosts = require(script.Parent.Boosts)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local Economy = require(script.Parent.Economy)
+local Legends = require(ReplicatedStorage.Shared.Legends)
+local NewSeason = require(script.Parent.NewSeason)
+local Notifications = require(ReplicatedStorage.Shared.Notifications)
 local ProfileSchema = require(script.Parent.ProfileSchema)
 local Progress = require(ReplicatedStorage.Shared.Progress)
-local Roster = require(ReplicatedStorage.Shared.Roster)
+local Reveals = require(script.Parent.Reveals)
 
 export type ActionSession = { data: ProfileSchema.Profile }
 
@@ -34,12 +38,51 @@ function Actions.buyPlayer(session: ActionSession, id: string): (boolean, string
 	if not Economy.spend(data, def.price) then
 		return false, "cannotAfford"
 	end
-	Roster.add(data, id)
+	Reveals.grant(data, id, false)
 	-- The first player goes straight onto the court and the matches start: there is no extra
 	-- button to find (the match loop starts when fieldStarted is true and the plot exists).
 	data.fieldStarted = true
 	Actions.onChange(session, "player", id)
 	return true, nil
+end
+
+-- Buys a Legend with cash once floor 4 is reached and every goal of its trial is done.
+function Actions.buyLegend(session: ActionSession, id: string): (boolean, string?)
+	local data = session.data
+	local status = Legends.status(data, id)
+	if status ~= "ready" then
+		return false, status
+	end
+	local def = Config.PlayersById[id]
+	if not Economy.spend(data, def.price) then
+		return false, "cannotAfford"
+	end
+	Reveals.grant(data, id, false)
+	Actions.onChange(session, "player", id)
+	return true, nil
+end
+
+-- Picks a style (the Locker room). The tier must be reached and a premium style owned.
+function Actions.setCosmetic(session: ActionSession, slot: string, id: string): (boolean, string?)
+	local def = Config.CosmeticsById[id]
+	if def == nil or def.slot ~= slot then
+		return false, "unknown"
+	end
+	local ok, reason = Cosmetics.choose(session.data, id)
+	if not ok then
+		return false, reason
+	end
+	Actions.onChange(session, "cosmetic", id)
+	return true, nil
+end
+
+-- The reminder opt-in. Only records the answer; it opens with the first player bought.
+function Actions.setNotifications(session: ActionSession, on: boolean): boolean
+	if not Notifications.set(session.data, on) then
+		return false
+	end
+	Actions.onChange(session, "notifications", if on then "on" else "off")
+	return true
 end
 
 -- Spends TP on the next level of an owned player (the level-up pad). `levelSeen` (when given) must
@@ -104,6 +147,19 @@ function Actions.upgradeStadium(session: ActionSession, tierSeen: number?): (boo
 	Boosts.startStadium(data) -- every upgrade gives a free x2 for 5 minutes, reset not added
 	Actions.onChange(session, "stadium", nil)
 	return true, nil
+end
+
+-- Starts the next season (floor 3 must be complete). `seasonSeen` is the season the client saw.
+function Actions.startSeason(
+	session: ActionSession,
+	seasonSeen: number?
+): (NewSeason.Result?, string?)
+	local result, reason = NewSeason.start(session.data, seasonSeen)
+	if result == nil then
+		return nil, reason
+	end
+	Actions.onChange(session, "season", nil)
+	return result, nil
 end
 
 return Actions

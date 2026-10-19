@@ -60,12 +60,20 @@ function MatchLogic.resolve(data: ProfileSchema.Profile, state: State, rng: () -
 		data.flags.firstHatTrickDone = true
 	end
 
+	-- A banked boosted match (bought with Robux) doubles this match and is used up. It stacks with the
+	-- timed boosts inside the x4 cap.
+	local boosts = Boosts.active(data)
+	if data.boosts.bankedMatches > 0 then
+		data.boosts.bankedMatches -= 1
+		table.insert(boosts, Config.Boost.matchMultiplier)
+	end
+
 	local payout = Formulas.payout({
 		fieldIncomes = Roster.fieldIncomes(data),
 		cashUpgradeLevel = data.storeLevels.cashPerMatch,
 		season = data.season.number,
 		momentumMatches = state.matchesInRow,
-		boosts = Boosts.active(data),
+		boosts = boosts,
 		hatTrick = hatTrick,
 	})
 	local goalsFor, goalsAgainst = MatchLogic.goals(payout, hatTrick)

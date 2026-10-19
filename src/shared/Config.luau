@@ -42,6 +42,42 @@ export type StadiumTierDef = {
 	courtWidth: number,
 }
 
+export type CaseDef = {
+	id: string,
+	name: string,
+	floorsComplete: number, -- floors completed to unlock it
+	legendChance: number, -- the share of a pull that is a Legend (fixed, taken off the top)
+	-- Shares of the rest: a player of the floors reached, of the next floor, of the floors further on.
+	odds: { reached: number, nextFloor: number, further: number },
+}
+
+export type ProductDef = {
+	key: string,
+	kind: "case" | "boost" | "legend" | "cosmetic",
+	robux: number, -- the price shown on the button (the real price is set on the dashboard)
+	productId: number, -- the Developer Product id, 0 until it is created on the dashboard
+	caseId: string?,
+	playerId: string?,
+	cosmeticId: string?,
+}
+
+export type CosmeticSlotDef = { id: string, name: string, tier: number }
+
+export type CosmeticDef = {
+	id: string,
+	slot: string,
+	name: string,
+	color: { number }, -- r, g, b (0 to 255): the swatch and, for the kit, the shirt colour
+	robux: number?, -- nil = a free style
+}
+
+export type TrialGoal = {
+	id: string,
+	kind: "ownFloors" | "trained" | "tier",
+	target: number,
+	level: number?, -- for "trained": the level each of the `target` players must reach
+}
+
 local function player(
 	id: string,
 	name: string,
@@ -278,6 +314,20 @@ Config.Offline = {
 	capSeconds = 4 * 60 * 60,
 }
 
+-- Reminders for players who opted in (docs/PLAN.md, Step 3, Notifications): the offline bank is full or
+-- the free case is ready. At most one a day, and they stop when several in a row are ignored.
+Config.Reminders = {
+	minGapSeconds = 22 * 60 * 60, -- between two reminders to the same player (Roblox allows 1 a day)
+	minAwaySeconds = 60 * 60, -- a free-case reminder never comes sooner than this after leaving
+	stopAfterIgnored = 3, -- reminders in a row that were not followed by a return
+	respondedWithinSeconds = 6 * 60 * 60, -- a return within this long after a reminder counts as an answer
+	queueSeconds = 3 * 24 * 60 * 60, -- a reminder that was not sent in this long is dropped
+	sweepSeconds = 60, -- how often a server looks for reminders that are due
+	-- Notification string asset ids from the Creator Hub (Notifications). Empty until they are created;
+	-- nothing is sent for a kind without one.
+	messages = { bank = "", case = "" } :: { [string]: string },
+}
+
 Config.Stars = {
 	bonusPerStar = 0.10,
 	maxStars = 5,
@@ -306,9 +356,176 @@ Config.Training = {
 	drillHitBonusTp = 0.3,
 }
 
+-- The Robux cases (docs/PLAN.md, Step 3). Within a floor a cheaper player is likelier (each step up
+-- the slot order is `slotDecay` as likely as the one before). Odds, the chance of a duplicate and
+-- the star rule are shown before the purchase, from these same numbers.
+Config.Cases = {
+	standard = {
+		id = "standard",
+		name = "Standard Case",
+		floorsComplete = 1,
+		legendChance = 0.005,
+		odds = { reached = 0.70, nextFloor = 0.25, further = 0.05 },
+	},
+	elite = {
+		id = "elite",
+		name = "Elite Case",
+		floorsComplete = 2,
+		legendChance = 0.02,
+		odds = { reached = 0.40, nextFloor = 0.40, further = 0.20 },
+	},
+} :: { [string]: CaseDef }
+
+Config.CaseRules = {
+	slotDecay = 0.7,
+	noOfferSeconds = 30 * 60, -- no case offer until this long after the first purchase
+	duplicateCashMinutes = 5, -- a duplicate past the star cap pays this much income instead
+}
+
+-- Developer Products. `productId` stays 0 until the product exists on the dashboard (then the
+-- server only simulates the purchase in Studio). Prices are placeholders to set in Step 8.
+Config.Products = {
+	caseStandard = {
+		key = "caseStandard",
+		kind = "case",
+		robux = 49,
+		productId = 0,
+		caseId = "standard",
+	},
+	caseElite = { key = "caseElite", kind = "case", robux = 149, productId = 0, caseId = "elite" },
+	matchBoost = { key = "matchBoost", kind = "boost", robux = 39, productId = 0 },
+	legend_ronaldinho = {
+		key = "legend_ronaldinho",
+		kind = "legend",
+		robux = 799,
+		productId = 0,
+		playerId = "ronaldinho",
+	},
+	legend_zidane = {
+		key = "legend_zidane",
+		kind = "legend",
+		robux = 1199,
+		productId = 0,
+		playerId = "zidane",
+	},
+	legend_ronaldo_nazario = {
+		key = "legend_ronaldo_nazario",
+		kind = "legend",
+		robux = 1799,
+		productId = 0,
+		playerId = "ronaldo_nazario",
+	},
+	legend_maradona = {
+		key = "legend_maradona",
+		kind = "legend",
+		robux = 2499,
+		productId = 0,
+		playerId = "maradona",
+	},
+	legend_pele = {
+		key = "legend_pele",
+		kind = "legend",
+		robux = 3499,
+		productId = 0,
+		playerId = "pele",
+	},
+} :: { [string]: ProductDef }
+
+-- Team customization (docs/PLAN.md, Step 3): each stadium tier opens one slot with free styles and a
+-- few premium ones. Premium styles are cosmetic only, kept across seasons and bought directly (no
+-- random cosmetic crates). The first style of a slot is its default. Counts and prices are
+-- provisional; the dashboard product ids are 0 until the products exist.
+Config.CosmeticSlots = {
+	{ id = "kit", name = "Kit", tier = 1 },
+	{ id = "crest", name = "Crest", tier = 2 },
+	{ id = "banners", name = "Banners", tier = 3 },
+	{ id = "floodlights", name = "Floodlights", tier = 4 },
+	{ id = "scoreboard", name = "Scoreboard", tier = 5 },
+} :: { CosmeticSlotDef }
+
+local function style(id: string, slot: string, name: string, color: { number }, robux: number?)
+	return { id = id, slot = slot, name = name, color = color, robux = robux } :: CosmeticDef
+end
+
+Config.Cosmetics = {
+	style("kit_blue", "kit", "Blue", { 60, 120, 230 }, nil),
+	style("kit_white", "kit", "White", { 235, 235, 240 }, nil),
+	style("kit_green", "kit", "Green", { 50, 170, 90 }, nil),
+	style("kit_gold", "kit", "Gold", { 235, 190, 50 }, 99),
+	style("kit_black", "kit", "Midnight", { 35, 38, 50 }, 99),
+	style("crest_shield", "crest", "Shield", { 200, 205, 220 }, nil),
+	style("crest_star", "crest", "Star", { 250, 210, 70 }, nil),
+	style("crest_ball", "crest", "Ball", { 240, 240, 240 }, nil),
+	style("crest_crown", "crest", "Crown", { 240, 180, 40 }, 79),
+	style("crest_flame", "crest", "Flame", { 240, 100, 40 }, 79),
+	style("banners_plain", "banners", "Plain", { 210, 215, 225 }, nil),
+	style("banners_stripes", "banners", "Stripes", { 90, 150, 230 }, nil),
+	style("banners_dots", "banners", "Dots", { 230, 120, 140 }, nil),
+	style("banners_gold", "banners", "Gold set", { 235, 190, 50 }, 129),
+	style("banners_neon", "banners", "Neon set", { 70, 240, 200 }, 129),
+	style("floodlights_white", "floodlights", "White", { 255, 255, 250 }, nil),
+	style("floodlights_warm", "floodlights", "Warm", { 255, 214, 150 }, nil),
+	style("floodlights_cool", "floodlights", "Cool", { 170, 210, 255 }, nil),
+	style("floodlights_aurora", "floodlights", "Aurora", { 120, 255, 190 }, 149),
+	style("floodlights_rose", "floodlights", "Rose", { 255, 140, 190 }, 149),
+	style("scoreboard_classic", "scoreboard", "Classic", { 40, 44, 60 }, nil),
+	style("scoreboard_light", "scoreboard", "Light", { 225, 228, 238 }, nil),
+	style("scoreboard_retro", "scoreboard", "Retro", { 70, 160, 80 }, nil),
+	style("scoreboard_gold", "scoreboard", "Gold", { 235, 190, 50 }, 199),
+	style("scoreboard_crystal", "scoreboard", "Crystal", { 150, 220, 250 }, 199),
+} :: { CosmeticDef }
+
+Config.CosmeticsById = {} :: { [string]: CosmeticDef }
+for _, def in Config.Cosmetics do
+	Config.CosmeticsById[def.id] = def
+	local price = def.robux
+	if price then
+		Config.Products["cosmetic_" .. def.id] = {
+			key = "cosmetic_" .. def.id,
+			kind = "cosmetic",
+			robux = price,
+			productId = 0,
+			cosmeticId = def.id,
+		}
+	end
+end
+
 Config.Season = {
 	bonusPerSeason = 0.5, -- permanent multiplier: season 2 = x1.5, season 3 = x2.0
 }
+
+-- The Legend Trials (docs/PLAN.md, Step 1): goals that use only training, owned players and stadium
+-- tiers, never stars. Each Legend also has its cash price. Provisional, tune in the simulation: the
+-- first Legend asks for floors 1 to 3, three players at level 5 and tier 4, later ones ask for more.
+-- `ownFloors`: every player of floors 1 to `target`; `trained`: `target` players at `level` or more;
+-- `tier`: the stadium at tier `target`.
+Config.LegendTrials = {
+	ronaldinho = {
+		{ id = "own", kind = "ownFloors", target = 3 },
+		{ id = "train", kind = "trained", target = 3, level = 5 },
+		{ id = "tier", kind = "tier", target = 4 },
+	},
+	zidane = {
+		{ id = "own", kind = "ownFloors", target = 3 },
+		{ id = "train", kind = "trained", target = 5, level = 5 },
+		{ id = "tier", kind = "tier", target = 4 },
+	},
+	ronaldo_nazario = {
+		{ id = "own", kind = "ownFloors", target = 3 },
+		{ id = "train", kind = "trained", target = 5, level = 10 },
+		{ id = "tier", kind = "tier", target = 5 },
+	},
+	maradona = {
+		{ id = "own", kind = "ownFloors", target = 3 },
+		{ id = "train", kind = "trained", target = 8, level = 10 },
+		{ id = "tier", kind = "tier", target = 5 },
+	},
+	pele = {
+		{ id = "own", kind = "ownFloors", target = 3 },
+		{ id = "train", kind = "trained", target = 10, level = 15 },
+		{ id = "tier", kind = "tier", target = 5 },
+	},
+} :: { [string]: { TrialGoal } }
 
 Config.Store = {
 	cashPerMatch = {

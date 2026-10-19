@@ -5,6 +5,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Actions = require(script.Parent.Actions)
+local Legends = require(ReplicatedStorage.Shared.Legends)
 local Pads = require(script.Parent.Pads)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Roster = require(ReplicatedStorage.Shared.Roster)
@@ -43,6 +44,27 @@ local builders: { [string]: Builder } = {
 			end,
 			owned
 	end,
+	-- A Legend: cash once floor 4 is reached and the trial goals are done, then TP levels like anyone.
+	legend = function(session, _part, padId)
+		local function owned(): boolean
+			return Roster.owns(session.data, padId)
+		end
+		return function()
+			if owned() then
+				local status = Progress.levelStatus(session.data, padId)
+				return if status == "ready" or status == "cannotAfford" then status else "owned"
+			end
+			return Legends.status(session.data, padId)
+		end,
+			function()
+				if owned() then
+					Actions.levelUp(session, padId, nil)
+				else
+					Actions.buyLegend(session, padId)
+				end
+			end,
+			owned
+	end,
 	-- Standing on the training pad is all it takes: TrainingActions watches the player's padKey.
 	training = function(_session, _part, _padId)
 		return function()
@@ -66,6 +88,11 @@ local builders: { [string]: Builder } = {
 	end,
 }
 
+-- The pads that buy or upgrade something are small round discs (drawn by the client): the part that
+-- the server tests a player against shrinks to match.
+local PAD_STUDS = 5
+local SMALL_KINDS = { player = true, legend = true, store = true, stadium = true }
+
 -- Registers the pads of a freshly placed plot for its owner.
 function PadActions.registerPlot(session: Session.Session, plot: Model)
 	local markers = plot:FindFirstChild("Markers")
@@ -76,6 +103,9 @@ function PadActions.registerPlot(session: Session.Session, plot: Model)
 			local padId = part:GetAttribute("PadId")
 			local build = if type(kind) == "string" then builders[kind] else nil
 			if build and type(padId) == "string" then
+				if SMALL_KINDS[kind] then
+					part.Size = Vector3.new(PAD_STUDS, part.Size.Y, PAD_STUDS)
+				end
 				local status, complete, repeats = build(session, part, padId)
 				local pad: Pads.Pad = {
 					key = plot.Name .. ":" .. part.Name,

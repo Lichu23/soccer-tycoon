@@ -4,6 +4,7 @@
 -- decides every purchase. Pure, so it is unit tested.
 
 local Config = require(script.Parent.Config)
+local Legends = require(script.Parent.Legends)
 local NumberFormat = require(script.Parent.NumberFormat)
 local Progress = require(script.Parent.Progress)
 local Roster = require(script.Parent.Roster)
@@ -11,10 +12,13 @@ local Types = require(script.Parent.Types)
 
 type ProgressData = Types.ProgressData
 
+export type Line = { text: string, done: boolean }
+
 export type Info = {
 	title: string, -- above the ring
 	price: string, -- inside the ring
-	note: string, -- under the ring, may be empty
+	note: string, -- under the price, may be empty
+	lines: { Line }?, -- extra rows under the price (the goals of a Legend)
 	state: string, -- "ready", "cannotAfford", "locked", "owned", "maxed" or "info"
 }
 
@@ -102,6 +106,33 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 			}
 		end
 		return { title = def.name, price = NumberFormat.money(def.price), note = "", state = status }
+	elseif kind == "legend" then
+		local def = Config.PlayersById[padId]
+		if def == nil then
+			return { title = "?", price = "", note = "", state = "locked" }
+		end
+		local status = Legends.status(data, padId)
+		if status == "owned" then
+			if not Progress.trainingUnlocked(data) then
+				return { title = def.name, price = "OWNED", note = "", state = "owned" }
+			end
+			return PadInfo.levelUp(data, def)
+		end
+		local price = NumberFormat.money(def.price)
+		local lines: { Line } = {}
+		for _, goal in Legends.goals(data, padId) do
+			table.insert(lines, { text = `{goal.text}  {goal.have}/{goal.need}`, done = goal.done })
+		end
+		local note = ""
+		local state = status
+		if status == "locked" then
+			note = "Finish floor 3 first"
+		elseif status == "goals" then
+			state = "locked"
+		elseif status == "cannotAfford" then
+			note = missing(def.price, data.cash)
+		end
+		return { title = def.name, price = price, note = note, lines = lines, state = state }
 	elseif kind == "store" then
 		if not isStoreId(padId) then
 			return { title = padId, price = "", note = "", state = "locked" }

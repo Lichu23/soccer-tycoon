@@ -11,6 +11,7 @@ local RunService = game:GetService("RunService")
 local LoadPolicy = require(script.Parent.LoadPolicy)
 local ProfileSchema = require(script.Parent.ProfileSchema)
 local ProfileStore = require(script.Parent.vendor.ProfileStore)
+local Safe = require(script.Parent.Safe)
 local Config = require(ReplicatedStorage.Shared.Config)
 
 -- State that lives only while the player is in this server and is never saved.
@@ -21,6 +22,8 @@ export type Runtime = {
 	matchesPlayed: number,
 	nextMatchAt: number, -- os.clock() when the next match ends, 0 when none is scheduled
 	upgrading: boolean, -- a stadium upgrade is waiting to build its pitch
+	sessionCases: number, -- Robux cases bought in this visit, for the confirm screen total
+	sessionRobux: number, -- Robux spent in this visit
 }
 
 export type Session = {
@@ -38,6 +41,7 @@ local KICK_TAKEN = "Your save was opened on another server. Please rejoin."
 
 local sessions: { [Player]: Session } = {}
 local loadedCallbacks: { (session: Session) -> () } = {}
+local leavingCallbacks: { (session: Session) -> () } = {}
 local store: any
 local started = false
 
@@ -124,6 +128,8 @@ local function startOne(player: Player): Session?
 			matchesPlayed = 0,
 			nextMatchAt = 0,
 			upgrading = false,
+			sessionCases = 0,
+			sessionRobux = 0,
 		},
 	}
 	sessions[player] = session
@@ -153,6 +159,12 @@ local function onPlayerRemoving(player: Player)
 	end
 	sessions[player] = nil
 	session.data.lastSeen = os.time()
+	for _, callback in leavingCallbacks do
+		local ok, err = Safe.call(callback, session)
+		if not ok then
+			warn("[Session] leaving callback failed:", err)
+		end
+	end
 	session.profile:EndSession() -- saves one last time and releases the lock
 end
 
@@ -194,6 +206,11 @@ end
 -- Runs `callback` for every session that finishes loading from now on.
 function Session.onLoaded(callback: (session: Session) -> ())
 	table.insert(loadedCallbacks, callback)
+end
+
+-- Runs `callback` when a player leaves, before their profile is released (the data is still valid).
+function Session.onLeaving(callback: (session: Session) -> ())
+	table.insert(leavingCallbacks, callback)
 end
 
 -- Yields until the player's session is loaded. Returns nil on timeout or when they leave.

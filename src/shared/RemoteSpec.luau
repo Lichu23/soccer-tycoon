@@ -5,6 +5,7 @@
 -- remote.
 
 local Config = require(script.Parent.Config)
+local TileBadges = require(script.Parent.TileBadges)
 
 export type FieldSchema =
 	{ kind: "number", min: number?, max: number?, integer: boolean? }
@@ -83,6 +84,18 @@ RemoteSpec.remotes = {
 		ratePerSecond = 2,
 		burst = 4,
 	},
+	SetNotifications = {
+		direction = "toServer",
+		args = { { kind = "boolean" } },
+		ratePerSecond = 1,
+		burst = 2,
+	},
+	SeenTile = {
+		direction = "toServer",
+		args = { { kind = "enum", values = TileBadges.ids } },
+		ratePerSecond = 2,
+		burst = 4,
+	},
 	StartNewSeason = {
 		direction = "toServer",
 		-- The season number the client saw, so a double tap cannot reset twice.
@@ -118,6 +131,8 @@ RemoteSpec.remotes = {
 					"stadiumUp",
 					"resetDaily",
 					"grantTp",
+					"revealRarity",
+					"offerWait",
 				},
 			},
 			{ kind = "number", min = 0, max = 1e15 },
@@ -138,6 +153,7 @@ RemoteSpec.remotes = {
 	MatchResult = { direction = "toClient", args = {} },
 	Reveal = { direction = "toClient", args = {} },
 	StadiumUpgraded = { direction = "toClient", args = {} },
+	SeasonStarted = { direction = "toClient", args = {} },
 	Notice = { direction = "toClient", args = {} },
 } :: { [string]: RemoteDef }
 
