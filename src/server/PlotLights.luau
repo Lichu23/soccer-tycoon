@@ -36,7 +36,7 @@ function PlotLights.build(plot: Model, templatePivot: CFrame)
 				local light = Instance.new("PointLight")
 				light.Color = WARM
 				light.Range = 36
-				light.Brightness = 0.5
+				light.Brightness = 0.22
 				light.Shadows = false
 				light.Parent = fixture
 				fixture.Parent = folder

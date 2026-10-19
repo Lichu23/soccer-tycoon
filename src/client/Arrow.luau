@@ -21,7 +21,7 @@ local ARRIVED_DISTANCE = 7
 local UPDATE_SECONDS = 0.25
 local STORE_HINT_SECONDS = 20 -- how long the Store hint can show at most
 local STORE_HINT_NEAR = 14 -- the hint ends when the player gets this close to the Store pad
-local GOLD = Color3.fromRGB(255, 220, 60)
+local GOLD = Color3.fromRGB(255, 190, 20)
 
 local guide: { kind: string, endsAt: number }? = nil -- asked for by a HUD icon
 local lastOwned: number? = nil -- players owned at the last state change (nil before the first)
@@ -110,11 +110,11 @@ function Arrow.init()
 	local beam = Instance.new("Beam")
 	beam.Name = "GuideArrow"
 	beam.Color = ColorSequence.new(GOLD)
-	beam.Width0 = 1.4
-	beam.Width1 = 1.4
+	beam.Width0 = 1.1
+	beam.Width1 = 1.1
 	beam.FaceCamera = true
-	beam.LightEmission = 1
-	beam.Transparency = NumberSequence.new(0.15)
+	beam.LightEmission = 0 -- solid colour: an additive beam disappears on a bright floor
+	beam.Transparency = NumberSequence.new(0.05)
 	beam.Enabled = false
 
 	local from = Instance.new("Attachment")
