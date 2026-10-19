@@ -359,7 +359,7 @@ function Hud.init()
 		if not State.loaded then
 			return
 		end
-		local now = State.data.tp
+		local now = State.shownTp()
 		local before = lastTp
 		lastTp = now
 		if before == nil or now <= before then
@@ -413,7 +413,7 @@ function Hud.init()
 
 	-- Every frame: the money counter, the match bar and the boost badge ------------------
 	RunService.RenderStepped:Connect(function(dt: number)
-		local target = State.data.cash
+		local target = State.shownCash()
 		if shownCash ~= target then
 			local difference = target - shownCash
 			if math.abs(difference) < 0.5 then
@@ -438,10 +438,10 @@ function Hud.init()
 			matchFill.Size = UDim2.fromScale(0, 1)
 		end
 
-		tpValue.Text = NumberFormat.short(State.data.tp)
+		tpValue.Text = NumberFormat.short(State.shownTp())
 
 		local boostEnds = player:GetAttribute("boostEndsAt")
-		if type(boostEnds) == "number" and boostEnds > now then
+		if type(boostEnds) == "number" and boostEnds > now and not State.boostHeld() then
 			boost.Visible = true
 			local multiplier = player:GetAttribute("boostMultiplier")
 			local shown = if type(multiplier) == "number" then multiplier else 2

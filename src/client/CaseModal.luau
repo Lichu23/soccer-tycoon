@@ -1,9 +1,9 @@
 --!strict
--- The free case screen (docs/PLAN.md, Steps 3 and 7), opened from the Shop. The Standard and Elite
--- cases are bought in the Shop itself. Opening the free case
--- spins a roulette in the style of a case-opening strip: the server has already rolled and paid
--- the reward, so the strip is only a show that slows down and lands on it. With reduced motion the
--- strip is skipped and the reward shows at once.
+-- The free case screen (docs/PLAN.md, Steps 3 and 7), opened from the Shop. A title, the roulette strip,
+-- one button and, under it, when the next one opens. The server has already rolled and paid the reward
+-- when the strip starts; the strip is only a show that slows down and lands on it. When it has landed the
+-- screen closes and the reward card says what was won (RewardCard). With reduced motion the strip is
+-- skipped and the card shows at once. The Standard and Elite cases are bought in the Shop itself.
 
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
@@ -15,29 +15,30 @@ local Workspace = game:GetService("Workspace")
 local Config = require(ReplicatedStorage.Shared.Config)
 local DailyInfo = require(ReplicatedStorage.Shared.DailyInfo)
 local Net = require(script.Parent.Net)
+local NumberFormat = require(ReplicatedStorage.Shared.NumberFormat)
 local Panel = require(script.Parent.Panel)
 local RewardCard = require(script.Parent.RewardCard)
-local NumberFormat = require(ReplicatedStorage.Shared.NumberFormat)
+local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
 
-local PANEL_W, PANEL_H = 560, 356
-local CARD_W, CARD_H, CARD_GAP = 170, 92, 10
-local WINDOW_W, WINDOW_H = 524, 92
-local TILE_W, TILE_H, TILE_GAP = 96, 80, 6
+local PANEL_W, PANEL_H = 520, 292
+local WINDOW_W, WINDOW_H = 480, 92
+local TILE_W, TILE_H, TILE_GAP = 96, 74, 6
 local TILE_COUNT = 50
 local WIN_INDEX = 40
+local IDLE_CENTER_INDEX = 3 -- the tile under the marker before a spin
 local SPIN_SECONDS = 6
+local HOLD_SECONDS = 0.9 -- the landed tile stays in view this long before the screen closes
 local REPLY_TIMEOUT = 4
 
+-- Bright flat colours with dark text, like the cards of the Shop.
 local KIND_COLORS: { [string]: Color3 } = {
-	cash = Color3.fromRGB(60, 150, 90),
-	boost = Color3.fromRGB(190, 140, 40),
-	tp = Color3.fromRGB(60, 120, 200),
+	cash = Color3.fromRGB(96, 205, 128),
+	boost = Color3.fromRGB(255, 200, 70),
+	tp = Color3.fromRGB(100, 175, 255),
 }
-
-type CaseCard = { button: TextButton, status: TextLabel, stroke: UIStroke }
 
 local CaseModal = {}
 
@@ -100,39 +101,36 @@ local function makeTile(parent: Instance, reward: Config.CaseReward, index: numb
 		Name = "Tile" .. index,
 		Position = UDim2.fromOffset((index - 1) * (TILE_W + TILE_GAP), (WINDOW_H - TILE_H) / 2),
 		Size = UDim2.fromOffset(TILE_W, TILE_H),
-		BackgroundColor3 = KIND_COLORS[reward.kind]:Lerp(Color3.fromRGB(20, 24, 35), 0.55),
+		BackgroundColor3 = KIND_COLORS[reward.kind],
 	}, parent)
-	rounded(tile, 6)
-	new("UIStroke", { Name = "Outline", Color = Style.ui.dark, Thickness = 2 }, tile)
-	-- The coloured bar on top says what kind of reward it is (like the rarity bar of a case tile).
-	local bar = new("Frame", {
-		Name = "KindBar",
-		Size = UDim2.new(1, 0, 0, 5),
-		BackgroundColor3 = KIND_COLORS[reward.kind]:Lerp(Color3.new(1, 1, 1), 0.25),
-		BorderSizePixel = 0,
+	rounded(tile, 10)
+	new("UIStroke", {
+		Name = "Outline",
+		Color = Style.ui.dark,
+		Thickness = 3,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 	}, tile)
-	rounded(bar, 3)
 	new("TextLabel", {
 		Name = "Label",
-		Position = UDim2.fromOffset(4, 10),
+		Position = UDim2.fromOffset(4, 8),
 		Size = UDim2.new(1, -8, 0, 30),
 		BackgroundTransparency = 1,
 		Text = label,
 		TextWrapped = true,
 		Font = Style.font,
 		TextSize = 15,
-		TextColor3 = Style.ui.text,
+		TextColor3 = Style.ui.dark,
 	}, tile)
 	new("TextLabel", {
 		Name = "Detail",
-		Position = UDim2.fromOffset(4, 42),
-		Size = UDim2.new(1, -8, 0, 28),
+		Position = UDim2.fromOffset(4, 40),
+		Size = UDim2.new(1, -8, 0, 26),
 		BackgroundTransparency = 1,
 		Text = detail,
 		TextWrapped = true,
 		Font = Style.font,
 		TextSize = 13,
-		TextColor3 = Color3.fromRGB(235, 235, 235),
+		TextColor3 = Panel.TEXT,
 	}, tile)
 	return tile
 end
@@ -168,12 +166,12 @@ function CaseModal.init()
 	new("TextLabel", {
 		Name = "Title",
 		Position = UDim2.fromOffset(18, 10),
-		Size = UDim2.fromOffset(300, 32),
+		Size = UDim2.fromOffset(300, 36),
 		BackgroundTransparency = 1,
-		Text = "Free case",
+		Text = "Free Case",
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Font = Style.font,
-		TextSize = 24,
+		TextSize = 26,
 		TextColor3 = Panel.TEXT,
 	}, panel)
 	local close = new("TextButton", {
@@ -189,188 +187,62 @@ function CaseModal.init()
 	}, panel)
 	rounded(close, 8)
 
-	-- The three cases ----------------------------------------------------------------------------
-	local cases = {
-		{ id = "free", name = "Free Case", sub = "Every 20 hours" },
-	}
-	local cards: { [string]: CaseCard } = {}
-	for index, def in cases do
-		local button = new("TextButton", {
-			Name = def.id,
-			Position = UDim2.fromOffset(
-				(PANEL_W - CARD_W) / 2 + (index - 1) * (CARD_W + CARD_GAP),
-				52
-			),
-			Size = UDim2.fromOffset(CARD_W, CARD_H),
-			BackgroundColor3 = Style.ui.dark,
-			BackgroundTransparency = 0.25,
-			Text = "",
-			AutoButtonColor = false,
-		}, panel)
-		rounded(button, 12)
-		local stroke = new("UIStroke", {
-			Color = Style.ui.idle,
-			Thickness = 2,
-			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-		}, button)
-		new("TextLabel", {
-			Position = UDim2.fromOffset(8, 8),
-			Size = UDim2.new(1, -16, 0, 26),
-			BackgroundTransparency = 1,
-			Text = def.name,
-			Font = Style.font,
-			TextSize = 18,
-			TextColor3 = Style.ui.text,
-		}, button)
-		new("TextLabel", {
-			Position = UDim2.fromOffset(8, 34),
-			Size = UDim2.new(1, -16, 0, 20),
-			BackgroundTransparency = 1,
-			Text = def.sub,
-			Font = Style.font,
-			TextSize = 13,
-			TextColor3 = Style.ui.idle,
-		}, button)
-		local status = new("TextLabel", {
-			Position = UDim2.fromOffset(8, 58),
-			Size = UDim2.new(1, -16, 0, 26),
-			BackgroundTransparency = 1,
-			Text = "",
-			Font = Style.font,
-			TextSize = 15,
-			TextColor3 = Style.ui.good,
-		}, button)
-		cards[def.id] = { button = button, status = status, stroke = stroke }
-	end
-
-	-- The area under the cards: the rewards you can get, or the roulette ----------------------------
-	local previewTitle = new("TextLabel", {
-		Name = "PreviewTitle",
-		Position = UDim2.fromOffset(18, 156),
-		Size = UDim2.fromOffset(400, 20),
-		BackgroundTransparency = 1,
-		Text = "You can win",
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Font = Style.font,
-		TextSize = 15,
-		TextColor3 = Panel.MUTED,
-	}, panel)
-
-	local preview = new("Frame", {
-		Name = "Preview",
-		Position = UDim2.fromOffset(18, 180),
-		Size = UDim2.fromOffset(WINDOW_W, WINDOW_H),
-		BackgroundTransparency = 1,
-	}, panel)
-	local chipW = (WINDOW_W - 4 * 6) / 5
-	for index, reward in Config.Daily.caseRewards do
-		local chip = new("Frame", {
-			Position = UDim2.fromOffset((index - 1) * (chipW + 6), 6),
-			Size = UDim2.fromOffset(chipW, WINDOW_H - 12),
-			BackgroundColor3 = KIND_COLORS[reward.kind],
-		}, preview)
-		rounded(chip, 8)
-		new("TextLabel", {
-			Position = UDim2.fromOffset(2, 6),
-			Size = UDim2.new(1, -4, 0, 28),
-			BackgroundTransparency = 1,
-			Text = reward.label,
-			TextWrapped = true,
-			Font = Style.font,
-			TextSize = 14,
-			TextColor3 = Style.ui.text,
-		}, chip)
-		new("TextLabel", {
-			Position = UDim2.fromOffset(2, 34),
-			Size = UDim2.new(1, -4, 0, 20),
-			BackgroundTransparency = 1,
-			Text = reward.detail,
-			TextWrapped = true,
-			Font = Style.font,
-			TextSize = 12,
-			TextColor3 = Color3.fromRGB(235, 235, 235),
-		}, chip)
-		new("TextLabel", {
-			Position = UDim2.fromOffset(2, 54),
-			Size = UDim2.new(1, -4, 0, 18),
-			BackgroundTransparency = 1,
-			Text = string.format("%d%%", math.floor(reward.weight / totalWeight * 100 + 0.5)),
-			Font = Style.font,
-			TextSize = 14,
-			TextColor3 = Style.ui.gold,
-		}, chip)
-	end
-
-	local lockedText = new("TextLabel", {
-		Name = "LockedText",
-		Position = UDim2.fromOffset(18, 180),
-		Size = UDim2.fromOffset(WINDOW_W, WINDOW_H),
-		BackgroundTransparency = 1,
-		Text = "",
-		TextWrapped = true,
-		Font = Style.font,
-		TextSize = 18,
-		TextColor3 = Style.ui.idle,
-		Visible = false,
-	}, panel)
-
-	-- The roulette window: a clipped strip of tiles with a marker in the middle.
+	-- The roulette: a clipped strip of tiles with a marker through the middle ---------------------
+	local windowX = (PANEL_W - WINDOW_W) / 2
+	local windowY = 66
 	local window = new("Frame", {
 		Name = "Window",
-		Position = UDim2.fromOffset(18, 180),
+		Position = UDim2.fromOffset(windowX, windowY),
 		Size = UDim2.fromOffset(WINDOW_W, WINDOW_H),
-		BackgroundColor3 = Style.ui.dark,
-		BackgroundTransparency = 0.2,
+		BackgroundColor3 = Color3.fromRGB(250, 247, 255),
 		ClipsDescendants = true,
-		Visible = false,
 	}, panel)
-	rounded(window, 10)
+	rounded(window, 12)
+	new("UIStroke", {
+		Color = Style.ui.dark,
+		Thickness = 3,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+	}, window)
 	local strip = new("Frame", {
 		Name = "Strip",
 		Size = UDim2.fromOffset(TILE_COUNT * (TILE_W + TILE_GAP), WINDOW_H),
 		BackgroundTransparency = 1,
 	}, window)
-	-- The indicator: a thin line through the middle that reaches above and below the strip, with a
-	-- little arrow on top (it is a sibling of the window, because the window clips its children).
+	-- The indicator: a thin line through the middle with a little arrow on top (a sibling of the window,
+	-- because the window clips its children).
 	local marker = new("Frame", {
 		Name = "Marker",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.fromOffset(18 + WINDOW_W / 2, 180 - 12),
-		Size = UDim2.fromOffset(3, WINDOW_H + 24),
-		BackgroundColor3 = Color3.fromRGB(255, 150, 40),
-		BorderSizePixel = 0,
+		Position = UDim2.fromOffset(PANEL_W / 2, windowY - 8),
+		Size = UDim2.fromOffset(4, WINDOW_H + 16),
+		BackgroundTransparency = 1, -- two arrows only, so the tile under them stays readable
 		ZIndex = 6,
-		Visible = false,
 	}, panel)
-	new("TextLabel", {
-		Name = "Arrow",
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 0, 2),
-		Size = UDim2.fromOffset(26, 18),
-		BackgroundTransparency = 1,
-		Text = "▼",
-		Font = Enum.Font.GothamBold,
-		TextSize = 24,
-		TextColor3 = Color3.fromRGB(255, 150, 40),
-		ZIndex = 6,
-	}, marker)
-
-	local resultLabel = new("TextLabel", {
-		Name = "Result",
-		Position = UDim2.fromOffset(18, 274),
-		Size = UDim2.fromOffset(WINDOW_W, 24),
-		BackgroundTransparency = 1,
-		Text = "",
-		Font = Style.font,
-		TextSize = 20,
-		TextColor3 = Style.ui.gold,
-	}, panel)
+	for _, arrow in
+		{
+			{ name = "Top", y = 0, anchor = 1, text = "▼" },
+			{ name = "Bottom", y = 1, anchor = 0, text = "▲" },
+		}
+	do
+		new("TextLabel", {
+			Name = arrow.name,
+			AnchorPoint = Vector2.new(0.5, arrow.anchor),
+			Position = UDim2.fromScale(0.5, arrow.y),
+			Size = UDim2.fromOffset(26, 18),
+			BackgroundTransparency = 1,
+			Text = arrow.text,
+			Font = Enum.Font.GothamBold,
+			TextSize = 24,
+			TextColor3 = Color3.fromRGB(232, 64, 96),
+			ZIndex = 6,
+		}, marker)
+	end
 
 	local openButton = new("TextButton", {
 		Name = "Open",
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -10),
-		Size = UDim2.fromOffset(240, 40),
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, windowY + WINDOW_H + 24),
+		Size = UDim2.fromOffset(240, 46),
 		BackgroundColor3 = Style.ui.good,
 		Text = "OPEN",
 		Font = Style.font,
@@ -379,17 +251,33 @@ function CaseModal.init()
 		AutoButtonColor = false,
 	}, panel)
 	rounded(openButton, 12)
+	new("UIStroke", {
+		Color = Style.ui.dark,
+		Thickness = 3,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+	}, openButton)
+	local timeLabel = new("TextLabel", {
+		Name = "Time",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, windowY + WINDOW_H + 24 + 46 + 8),
+		Size = UDim2.fromOffset(300, 24),
+		BackgroundTransparency = 1,
+		Text = "",
+		Font = Style.font,
+		TextSize = 18,
+		TextColor3 = Panel.MUTED,
+	}, panel)
 
 	-- State --------------------------------------------------------------------------------------
-	local selected = "free"
 	local mode: string = "idle" -- "idle", "waiting" (sent, no answer yet) or "spinning"
 	local token = 0
+	local activeTween: Tween? = nil
+	local random = Random.new()
+	local step = TILE_W + TILE_GAP
+
 	local function modeNow(): string
 		return mode
 	end
-	local activeTween: Tween? = nil
-	local random = Random.new()
-
 	local function readyAt(): number
 		local value = player:GetAttribute("caseReadyAt")
 		return if type(value) == "number" then value else 0
@@ -407,6 +295,19 @@ function CaseModal.init()
 		end
 	end
 
+	-- Before a spin the strip shows the rewards in turn, with one tile under the marker.
+	local function showIdleStrip()
+		for _, child in strip:GetChildren() do
+			child:Destroy()
+		end
+		local rewards = Config.Daily.caseRewards
+		for index = 1, TILE_COUNT do
+			makeTile(strip, rewards[(index - 1) % #rewards + 1], index, nil)
+		end
+		strip.Position =
+			UDim2.fromOffset(WINDOW_W / 2 - ((IDLE_CENTER_INDEX - 1) * step + TILE_W / 2), 0)
+	end
+
 	local function stopSpin()
 		token += 1
 		if activeTween then
@@ -416,35 +317,20 @@ function CaseModal.init()
 		mode = "idle"
 	end
 
-	local function showArea(which: string)
-		preview.Visible = which == "preview"
-		window.Visible = which == "window"
-		lockedText.Visible = which == "locked"
-		marker.Visible = which == "window"
-		previewTitle.Visible = which ~= "window"
-	end
-
-	local function selectCase(id: string)
-		if mode ~= "idle" then
-			return
+	-- The prize of the spin that is running (already paid by the server). It is shown once, when the
+	-- strip has landed, or at once when the screen is closed early; the HUD shows it from then on.
+	local pendingPrize: any = nil
+	local function deliver()
+		local prize = pendingPrize
+		pendingPrize = nil
+		if prize ~= nil then
+			RewardCard.freeCase(prize)
 		end
-		selected = id
-		resultLabel.Text = ""
-		if id == "free" then
-			showArea("preview")
-		else
-			showArea("locked")
-			lockedText.Text =
-				"Coming soon. This case will give players, with the odds shown before you open it."
-		end
-	end
-	for id, card in cards do
-		card.button.Activated:Connect(function()
-			selectCase(id)
-		end)
+		State.releaseReward()
 	end
 
 	local function close_()
+		deliver()
 		stopSpin()
 		gui.Enabled = false
 	end
@@ -453,10 +339,11 @@ function CaseModal.init()
 
 	-- Builds the strip with the won reward on WIN_INDEX and spins it to a stop under the marker.
 	local function spin(prize: any)
+		pendingPrize = prize
+		State.setHeldPrize(prize)
 		local won = rewardById(prize.id)
 		if won == nil then
-			RewardCard.freeCase(prize)
-			mode = "idle"
+			close_()
 			return
 		end
 		for _, child in strip:GetChildren() do
@@ -469,30 +356,36 @@ function CaseModal.init()
 				makeTile(strip, randomReward(random), index, nil)
 			end
 		end
-		showArea("window")
-		resultLabel.Text = ""
 
-		local step = TILE_W + TILE_GAP
 		local jitter = (random:NextNumber() - 0.5) * TILE_W * 0.6
 		local landed = WINDOW_W / 2 - ((WIN_INDEX - 1) * step + TILE_W / 2 + jitter)
+		mode = "spinning"
+		token += 1
+		local myToken = token
+		-- The strip has landed: the winning tile is outlined in gold, then the screen closes and the
+		-- reward card says what was won.
 		local function finish()
 			local tile = strip:FindFirstChild("Tile" .. WIN_INDEX)
 			if tile then
 				local outline = tile:FindFirstChild("Outline")
 				if outline and outline:IsA("UIStroke") then
-					outline.Color = Style.ui.gold
-					outline.Thickness = 4
+					outline.Color = Color3.fromRGB(232, 64, 96)
+					outline.Thickness = 5
 				end
 			end
 			strip.Position = UDim2.fromOffset(landed, 0)
-			marker.Visible = false -- the line would cross the reward card's place
-			RewardCard.freeCase(prize)
 			mode = "idle"
+			if GuiService.ReducedMotionEnabled then
+				close_()
+				return
+			end
+			task.delay(HOLD_SECONDS, function()
+				if token == myToken and gui.Enabled then
+					close_()
+				end
+			end)
 		end
 
-		mode = "spinning"
-		token += 1
-		local myToken = token
 		strip.Position = UDim2.fromOffset(0, 0)
 		if GuiService.ReducedMotionEnabled then
 			finish()
@@ -514,22 +407,23 @@ function CaseModal.init()
 	end
 
 	openButton.Activated:Connect(function()
-		if mode ~= "idle" or selected ~= "free" or freeStatus() ~= "ready" then
+		if mode ~= "idle" or freeStatus() ~= "ready" then
 			return
 		end
 		mode = "waiting"
-		resultLabel.Text = ""
 		token += 1
 		local myToken = token
+		State.holdReward() -- the HUD keeps its numbers until the roulette has landed
 		Net.fire("ClaimDaily", "case")
 		task.delay(REPLY_TIMEOUT, function()
 			if modeNow() == "waiting" and token == myToken then
 				mode = "idle" -- the server never answered: let the player try again
+				State.releaseReward()
 			end
 		end)
 	end)
 
-	-- Keeps the cards and the button in step with the server's ready time.
+	-- Keeps the button and the time in step with the server's ready time.
 	local lastLayout = ""
 	RunService.RenderStepped:Connect(function()
 		if not gui.Enabled then
@@ -537,47 +431,31 @@ function CaseModal.init()
 		end
 		local status = freeStatus()
 		local now = Workspace:GetServerTimeNow()
-		local freeText = if status == "ready"
-			then "Ready"
+		local on = status == "ready" and mode == "idle"
+		local timeText = if mode ~= "idle"
+			then ""
 			elseif status == "waiting" then DailyInfo.waitText(readyAt() - now)
-			else "Locked"
-		local buttonText = "LOCKED"
-		local buttonOn = false
-		if selected == "free" then
-			if mode ~= "idle" then
-				buttonText = if mode == "waiting" then "OPENING..." else "SPINNING..."
-			elseif status == "ready" then
-				buttonText, buttonOn = "OPEN", true
-			elseif status == "waiting" then
-				buttonText = DailyInfo.waitText(readyAt() - now)
-			end
-		end
-		local layout = freeText .. "|" .. buttonText .. "|" .. selected
+			elseif status == "ready" then "Free every 20 hours"
+			else "Buy your first player first"
+		local layout = tostring(on) .. "|" .. timeText
 		if layout == lastLayout then
 			return
 		end
 		lastLayout = layout
-		cards.free.status.Text = freeText
-		cards.free.status.TextColor3 = if status == "ready" then Style.ui.good else Style.ui.idle
-		for id, card in cards do
-			card.stroke.Color = if id == selected then Style.ui.gold else Style.ui.idle
-		end
-		openButton.Text = buttonText
-		openButton.BackgroundColor3 = if buttonOn then Style.ui.good else Style.ui.idle
-		openButton.BackgroundTransparency = if buttonOn then 0 else 0.4
+		openButton.BackgroundColor3 = if on then Style.ui.good else Color3.fromRGB(196, 194, 214)
+		openButton.TextColor3 = if on then Style.ui.dark else Color3.fromRGB(120, 122, 140)
+		timeLabel.Text = timeText
 	end)
 
 	CaseModal.open = function()
 		stopSpin()
 		fitScale()
 		lastLayout = ""
-		selected = "free"
-		showArea("preview")
-		resultLabel.Text = ""
+		showIdleStrip()
 		gui.Enabled = true
 	end
 
-	-- The server's answer to a claim. Returns true when the modal showed it.
+	-- The server's answer to a claim. Returns true when the screen took it.
 	CaseModal.onResult = function(prize: any): boolean
 		if not gui.Enabled or type(prize) ~= "table" then
 			return false
