@@ -150,8 +150,19 @@ function Dock.build(
 	}
 end
 
--- The small red "1" at the top-right corner of a button, shown until the open button is tapped for the first
--- time. The server saves the tap (SeenTile) and says through the attribute tile_<id> (0 = not yet).
+-- Shows or hides the "1" of a button: only while the button is open (something is there to see) and has
+-- not been tapped yet. Called when the saved answer changes and whenever the button is painted.
+local function refreshBadge(tile: Tile)
+	local badge: any = tile.button:FindFirstChild("Badge")
+	if badge == nil then
+		return
+	end
+	local value = Players.LocalPlayer:GetAttribute("tile_" .. badge:GetAttribute("TileId"))
+	badge.Visible = value == 0 and not tile.lock.Visible
+end
+
+-- The small red "1" at the top-right corner of a button, shown once the button is open until it is
+-- tapped for the first time. The server saves the tap (SeenTile) and says through the attribute tile_<id> (0 = not yet).
 function Dock.badge(tile: Tile, id: string)
 	local badge = new("TextLabel", {
 		Name = "Badge",
@@ -168,16 +179,13 @@ function Dock.badge(tile: Tile, id: string)
 	}, tile.button)
 	new("UICorner", { CornerRadius = UDim.new(1, 0) }, badge)
 	new("UIStroke", { Color = Style.ui.dark, Thickness = 2 }, badge)
-	local player = Players.LocalPlayer
-	local attributeName = "tile_" .. id
-	local function refresh()
-		badge.Visible = player:GetAttribute(attributeName) == 0
-	end
-	refresh()
-	player:GetAttributeChangedSignal(attributeName):Connect(refresh)
+	badge:SetAttribute("TileId", id)
+	refreshBadge(tile)
+	Players.LocalPlayer:GetAttributeChangedSignal("tile_" .. id):Connect(function()
+		refreshBadge(tile)
+	end)
 	tile.button.Activated:Connect(function()
-		-- A closed button keeps its "1" until it opens and is tapped.
-		if badge.Visible and not tile.lock.Visible then
+		if badge.Visible then
 			badge.Visible = false
 			Net.fire("SeenTile", id)
 		end
@@ -198,6 +206,7 @@ function Dock.paint(tile: Tile, state: string)
 			else Color3.fromRGB(255, 255, 255)
 		picture.ImageTransparency = if locked then 0.1 elseif state == "waiting" then 0.15 else 0
 		tile.accent.Transparency = 1 -- the pulse of a ready button sets this itself
+		refreshBadge(tile)
 		return
 	end
 	tile.button.BackgroundTransparency = if state == "waiting" then 0.45 else 0.05
@@ -205,6 +214,7 @@ function Dock.paint(tile: Tile, state: string)
 	tile.accent.Transparency = if state == "waiting" then 0.5 else 0
 	tile.label.TextColor3 = if locked or state == "waiting" then Style.ui.idle else Style.ui.text
 	tile.button.BackgroundColor3 = if locked then Color3.fromRGB(52, 56, 70) else Style.ui.panel
+	refreshBadge(tile)
 end
 
 -- Shows one short line beside the button for a couple of seconds ("Opens at stadium tier 2.").
