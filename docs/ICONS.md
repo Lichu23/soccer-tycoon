@@ -85,6 +85,6 @@ Keep every generated file and note the tool, date and plan you used, in case the
 
 ## 6. Status (2026-10-19)
 The first set is imported and wired in `src/client/Icons.luau`: tiles for case (the gift box), kick, shop,
-locker and alerts; bare pictures for cash and tp; the trophy tile is stored for the Season button. The
+locker and alerts; tiles for cash and tp (new versions, a square tile at the left of the money and TP boxes instead of the round badge); the trophy tile replaces the drawn cup on the New Season badge (the badge keeps its shape, place and rules). The
 source files are in `OneDrive/Imágenes/Roblox Soccer Tycoon/icon_set_v2` (tiles, icons and the SVGs).
 A closed button shows its tile greyed with the padlock at the bottom-right corner.

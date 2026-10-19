@@ -100,23 +100,27 @@ local function statBox(
 		Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(175, 180, 200)),
 		Rotation = 90,
 	}, box)
+	local imageId = Icons.id(iconName)
+	-- A picture is a square tile at the left of the box; without one, a round badge with a letter.
+	local badgeSize = if imageId ~= "" then BOX_HEIGHT - 4 else BADGE_SIZE
 	local badge = new("Frame", {
 		Name = "Badge",
-		Position = UDim2.fromOffset(7, (BOX_HEIGHT - BADGE_SIZE) / 2),
-		Size = UDim2.fromOffset(BADGE_SIZE, BADGE_SIZE),
+		Position = UDim2.fromOffset(if imageId ~= "" then 4 else 7, (BOX_HEIGHT - badgeSize) / 2),
+		Size = UDim2.fromOffset(badgeSize, badgeSize),
 		BackgroundColor3 = accent,
+		BackgroundTransparency = if imageId ~= "" then 1 else 0,
 		ZIndex = 2,
 	}, box)
-	rounded(badge, BADGE_SIZE / 2)
-	local imageId = Icons.id(iconName)
 	if imageId ~= "" then
 		new("ImageLabel", {
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 			Image = imageId,
+			ScaleType = Enum.ScaleType.Fit,
 			ZIndex = 3,
 		}, badge)
 	else
+		rounded(badge, badgeSize / 2)
 		new("TextLabel", {
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
@@ -129,8 +133,8 @@ local function statBox(
 	end
 	local value = new("TextLabel", {
 		Name = valueName,
-		Position = UDim2.fromOffset(BADGE_SIZE + 12, 0),
-		Size = UDim2.new(1, -(BADGE_SIZE + 24), 1, 0),
+		Position = UDim2.fromOffset(badgeSize + 12, 0),
+		Size = UDim2.new(1, -(badgeSize + 24), 1, 0),
 		BackgroundTransparency = 1,
 		Text = "0",
 		TextXAlignment = Enum.TextXAlignment.Right,

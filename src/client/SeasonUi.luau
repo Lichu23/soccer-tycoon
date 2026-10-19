@@ -11,6 +11,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Formulas = require(ReplicatedStorage.Shared.Formulas)
+local Icons = require(script.Parent.Icons)
 local Net = require(script.Parent.Net)
 local Season = require(ReplicatedStorage.Shared.Season)
 local State = require(script.Parent.State)
@@ -119,6 +120,21 @@ function SeasonUi.init()
 			BackgroundColor3 = Style.ui.gold,
 		}, icon)
 		rounded(frame, bit[5])
+	end
+	-- With the uploaded trophy tile the picture takes the place of the drawn cup.
+	local trophy = Icons.id("trophy")
+	if trophy ~= "" then
+		icon:ClearAllChildren()
+		new("ImageLabel", {
+			Name = "Picture",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(36, 36),
+			BackgroundTransparency = 1,
+			Image = trophy,
+			ScaleType = Enum.ScaleType.Fit,
+			ZIndex = 2,
+		}, icon)
 	end
 	local dot = new("TextLabel", {
 		Name = "Dot",
@@ -303,6 +319,11 @@ function SeasonUi.init()
 		for _, bit in icon:GetChildren() do
 			if bit:IsA("Frame") then
 				bit.BackgroundColor3 = color
+			elseif bit:IsA("ImageLabel") then
+				-- The picture is white when lit and greyed otherwise.
+				bit.ImageColor3 = if color == Style.ui.gold
+					then Color3.fromRGB(255, 255, 255)
+					else Color3.fromRGB(125, 128, 140)
 			end
 		end
 	end

@@ -5,8 +5,9 @@
 
 local Icons = {}
 
--- The five button names (case, kick, shop, locker, alerts) are full tiles: the picture is the whole
--- button. cash and tp are bare pictures that sit on the round badge of the money and TP boxes.
+-- The button names (case, kick, shop, locker, alerts) are full tiles: the picture is the whole
+-- button. cash and tp are tiles too: the picture takes the place of the round badge of the money and TP
+-- boxes (with no id there, the box shows a round badge with a letter).
 -- trophy is the matching Season tile (not used by the New Season button yet).
 Icons.ids = {
 	case = "rbxassetid://89821955704110",
@@ -14,8 +15,8 @@ Icons.ids = {
 	shop = "rbxassetid://118445232324314",
 	locker = "rbxassetid://98567241028930",
 	alerts = "rbxassetid://80620190525696",
-	cash = "rbxassetid://136296491155437",
-	tp = "rbxassetid://92426100593186",
+	cash = "rbxassetid://119841301152540",
+	tp = "rbxassetid://118070040795011",
 	trophy = "rbxassetid://78532583067328",
 } :: { [string]: string }
 
