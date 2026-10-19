@@ -14,6 +14,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local Mannequin = require(ReplicatedStorage.Shared.Mannequin)
 local PadActions = require(script.Parent.PadActions)
+local PlotAccess = require(script.Parent.PlotAccess)
 local PlotLights = require(script.Parent.PlotLights)
 local Pads = require(script.Parent.Pads)
 local Roster = require(ReplicatedStorage.Shared.Roster)
@@ -179,7 +180,10 @@ function Plots.assign(session: Session.Session, slotIndex: number?): boolean
 		claimMarker:Destroy()
 	end
 	PlotLights.build(plot, templatePivot)
+	PlotAccess.build(plot, index)
 	plot.Parent = plotsFolder
+	PlotAccess.clearVisitors(plot, player)
+	PlotAccess.setOwner(player, index)
 
 	slotOwner[index] = player
 	session.runtime.plot = plot
@@ -206,6 +210,7 @@ local function release(player: Player)
 		if owner == player then
 			slotOwner[index] = nil
 			Pads.unregisterOwner(player)
+			PlotAccess.clearOwner(player)
 			local plot = plotsFolder:FindFirstChild("Plot_" .. index)
 			if plot then
 				plot:Destroy()
@@ -222,6 +227,7 @@ function Plots.init()
 	plotsFolder = Instance.new("Folder")
 	plotsFolder.Name = "Plots"
 	plotsFolder.Parent = Workspace
+	PlotAccess.init(SLOT_COUNT)
 	for index = 1, SLOT_COUNT do
 		createRing(index)
 	end
