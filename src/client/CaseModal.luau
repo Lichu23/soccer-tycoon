@@ -1,6 +1,6 @@
 --!strict
--- The cases screen (docs/PLAN.md, Steps 3 and 7): a modal with the Free, Standard and Elite case.
--- Only the free case opens for now; the two Robux cases are shown locked. Opening the free case
+-- The free case screen (docs/PLAN.md, Steps 3 and 7), opened from the Shop. The Standard and Elite
+-- cases are bought in the Shop itself. Opening the free case
 -- spins a roulette in the style of a case-opening strip: the server has already rolled and paid
 -- the reward, so the strip is only a show that slows down and lands on it. With reduced motion the
 -- strip is skipped and the reward shows at once.
@@ -15,6 +15,8 @@ local Workspace = game:GetService("Workspace")
 local Config = require(ReplicatedStorage.Shared.Config)
 local DailyInfo = require(ReplicatedStorage.Shared.DailyInfo)
 local Net = require(script.Parent.Net)
+local Panel = require(script.Parent.Panel)
+local RewardCard = require(script.Parent.RewardCard)
 local NumberFormat = require(ReplicatedStorage.Shared.NumberFormat)
 local Style = require(ReplicatedStorage.Shared.Style)
 
@@ -147,8 +149,7 @@ function CaseModal.init()
 	local backdrop = new("TextButton", {
 		Name = "Backdrop",
 		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = Color3.new(0, 0, 0),
-		BackgroundTransparency = 0.45,
+		BackgroundTransparency = 1, -- no dimming, like the Shop and the Locker room
 		Text = "",
 		AutoButtonColor = false,
 	}, gui)
@@ -158,10 +159,10 @@ function CaseModal.init()
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromOffset(PANEL_W, PANEL_H),
-		BackgroundColor3 = Style.ui.panel,
+		BackgroundColor3 = Color3.fromRGB(226, 216, 255), -- the light panel of the Shop
 	}, gui)
 	rounded(panel, 16)
-	new("UIStroke", { Color = Style.ui.dark, Thickness = 2 }, panel)
+	new("UIStroke", { Color = Style.ui.dark, Thickness = 4 }, panel)
 	local scale = new("UIScale", {}, panel)
 
 	new("TextLabel", {
@@ -169,37 +170,37 @@ function CaseModal.init()
 		Position = UDim2.fromOffset(18, 10),
 		Size = UDim2.fromOffset(300, 32),
 		BackgroundTransparency = 1,
-		Text = "Cases",
+		Text = "Free case",
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Font = Style.font,
 		TextSize = 24,
-		TextColor3 = Style.ui.text,
+		TextColor3 = Panel.TEXT,
 	}, panel)
 	local close = new("TextButton", {
 		Name = "Close",
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -10, 0, 8),
 		Size = UDim2.fromOffset(44, 36),
-		BackgroundColor3 = Style.ui.dark,
-		BackgroundTransparency = 0.3,
+		BackgroundColor3 = Color3.fromRGB(232, 64, 96), -- the red X of the other panels
 		Text = "X",
 		Font = Style.font,
-		TextSize = 18,
-		TextColor3 = Style.ui.text,
+		TextSize = 20,
+		TextColor3 = Color3.fromRGB(255, 255, 255),
 	}, panel)
 	rounded(close, 8)
 
 	-- The three cases ----------------------------------------------------------------------------
 	local cases = {
 		{ id = "free", name = "Free Case", sub = "Every 20 hours" },
-		{ id = "standard", name = "Standard Case", sub = "Players · Robux" },
-		{ id = "elite", name = "Elite Case", sub = "Players · Robux" },
 	}
 	local cards: { [string]: CaseCard } = {}
 	for index, def in cases do
 		local button = new("TextButton", {
 			Name = def.id,
-			Position = UDim2.fromOffset(15 + (index - 1) * (CARD_W + CARD_GAP), 52),
+			Position = UDim2.fromOffset(
+				(PANEL_W - CARD_W) / 2 + (index - 1) * (CARD_W + CARD_GAP),
+				52
+			),
 			Size = UDim2.fromOffset(CARD_W, CARD_H),
 			BackgroundColor3 = Style.ui.dark,
 			BackgroundTransparency = 0.25,
@@ -252,7 +253,7 @@ function CaseModal.init()
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Font = Style.font,
 		TextSize = 15,
-		TextColor3 = Style.ui.idle,
+		TextColor3 = Panel.MUTED,
 	}, panel)
 
 	local preview = new("Frame", {
@@ -406,10 +407,6 @@ function CaseModal.init()
 		end
 	end
 
-	local function showResult(text: string)
-		resultLabel.Text = text
-	end
-
 	local function stopSpin()
 		token += 1
 		if activeTween then
@@ -454,21 +451,11 @@ function CaseModal.init()
 	close.Activated:Connect(close_)
 	backdrop.Activated:Connect(close_)
 
-	-- The reward text after the roulette has landed.
-	local function describe(prize: any): string
-		if prize.kind == "cash" then
-			return "You won +" .. NumberFormat.money(prize.amount) .. " cash!"
-		elseif prize.kind == "tp" then
-			return "You won +" .. prize.amount .. " training points!"
-		end
-		return string.format("You won a x2 boost for %d min!", math.ceil((prize.seconds or 0) / 60))
-	end
-
 	-- Builds the strip with the won reward on WIN_INDEX and spins it to a stop under the marker.
 	local function spin(prize: any)
 		local won = rewardById(prize.id)
 		if won == nil then
-			showResult(describe(prize))
+			RewardCard.freeCase(prize)
 			mode = "idle"
 			return
 		end
@@ -498,7 +485,8 @@ function CaseModal.init()
 				end
 			end
 			strip.Position = UDim2.fromOffset(landed, 0)
-			showResult(describe(prize))
+			marker.Visible = false -- the line would cross the reward card's place
+			RewardCard.freeCase(prize)
 			mode = "idle"
 		end
 
@@ -571,10 +559,6 @@ function CaseModal.init()
 		lastLayout = layout
 		cards.free.status.Text = freeText
 		cards.free.status.TextColor3 = if status == "ready" then Style.ui.good else Style.ui.idle
-		cards.standard.status.Text = "LOCKED"
-		cards.elite.status.Text = "LOCKED"
-		cards.standard.status.TextColor3 = Style.ui.idle
-		cards.elite.status.TextColor3 = Style.ui.idle
 		for id, card in cards do
 			card.stroke.Color = if id == selected then Style.ui.gold else Style.ui.idle
 		end

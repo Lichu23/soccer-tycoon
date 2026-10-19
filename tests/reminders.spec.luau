@@ -29,7 +29,9 @@ T.test("nothing is planned unless the player turned reminders on", function()
 end)
 
 T.test("the offline bank reminder comes when the 4 hour cap is reached", function()
-	local plan = Reminders.plan(profile({ field = true }), LEFT)
+	local data = profile({ field = true })
+	data.daily.caseClaimedAt = LEFT -- the free case was just opened, so only the bank is left to remind about
+	local plan = Reminders.plan(data, LEFT)
 	T.eq(plan.kind, "bank")
 	T.eq(plan.dueAt, LEFT + Config.Offline.capSeconds)
 end)
@@ -39,7 +41,7 @@ T.test("no player on the field and no daily case means nothing to remind about",
 end)
 
 T.test("the free case reminder wins when it is ready before the bank is full", function()
-	local data = profile({ field = true, tier = 2 })
+	local data = profile({ field = true })
 	data.daily.caseClaimedAt = LEFT - Config.Daily.cooldownSeconds + 2 * HOUR -- ready 2 hours after leaving
 	local plan = Reminders.plan(data, LEFT)
 	T.eq(plan.kind, "case")
@@ -47,7 +49,7 @@ T.test("the free case reminder wins when it is ready before the bank is full", f
 end)
 
 T.test("a case that is already ready waits the minimum away time, not an instant ping", function()
-	local data = profile({ field = false, tier = 2 })
+	local data = profile({ field = true })
 	local plan = Reminders.plan(data, LEFT)
 	T.eq(plan.kind, "case")
 	T.eq(plan.dueAt, LEFT + Config.Reminders.minAwaySeconds)

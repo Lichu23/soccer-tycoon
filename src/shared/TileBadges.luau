@@ -1,5 +1,5 @@
 --!strict
--- The small "1" on the Case, Kick and Shop buttons the first time the player is on the map. It goes
+-- The small "1" on the Kick and Shop buttons the first time the player is on the map. It goes
 -- away when the button is tapped and is saved, so it never comes back. It marks "new", not "buy":
 -- it is not tied to any offer, timer or price.
 
@@ -7,7 +7,7 @@ export type Data = { flags: { [string]: any } }
 
 local TileBadges = {}
 
-TileBadges.ids = { "case", "kick", "shop" } :: { string }
+TileBadges.ids = { "kick", "shop" } :: { string }
 
 function TileBadges.valid(id: string): boolean
 	return table.find(TileBadges.ids, id) ~= nil

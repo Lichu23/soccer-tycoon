@@ -13,6 +13,7 @@ local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(script.Parent.Net)
+local RewardCard = require(script.Parent.RewardCard)
 local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
@@ -26,7 +27,6 @@ local DIVE_SECONDS = 0.4
 local RESULT_SECONDS = 1.1 -- how long a kick result shows before the next kick
 local REPLY_TIMEOUT = 3 -- the targets come back if the server never answers
 local CLOSE_AFTER_LAST_SECONDS = 1.4
-local REWARD_SECONDS = 5
 
 -- Where each target is inside the field frame (the goal is x 40 to 300, y 6 to 100).
 local TARGETS: { [string]: Vector2 } = {
@@ -575,101 +575,17 @@ end
 PenaltyUi.open = function(_kicks: number) end
 PenaltyUi.onResult = function(_info: any) end
 
--- The reward card after the last kick ---------------------------------------------------------
-function PenaltyUi.initReward()
-	local gui = new("ScreenGui", {
-		Name = "PenaltyReward",
-		ResetOnSpawn = false,
-		DisplayOrder = 4,
-		IgnoreGuiInset = true,
-		Enabled = false,
-	}, player:WaitForChild("PlayerGui"))
-	local card = new("Frame", {
-		Name = "Card",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.45),
-		Size = UDim2.fromOffset(340, 160),
-		BackgroundColor3 = Style.ui.panel,
-	}, gui)
-	rounded(card, 18)
-	local stroke = new("UIStroke", { Color = Style.ui.gold, Thickness = 3 }, card)
-	local cardScale = new("UIScale", {}, card)
-	new("TextLabel", {
-		Position = UDim2.fromOffset(10, 12),
-		Size = UDim2.new(1, -20, 0, 26),
-		BackgroundTransparency = 1,
-		Text = "PENALTIES DONE",
-		Font = Style.font,
-		TextSize = 20,
-		TextColor3 = Style.ui.idle,
-	}, card)
-	local big = new("TextLabel", {
-		Position = UDim2.fromOffset(10, 42),
-		Size = UDim2.new(1, -20, 0, 48),
-		BackgroundTransparency = 1,
-		Text = "",
-		Font = Style.font,
-		TextSize = 40,
-		TextColor3 = Style.ui.gold,
-	}, card)
-	local detail = new("TextLabel", {
-		Position = UDim2.fromOffset(10, 94),
-		Size = UDim2.new(1, -20, 0, 56),
-		BackgroundTransparency = 1,
-		Text = "",
-		TextWrapped = true,
-		Font = Style.font,
-		TextSize = 20,
-		TextColor3 = Style.ui.text,
-	}, card)
-
-	local token = 0
-	PenaltyUi.showReward = function(goals: number, boostSeconds: number)
-		token += 1
-		local myToken = token
-		big.Text = string.format("%d / 3 goals", goals)
-		if boostSeconds > 0 then
-			detail.Text =
-				string.format("Reward: x1.5 income for %d min", math.ceil(boostSeconds / 60))
-			stroke.Color = Style.ui.gold
-		else
-			detail.Text = "No boost this time. New kicks in 20 hours."
-			stroke.Color = Style.ui.idle
-		end
-		local camera = Workspace.CurrentCamera
-		local fit = 1
-		if camera then
-			fit = math.min(1, camera.ViewportSize.X / 380, camera.ViewportSize.Y / 200)
-		end
-		gui.Enabled = true
-		if GuiService.ReducedMotionEnabled then
-			cardScale.Scale = fit
-		else
-			cardScale.Scale = fit * 0.6
-			TweenService:Create(
-				cardScale,
-				TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-				{ Scale = fit }
-			):Play()
-		end
-		task.delay(REWARD_SECONDS, function()
-			if token == myToken then
-				gui.Enabled = false
-			end
-		end)
-	end
-	card.Active = true
-	local tap = new(
-		"TextButton",
-		{ Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "", ZIndex = 10 },
-		card
-	)
-	tap.Activated:Connect(function()
-		token += 1
-		gui.Enabled = false
-	end)
+-- The reward card after the last kick: the shared card that says what the player got.
+PenaltyUi.showReward = function(goals: number, boostSeconds: number)
+	RewardCard.show({
+		title = "PENALTIES DONE",
+		big = string.format("%d / 3 goals", goals),
+		detail = if boostSeconds > 0
+			then string.format("x1.5 income for %d min", math.ceil(boostSeconds / 60))
+			else "No boost this time. New kicks in 20 hours.",
+		icon = "kick",
+		good = boostSeconds > 0,
+	})
 end
-
-PenaltyUi.showReward = function(_goals: number, _boostSeconds: number) end
 
 return PenaltyUi

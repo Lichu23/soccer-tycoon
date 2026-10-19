@@ -7,9 +7,12 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
+local CaseModal = require(script.Parent.CaseModal)
 local Cases = require(ReplicatedStorage.Shared.Cases)
 local Config = require(ReplicatedStorage.Shared.Config)
+local DailyInfo = require(ReplicatedStorage.Shared.DailyInfo)
 local Dock = require(script.Parent.Dock)
 local Icons = require(script.Parent.Icons)
 local Legends = require(ReplicatedStorage.Shared.Legends)
@@ -79,7 +82,7 @@ function ShopUi.init()
 		DisplayOrder = 4,
 	}, player:WaitForChild("PlayerGui"))
 
-	local tile = Dock.build(gui, "ShopIcon", 3, "SHOP", Style.ui.gold, "shop")
+	local tile = Dock.build(gui, "ShopIcon", 2, "SHOP", Style.ui.gold, "shop")
 	local icon = tile.button
 	local locked = true
 	Dock.badge(tile, "shop")
@@ -234,19 +237,26 @@ function ShopUi.init()
 		return row
 	end
 
-	-- One product card: the name on top, the picture, and a price (or the short reason) at the bottom.
-	-- Tapping an open card opens its detail (the two-tap purchase); a closed one only says why.
-	local function productCard(parent: Frame, key: string, name: string, iconName: string?)
-		local ok, reason = offer(key)
-		local product = Config.Products[key]
+	-- One card: the name on top, the picture, and a button-like pill at the bottom. `open` cards are
+	-- tappable and white; closed ones are greyed. `good` makes the pill green (a price or "Free").
+	local function card_(
+		parent: Frame,
+		key: string,
+		name: string,
+		iconName: string?,
+		open: boolean,
+		pillText: string,
+		good: boolean,
+		onTap: (() -> ())?
+	)
 		local item = new("TextButton", {
 			Name = "Row_" .. key,
 			Size = UDim2.fromScale(CARD_WIDTH, 1),
-			BackgroundColor3 = if ok
+			BackgroundColor3 = if open
 				then Color3.fromRGB(250, 247, 255)
 				else Color3.fromRGB(196, 194, 214),
 			Text = "",
-			AutoButtonColor = ok,
+			AutoButtonColor = onTap ~= nil,
 			ZIndex = 7,
 		}, parent)
 		rounded(item, 12)
@@ -276,7 +286,7 @@ function ShopUi.init()
 				Size = UDim2.fromOffset(88, 88),
 				BackgroundTransparency = 1,
 				Image = picture,
-				ImageColor3 = if ok
+				ImageColor3 = if open
 					then Color3.fromRGB(255, 255, 255)
 					else Color3.fromRGB(150, 150, 165),
 				ZIndex = 8,
@@ -300,11 +310,11 @@ function ShopUi.init()
 			AnchorPoint = Vector2.new(0.5, 1),
 			Position = UDim2.new(0.5, 0, 1, -8),
 			Size = UDim2.new(1, -16, 0, 34),
-			BackgroundColor3 = if ok then Style.ui.good else Color3.fromRGB(120, 122, 140),
-			Text = if ok then `{product.robux} Robux` else CARD_REASONS[reason or "locked"],
+			BackgroundColor3 = if good then Style.ui.good else Color3.fromRGB(120, 122, 140),
+			Text = pillText,
 			Font = Style.font,
 			TextSize = 16,
-			TextColor3 = if ok then Style.ui.dark else Color3.fromRGB(235, 236, 244),
+			TextColor3 = if good then Style.ui.dark else Color3.fromRGB(235, 236, 244),
 			ZIndex = 8,
 		}, item)
 		rounded(pill, 8)
@@ -313,13 +323,60 @@ function ShopUi.init()
 			Thickness = 2,
 			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 		}, pill)
-		if ok then
-			item.Activated:Connect(function()
-				view = key
-				message = nil
-				render()
-			end)
+		if onTap then
+			item.Activated:Connect(onTap)
 		end
+	end
+
+	-- A product card. Tapping an open card opens its detail (the two-tap purchase); a closed one only
+	-- shows the short reason.
+	local function productCard(parent: Frame, key: string, name: string, iconName: string?)
+		local ok, reason = offer(key)
+		local product = Config.Products[key]
+		card_(
+			parent,
+			key,
+			name,
+			iconName,
+			ok,
+			if ok then `{product.robux} Robux` else CARD_REASONS[reason or "locked"],
+			ok,
+			if ok
+				then function()
+					view = key
+					message = nil
+					render()
+				end
+				else nil
+		)
+	end
+
+	-- The free case: opens its own screen (the roulette). Locked until the first player is bought.
+	local function freeCaseCard(parent: Frame)
+		local unlocked = player:GetAttribute("dailyUnlocked") == true
+		local readyAt = attribute("caseReadyAt")
+		local status = DailyInfo.status(unlocked, readyAt, Workspace:GetServerTimeNow())
+		local pill = if status == "ready"
+			then "Free"
+			elseif status == "waiting" then DailyInfo.waitText(
+				readyAt - Workspace:GetServerTimeNow()
+			)
+			else "Buy a player"
+		card_(
+			parent,
+			"caseFree",
+			"Free Case",
+			"case",
+			status == "ready",
+			pill,
+			status == "ready",
+			if unlocked
+				then function()
+					close()
+					CaseModal.open()
+				end
+				else nil
+		)
 	end
 
 	local function renderList()
@@ -328,10 +385,11 @@ function ShopUi.init()
 			line(message, { TextColor3 = Panel.GOOD })
 		end
 		ribbon("Cases")
+		local row = cardRow()
+		freeCaseCard(row)
 		if player:GetAttribute("casesRestricted") == true then
 			line(REFUSALS.restricted, { TextColor3 = Panel.MUTED })
 		else
-			local row = cardRow()
 			productCard(row, "caseStandard", Config.Cases.standard.name, "case_standard")
 			productCard(row, "caseElite", Config.Cases.elite.name, "case_elite")
 		end
@@ -340,16 +398,16 @@ function ShopUi.init()
 		if Legends.reached(State.data) then
 			ribbon("Legends")
 			line("Skips the trials and the cash price", { TextColor3 = Panel.MUTED })
-			local row: Frame? = nil
+			local legendRow: Frame? = nil
 			local count = 0
 			for _, def in Config.Players do
 				local key = "legend_" .. def.id
 				if def.floor >= Config.LegendFloor and Config.Products[key] then
-					if row == nil or count % CARDS_PER_ROW == 0 then
-						row = cardRow()
+					if legendRow == nil or count % CARDS_PER_ROW == 0 then
+						legendRow = cardRow()
 					end
 					count += 1
-					productCard(row :: Frame, key, def.name, nil)
+					productCard(legendRow :: Frame, key, def.name, nil)
 				end
 			end
 		end
@@ -448,7 +506,16 @@ function ShopUi.init()
 		end
 	end
 	State.onChange(refresh)
-	for _, name in { "casesOpen", "bankedMatches", "sessionRobux", "casesRestricted" } do
+	for _, name in
+		{
+			"casesOpen",
+			"bankedMatches",
+			"sessionRobux",
+			"casesRestricted",
+			"dailyUnlocked",
+			"caseReadyAt",
+		}
+	do
 		player:GetAttributeChangedSignal(name):Connect(refresh)
 	end
 
@@ -470,7 +537,7 @@ function ShopUi.init()
 				-- The reveal plays by itself; the shop gets out of its way.
 				close()
 			else
-				message = "Done."
+				-- The sign (RewardCard) says what was bought.
 				view = nil
 				if backdrop.Visible then
 					render()

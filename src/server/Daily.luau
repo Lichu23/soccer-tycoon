@@ -34,8 +34,9 @@ export type KickResult = {
 
 local Daily = {}
 
+-- The free case and the penalty kicks open with the first player bought.
 function Daily.unlocked(data: Profile): boolean
-	return data.stadiumTier >= Config.Daily.unlockTier
+	return Roster.ownedCount(data) >= 1
 end
 
 -- Starts a new batch of kicks once 20 hours have passed since the first kick of the old one.

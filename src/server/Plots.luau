@@ -14,6 +14,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local Mannequin = require(ReplicatedStorage.Shared.Mannequin)
 local PadActions = require(script.Parent.PadActions)
+local Remotes = require(script.Parent.Remotes)
 local PlotLights = require(script.Parent.PlotLights)
 local Pads = require(script.Parent.Pads)
 local Roster = require(ReplicatedStorage.Shared.Roster)
@@ -185,6 +186,7 @@ function Plots.assign(session: Session.Session, slotIndex: number?): boolean
 	session.runtime.plot = plot
 	session.runtime.slotIndex = index
 	player:SetAttribute("plotSlot", index)
+	local firstClaim = not session.data.flags.hasClaimedPlot
 	session.data.flags.hasClaimedPlot = true
 
 	local ring = rings[index]
@@ -198,6 +200,10 @@ function Plots.assign(session: Session.Session, slotIndex: number?): boolean
 	Plots.refresh(session)
 	Analytics.milestone(session, "claimed_plot")
 	Sync.all(session)
+	if firstClaim then
+		-- The first claim ever: the client plays the 5 second tour of the building, stadium and training.
+		Remotes.fireClient("Notice", player, { kind = "plotTour" })
+	end
 	return true
 end
 

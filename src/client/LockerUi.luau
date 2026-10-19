@@ -55,7 +55,7 @@ function LockerUi.init()
 		DisplayOrder = 4,
 	}, player:WaitForChild("PlayerGui"))
 
-	local tile = Dock.build(gui, "LockerIcon", 4, "LOCKER", Style.ui.bar, "locker")
+	local tile = Dock.build(gui, "LockerIcon", 3, "LOCKER", Style.ui.bar, "locker")
 	local icon = tile.button
 	local locked = true
 
@@ -63,8 +63,8 @@ function LockerUi.init()
 	local note = new("TextLabel", {
 		Name = "Note",
 		Position = UDim2.fromOffset(
-			Dock.position(4).X.Offset + Dock.SIZE + 10,
-			Dock.position(4).Y.Offset + 10
+			Dock.position(3).X.Offset + Dock.SIZE + 10,
+			Dock.position(3).Y.Offset + 10
 		),
 		Size = UDim2.fromOffset(120, 24),
 		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
@@ -337,7 +337,7 @@ function LockerUi.init()
 			local result = info.result
 			if type(result) == "table" and result.kind == "cosmetic" then
 				previewId = nil
-				message = "Yours. It is in use."
+				message = nil -- the sign (RewardCard) says what was bought
 				if backdrop.Visible then
 					render()
 				end

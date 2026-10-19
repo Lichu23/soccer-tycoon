@@ -1,6 +1,6 @@
 --!strict
--- The daily return on screen (docs/PLAN.md, Step 7): two icons at the left edge below the top bar
--- (the free case and the penalty kicks), and the penalty kick screen. A ready icon gets a small gold
+-- The daily return on screen (docs/PLAN.md, Step 7): the penalty kick icon at the left edge below the
+-- top bar (the free case moved into the Shop), and the penalty kick screen. A ready icon gets a small gold
 -- dot and a soft glow that stops pulsing after a few seconds; no sound, no red counter. A waiting
 -- icon is dimmed and a tap says how long is left. The server judges every claim and kick; this
 -- only sends the tap and shows the answer.
@@ -11,7 +11,6 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local CaseModal = require(script.Parent.CaseModal)
-local Config = require(ReplicatedStorage.Shared.Config)
 local Dock = require(script.Parent.Dock)
 local DailyInfo = require(ReplicatedStorage.Shared.DailyInfo)
 local NumberFormat = require(ReplicatedStorage.Shared.NumberFormat)
@@ -94,12 +93,12 @@ local function paintIcon(icon: Icon, status: string)
 	end
 end
 
--- The short line of a closed icon: the plot comes first, then the stadium tier.
+-- The short line of a closed icon: the plot comes first, then the first player.
 local function closedReason(): string
 	if not State.hasPlot() then
 		return "Claim your plot first."
 	end
-	return "Opens at stadium tier " .. Config.Daily.unlockTier .. "."
+	return "Buy your first player first."
 end
 
 local function readyAt(attribute: string): number
@@ -159,15 +158,13 @@ function DailyUi.init()
 		DisplayOrder = 2,
 	}, player:WaitForChild("PlayerGui"))
 
-	local caseIcon = buildIcon(gui, "CaseIcon", "CASE", 1, Color3.fromRGB(255, 150, 60), "case")
-	local kickIcon = buildIcon(gui, "KickIcon", "KICK", 2, Color3.fromRGB(110, 225, 130), "kick")
-	Dock.badge(caseIcon.tile, "case")
+	-- The free case lives in the Shop now; only the kick icon stays here.
+	local kickIcon = buildIcon(gui, "KickIcon", "KICK", 1, Color3.fromRGB(110, 225, 130), "kick")
 	Dock.badge(kickIcon.tile, "kick")
 	CaseModal.init()
 	local toast = buildToast(gui)
 	local prize = buildPrize(gui)
 	PenaltyUi.init()
-	PenaltyUi.initReward()
 	PenaltyUi.onFinished = function(goals: number, boostSeconds: number)
 		PenaltyUi.showReward(goals, boostSeconds)
 	end
@@ -224,14 +221,6 @@ function DailyUi.init()
 	end)
 
 	-- Taps -------------------------------------------------------------------------------------
-	caseIcon.button.Activated:Connect(function()
-		if caseIcon.status == "locked" then
-			Dock.reason(caseIcon.tile, closedReason())
-			return
-		end
-		-- The icon opens the cases screen; it says when the free case is ready and opens it.
-		CaseModal.open()
-	end)
 	kickIcon.button.Activated:Connect(function()
 		if kickIcon.status == "locked" then
 			Dock.reason(kickIcon.tile, closedReason())
@@ -248,9 +237,8 @@ function DailyUi.init()
 
 	-- Every frame: the icon status follows the server's ready times, the glow fades after a while.
 	RunService.RenderStepped:Connect(function()
-		paintIcon(caseIcon, iconStatus("caseReadyAt"))
 		paintIcon(kickIcon, iconStatus("penaltyReadyAt"))
-		for _, icon in { caseIcon, kickIcon } do
+		for _, icon in { kickIcon } do
 			if icon.glowUntil > os.clock() then
 				local wave = (math.sin(os.clock() * 6) + 1) / 2
 				icon.glow.Transparency = 0.6 - wave * 0.6

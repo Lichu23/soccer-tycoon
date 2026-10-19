@@ -14,6 +14,7 @@ local Legends = require(ReplicatedStorage.Shared.Legends)
 local Offline = require(script.Parent.Offline)
 local Pads = require(script.Parent.Pads)
 local Plots = require(script.Parent.Plots)
+local Roster = require(ReplicatedStorage.Shared.Roster)
 local ReminderService = require(script.Parent.ReminderService)
 local Remotes = require(script.Parent.Remotes)
 local Purchases = require(script.Parent.Purchases)
@@ -51,7 +52,13 @@ Actions.onChange = function(session, what, id)
 		RevealActions.send(session, id) -- a case win: the reveal plays after the result is saved
 	elseif what == "player" then
 		RevealActions.send(session, id)
-		Analytics.milestone(session, "first_purchase")
+		if
+			Analytics.milestone(session, "first_purchase")
+			and Roster.ownedCount(session.data) == 1
+		then
+			-- The first player ever: the camera shows the pitch until the first match ends.
+			Remotes.fireClient("Notice", session.player, { kind = "firstMatch" })
+		end
 	elseif what == "store" then
 		Analytics.milestone(session, "first_upgrade")
 	end
