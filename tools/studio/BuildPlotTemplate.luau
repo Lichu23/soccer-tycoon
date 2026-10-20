@@ -335,12 +335,8 @@ for _, entry in Def.Legends do
 	addCapsule(4, entry[1], "back", entry[2], "legend")
 end
 
--- Store pads in the open middle of floor 1 with the counter behind them, locker and trophy shelf on
--- the back wall.
+-- Store pads in the open middle of floor 1 (no counter, locker block or trophy shelf any more).
 local fixtures = folder("Fixtures")
-addBox(fixtures, "StoreCounter", -70, -2, FLOOR, FLOOR + 3, 168, 171, COLORS.counter)
-addBox(fixtures, "LockerSpot", 30, 36, FLOOR, FLOOR + 7, innerZ1 - 2, innerZ1, COLORS.counter)
-addBox(fixtures, "TrophyShelf", 8, 26, FLOOR, FLOOR + 6, innerZ1 - 2, innerZ1, COLORS.counter)
 for index, id in { "cashPerMatch", "matchSpeed", "hatTrick", "offline" } do
 	marker("Store_" .. id, id, "store", Vector3.new(-60 + (index - 1) * 18, FLOOR + 0.1, 158), PAD)
 end
@@ -422,7 +418,6 @@ marker("Stadium", "stadium", "stadium", Vector3.new(0, PAD_Y, Def.Path.Length + 
 marker("Penalty", "penalty", "penalty", Vector3.new(c.Length / 2 - 9, PAD_Y, cz), PAD)
 marker("TrainingAfk", "trainingAfk", "training", Vector3.new((TR.X0 + TR.X1) / 2 + 12, PAD_Y, (TR.Z0 + trainingMidZ) / 2), Vector3.new(14, 0.2, 14))
 marker("TrainingActive", "trainingActive", "training", Vector3.new((TR.X0 + TR.X1) / 2 + 12, PAD_Y, (trainingMidZ + TR.Z1) / 2), Vector3.new(14, 0.2, 14))
-marker("LockerSpotMarker", "locker", "spot", Vector3.new(33, PAD_Y, innerZ1 - 10), Vector3.new(4, 0.2, 4))
 
 local ours = { { -20, -8 }, { -20, 8 }, { -8, -8 }, { -8, 8 } }
 local theirs = { { 20, -8 }, { 20, 8 }, { 8, -8 }, { 8, 8 } }
@@ -492,7 +487,7 @@ turn(capsules)
 turn(fixtures)
 for _, m in markers:GetChildren() do
 	local kind = m:GetAttribute("Kind")
-	if m:IsA("BasePart") and (kind == "player" or kind == "legend" or kind == "store" or m.Name == "LockerSpotMarker") then
+	if m:IsA("BasePart") and (kind == "player" or kind == "legend" or kind == "store") then
 		m.CFrame = toPlot * m.CFrame
 	end
 end
