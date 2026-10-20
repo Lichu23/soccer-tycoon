@@ -17,6 +17,9 @@
 --     to 3) rises along lane B away from the wall, flight 3 (floor 3 to 4) rises along lane A again.
 --   * an invisible, non-blocking marker (Gate_Floor2, Gate_Floor3, Gate_Floor4) at the bottom of each flight
 --     carries the floor label; the stairs are always walkable.
+--   * this script builds the greybox with solid stair walls; run tools/studio/OpenStairs.luau
+--     after it to open them up (glass handrails, FloorSpot_k for the HUD floor
+--     switcher).
 
 local ServerStorage = game:GetService("ServerStorage")
 
