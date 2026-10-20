@@ -19,6 +19,7 @@ local Mannequin = require(ReplicatedStorage.Shared.Mannequin)
 local Net = require(script.Parent.Net)
 local Panel = require(script.Parent.Panel)
 local RewardCard = require(script.Parent.RewardCard)
+local Sounds = require(script.Parent.Sounds)
 local Style = require(ReplicatedStorage.Shared.Style)
 local TrophyScene = require(script.Parent.TrophyScene)
 
@@ -63,7 +64,7 @@ local SEAT_A = Color3.fromRGB(32, 72, 150)
 local SEAT_B = Color3.fromRGB(150, 32, 62)
 local KEEPER_KIT = Color3.fromRGB(240, 200, 50)
 local TARGET_IDLE = Color3.fromRGB(255, 255, 255)
-local BAD_TEXT = Color3.fromRGB(170, 40, 50) -- readable on the light panel
+local BAD_BANNER = Color3.fromRGB(232, 142, 138) -- the soft red of the banner for a save or a miss
 local CHIP_IDLE = Color3.fromRGB(110, 115, 132)
 local FANS = {
 	Color3.fromRGB(230, 90, 90),
@@ -448,39 +449,74 @@ function PenaltyUi.init()
 		end
 	end
 
-	-- A short "+x1.5 · 3 min" that rises from the ball when a goal goes in.
-	local function floatText(text: string)
+	-- The big result banner over the goal: "GOAL!" with the reward, or "SAVED!" / "WIDE!".
+	local banner = new("Frame", {
+		Name = "Banner",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.45),
+		Size = UDim2.fromScale(0.74, 0.46),
+		BackgroundColor3 = Style.ui.dark,
+		BackgroundTransparency = 0.3,
+		Visible = false,
+		ZIndex = 12,
+	}, sceneBox)
+	rounded(banner, 14)
+	local bannerOutline = new(
+		"UIStroke",
+		{ Color = Style.ui.gold, Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border },
+		banner
+	)
+	local bannerScale = new("UIScale", {}, banner)
+	local function bannerLabel(
+		name: string,
+		position: UDim2,
+		size: UDim2,
+		maxSize: number
+	): TextLabel
 		local label = new("TextLabel", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.8),
-			Size = UDim2.fromOffset(240, 30),
+			Name = name,
+			Position = position,
+			Size = size,
 			BackgroundTransparency = 1,
-			Text = text,
+			Text = "",
 			Font = Style.font,
-			TextSize = 26,
-			TextColor3 = Style.ui.gold,
-			ZIndex = 12,
-		}, sceneBox)
+			TextScaled = true,
+			TextColor3 = Style.ui.text,
+			ZIndex = 13,
+		}, banner)
+		new("UITextSizeConstraint", { MaxTextSize = maxSize }, label)
 		new("UIStroke", {
 			Color = Style.ui.dark,
 			Thickness = 3,
 			ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
 		}, label)
+		return label
+	end
+	local bannerTitle =
+		bannerLabel("Title", UDim2.fromScale(0.04, 0.06), UDim2.fromScale(0.92, 0.56), 52)
+	local bannerSub =
+		bannerLabel("Sub", UDim2.fromScale(0.04, 0.64), UDim2.fromScale(0.92, 0.28), 20)
+
+	local function showBanner(title: string, sub: string, color: Color3)
+		bannerTitle.Text = title
+		bannerTitle.TextColor3 = color
+		bannerSub.Text = sub
+		bannerOutline.Color = color
+		banner.Visible = true
 		if GuiService.ReducedMotionEnabled then
-			task.delay(1.2, function()
-				label:Destroy()
-			end)
+			bannerScale.Scale = 1
 			return
 		end
-		local tween = TweenService:Create(
-			label,
-			TweenInfo.new(1.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-			{ Position = UDim2.fromScale(0.5, 0.4), TextTransparency = 1 }
-		)
-		tween.Completed:Connect(function()
-			label:Destroy()
-		end)
-		tween:Play()
+		bannerScale.Scale = 0.5
+		TweenService:Create(
+			bannerScale,
+			TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+			{ Scale = 1 }
+		):Play()
+	end
+
+	local function hideBanner()
+		banner.Visible = false
 	end
 
 	-- State ------------------------------------------------------------------------------------
@@ -522,6 +558,7 @@ function PenaltyUi.init()
 
 	local function resetScene()
 		stopAnimations()
+		hideBanner()
 		scene.ball.Position = BALL_START
 		scene.ball.Size = Vector3.new(BALL_SIZE, BALL_SIZE, BALL_SIZE)
 		scene.ball.Transparency = 0
@@ -630,6 +667,7 @@ function PenaltyUi.init()
 		setButtons(false)
 		buttons[info.aim].BackgroundColor3 = Style.ui.gold
 		setResult("", Panel.TEXT)
+		Sounds.play("kick")
 
 		local scored = info.goal == true
 		local wide = info.wide == true
@@ -651,14 +689,26 @@ function PenaltyUi.init()
 					Config.Daily.penaltyMultiplier,
 					math.ceil(seconds / 60)
 				)
-				setResult(
-					string.format("GOAL!  %d/%d · %s", goalsNow, Config.Daily.penaltyKicks, reward),
-					Panel.GOOD
+				showBanner(
+					"GOAL!",
+					string.format(
+						"%d / %d goals · %s",
+						goalsNow,
+						Config.Daily.penaltyKicks,
+						reward
+					),
+					Style.ui.gold
 				)
 				showLadder(goalsNow, true)
-				floatText("+" .. reward)
+				Sounds.play("goal")
 			else
-				setResult(if wide then "Just wide!" else "Saved!", BAD_TEXT)
+				if wide then
+					showBanner("WIDE!", "So close", BAD_BANNER)
+					Sounds.play("miss")
+				else
+					showBanner("SAVED!", "Great save by the keeper", BAD_BANNER)
+					Sounds.play("save")
+				end
 			end
 			if kicksLeft > 0 then
 				task.delay(RESULT_SECONDS, function()
