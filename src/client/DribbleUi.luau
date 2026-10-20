@@ -1,8 +1,8 @@
 --!strict
 -- The dribble run screen (docs/PLAN.md, Step 4), in the look of the keepie-uppies and the penalty
 -- screens (the shared Panel, no title, the numbers as plain text over the picture): three lanes, rows
--- of cones coming down towards your player and two buttons (or A / D, or the arrow keys) to move a
--- lane left or right. A row passed clean grows the combo and pays a little TP; a cone makes the player
+-- of cones coming down towards your player and two buttons to move a lane left or right (no keys:
+-- A / D and the arrows walk the character off the mat). A row passed clean grows the combo and pays a little TP; a cone makes the player
 -- stumble and breaks the combo. A cone is a little under half a lane wide, so there is always more
 -- than a cone of space between two cones, and a cone that has passed keeps rolling off the bottom of
 -- the picture instead of vanishing. Rounds last 30 seconds and end in a Bronze, Silver or Gold medal,
@@ -15,7 +15,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -34,7 +33,7 @@ local CHIPS_HEIGHT = 44
 local CHIPS_WIDTH = 240
 local BUTTON_HEIGHT = 64
 local HINT_HEIGHT = 18
-local CONE_SHARE = 0.4 -- a cone is this share of a lane wide (turned 45 degrees it is about 0.57)
+local CONE_SHARE = 0.4 -- a cone is this share of a lane wide (a square, so it clips cleanly)
 local CONE_HEIGHT_SHARE = 0.13 -- and never more than this share of the track height, so two rows leave a cone of space
 local PLAYER_SHARE = 0.42
 local FEEDBACK_HOLD_SECONDS = 0.55
@@ -54,7 +53,7 @@ local CONE_COLOR = Color3.fromRGB(255, 140, 40)
 local WHITE = Color3.fromRGB(255, 255, 255)
 
 local HOW_TO_PLAY = {
-	"Press < and > (or A and D) to change lane.",
+	"Tap the < and > buttons to change lane.",
 	"Steer around the cones.",
 	"More rows in a row = more TP.",
 }
@@ -167,13 +166,21 @@ function DribbleUi.init()
 			local cone = new("Frame", {
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				Size = UDim2.fromOffset(40, 40),
-				Rotation = 45,
 				BackgroundColor3 = CONE_COLOR,
 				Visible = false,
 				ZIndex = 8,
 			}, track)
-			rounded(cone, 8)
+			-- Not rotated: a turned frame ignores ClipsDescendants and would show outside the track.
+			rounded(cone, 10)
 			new("UIStroke", { Color = Color3.fromRGB(0, 0, 0), Thickness = 3 }, cone)
+			new("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.5),
+				Size = UDim2.fromScale(0.7, 0.18),
+				BackgroundColor3 = WHITE,
+				BorderSizePixel = 0,
+				ZIndex = 9,
+			}, cone)
 			table.insert(row, cone)
 		end
 		table.insert(cones, row)
@@ -552,16 +559,6 @@ function DribbleUi.init()
 	end)
 	rightButton.Activated:Connect(function()
 		move(1)
-	end)
-	UserInputService.InputBegan:Connect(function(input, processed)
-		if processed then
-			return
-		end
-		if input.KeyCode == Enum.KeyCode.A or input.KeyCode == Enum.KeyCode.Left then
-			move(-1)
-		elseif input.KeyCode == Enum.KeyCode.D or input.KeyCode == Enum.KeyCode.Right then
-			move(1)
-		end
 	end)
 
 	-- What the server tells us ---------------------------------------------------------------------
