@@ -32,7 +32,7 @@ local SHOWN_KINDS = {
 -- These kinds are drawn as a round disc; the others keep the glowing square of the template.
 local DISC_KINDS = { player = true, legend = true, store = true, stadium = true }
 local MAX_DISTANCE = 30
-local STADIUM_MAX_DISTANCE = 140
+local STADIUM_MAX_DISTANCE = 45
 local LABEL_WIDTH = 240
 local DISC_THICKNESS = 0.5
 local MAX_LINES = 3
@@ -111,7 +111,9 @@ local function buildBillboard(part: BasePart): (
 )
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "PadBillboard"
-	billboard.Size = UDim2.fromOffset(LABEL_WIDTH, 220)
+	-- The label sits on the middle line and grows upward from it, so its bottom edge stays at the
+	-- offset height (above the disc) at any distance, not 110 pixels below it.
+	billboard.Size = UDim2.fromOffset(LABEL_WIDTH, 440)
 	billboard.StudsOffset = Vector3.new(0, 5.5, 0)
 	billboard.MaxDistance = MAX_DISTANCE
 	billboard.AlwaysOnTop = false
@@ -122,7 +124,7 @@ local function buildBillboard(part: BasePart): (
 	local frame = Instance.new("Frame")
 	frame.Name = "Label"
 	frame.AnchorPoint = Vector2.new(0.5, 1)
-	frame.Position = UDim2.fromScale(0.5, 1)
+	frame.Position = UDim2.fromScale(0.5, 0.5)
 	frame.Size = UDim2.fromScale(1, 0)
 	frame.AutomaticSize = Enum.AutomaticSize.Y
 	frame.BackgroundTransparency = 1
@@ -261,7 +263,7 @@ local function track(part: Instance)
 	end
 	local billboard, title, price, note, lines, bar, fill = buildBillboard(part)
 	if kind == "stadium" then
-		billboard.MaxDistance = STADIUM_MAX_DISTANCE -- it stands far from the pitch, so show it from afar
+		billboard.MaxDistance = STADIUM_MAX_DISTANCE -- only shown once the player is close to it
 	end
 	local entry: Entry = {
 		part = part,
