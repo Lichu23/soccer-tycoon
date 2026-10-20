@@ -31,7 +31,9 @@ local SCENE_RATIO = 2.2 -- width over height of the picture of the goal
 local MIN_SCENE_HEIGHT = 110
 local CHIPS_HEIGHT = 56
 local RESULT_HEIGHT = 28
-local BALL_SECONDS = 0.5
+local BALL_SECONDS = 0.4
+local CLOSE_FADE_SECONDS = 1 -- every sound fades out this long when the screen closes
+local IMPACT_AT = 0.7 -- the share of the flight after which the impact sound plays
 local DIVE_SECONDS = 0.4
 local RESULT_SECONDS = 1.1 -- how long a kick result shows before the next kick
 local REPLY_TIMEOUT = 3 -- the targets come back if the server never answers
@@ -583,6 +585,7 @@ function PenaltyUi.init()
 		stopAnimations()
 		backdrop.Visible = false
 		waiting = false
+		Sounds.fadeOutAll(CLOSE_FADE_SECONDS)
 	end
 
 	-- Where the ball ends up: inside the goal for a goal or a save, outside it when it goes wide.
@@ -627,6 +630,7 @@ function PenaltyUi.init()
 		setResult("Pick a target", Panel.TEXT)
 		fitScene()
 		backdrop.Visible = true
+		Sounds.startAmbience()
 	end
 
 	local function sendKick(zone: string)
@@ -678,6 +682,19 @@ function PenaltyUi.init()
 		local endPoint = ballEnd(info.aim, wide)
 		local reduced = GuiService.ReducedMotionEnabled
 
+		-- The sound of the ball arriving: the net and the crowd, the post, or the keeper's hands. It plays
+		-- a little before the ball is at the end of its flight, so it is not heard after the ball.
+		local function impactSound()
+			if scored then
+				Sounds.play("net")
+				Sounds.play("goal")
+			elseif wide then
+				Sounds.play("post")
+			else
+				Sounds.play("save")
+			end
+		end
+
 		local function landed()
 			if token ~= myToken then
 				return
@@ -701,15 +718,11 @@ function PenaltyUi.init()
 					Style.ui.gold
 				)
 				showLadder(goalsNow, true)
-				Sounds.play("net")
-				Sounds.play("goal")
 			else
 				if wide then
 					showBanner("WIDE!", "So close", BAD_BANNER)
-					Sounds.play("post")
 				else
 					showBanner("SAVED!", "Great save by the keeper", BAD_BANNER)
-					Sounds.play("save")
 				end
 			end
 			if kicksLeft > 0 then
@@ -736,6 +749,7 @@ function PenaltyUi.init()
 			scene.ball.Position = endPoint
 			local target = TARGETS[keeperZone]
 			scene.setKeeper(Vector3.new(target.X * 0.85, math.max(target.Y - 0.3, 1.4), 0), 0, 150)
+			impactSound()
 			landed()
 			return
 		end
@@ -750,6 +764,11 @@ function PenaltyUi.init()
 		task.delay(0.12, function()
 			if token == myToken then
 				dive(keeperZone)
+			end
+		end)
+		task.delay(BALL_SECONDS * IMPACT_AT, function()
+			if token == myToken then
+				impactSound()
 			end
 		end)
 		task.delay(BALL_SECONDS, landed)
