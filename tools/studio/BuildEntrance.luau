@@ -19,7 +19,13 @@ folder.Parent = template
 
 local GROUND = 0.5
 local X = 40
-local CASE_Z = 114
+-- The case fills the gap between the walkway (z 97) and the glass front of the building (z 126); its
+-- front stays at x 38 and it is deep enough for the trophy models (ServerStorage.Trophies).
+local CASE_X = 41
+local CASE_Z = 111.7
+local CASE_DEPTH = 6
+local GLASS_DEPTH = 5.6
+local GLASS_HEIGHT = 6.8
 local COLORS = {
 	wood = Color3.fromRGB(200, 140, 70),
 	dark = Color3.fromRGB(70, 74, 92),
@@ -110,24 +116,27 @@ for _, entry in PADS do
 	pad.Parent = markers
 end
 
--- The trophy case: a low base, five pedestals in a row inside a glass box, a name plaque in front of
--- each, a title board above.
+-- The trophy case: a low base, five pedestals in a row inside a glass box with a dark back panel, a
+-- name plaque in front of each, a title board above.
 local slots = 5
-local pitch = 4.6
+local pitch = 5.3
 local width = slots * pitch + 1.4
 local baseTop = GROUND + 1.6
-box("CaseBase", Vector3.new(4, 1.6, width), Vector3.new(X, GROUND + 0.8, CASE_Z), COLORS.dark)
-local glass = box("CaseGlass", Vector3.new(3.6, 6.4, width), Vector3.new(X, baseTop + 3.2, CASE_Z), COLORS.glass, Enum.Material.Glass)
+local front = CASE_X - CASE_DEPTH / 2
+box("CaseBase", Vector3.new(CASE_DEPTH, 1.6, width), Vector3.new(CASE_X, GROUND + 0.8, CASE_Z), COLORS.dark)
+local glass = box("CaseGlass", Vector3.new(GLASS_DEPTH, GLASS_HEIGHT, width), Vector3.new(CASE_X, baseTop + GLASS_HEIGHT / 2, CASE_Z), COLORS.glass, Enum.Material.Glass)
 glass.Transparency = 0.75
 glass.CanCollide = false
-box("CaseTop", Vector3.new(4, 0.6, width), Vector3.new(X, baseTop + 6.7, CASE_Z), COLORS.dark)
-local title = box("CaseTitle", Vector3.new(0.4, 2.4, width - 2), Vector3.new(X - 2.1, baseTop + 8.2, CASE_Z), COLORS.plaque)
+local back = box("CaseBack", Vector3.new(0.2, GLASS_HEIGHT, width - 0.4), Vector3.new(CASE_X + GLASS_DEPTH / 2 - 0.15, baseTop + GLASS_HEIGHT / 2, CASE_Z), COLORS.plaque)
+back.CanCollide = false
+box("CaseTop", Vector3.new(CASE_DEPTH, 0.6, width), Vector3.new(CASE_X, baseTop + GLASS_HEIGHT + 0.3, CASE_Z), COLORS.dark)
+local title = box("CaseTitle", Vector3.new(0.4, 2.4, width - 2), Vector3.new(front - 0.1, baseTop + GLASS_HEIGHT + 1.8, CASE_Z), COLORS.plaque)
 sign(title, "TROPHIES", COLORS.gold, 40)
 for k = 1, slots do
 	local z = CASE_Z + (k - (slots + 1) / 2) * pitch
-	local pedestal = box("TrophySlot_" .. k, Vector3.new(2.6, 1.2, 2.6), Vector3.new(X, baseTop + 0.6, z), COLORS.white)
+	local pedestal = box("TrophySlot_" .. k, Vector3.new(4, 1.2, 4), Vector3.new(CASE_X, baseTop + 0.6, z), COLORS.white)
 	pedestal:SetAttribute("Slot", k)
-	local plaque = box("TrophyPlaque_" .. k, Vector3.new(0.3, 1.1, pitch - 0.6), Vector3.new(X - 2.1, GROUND + 0.9, z), COLORS.plaque)
+	local plaque = box("TrophyPlaque_" .. k, Vector3.new(0.3, 1.1, pitch - 0.6), Vector3.new(front - 0.15, GROUND + 0.9, z), COLORS.plaque)
 	plaque:SetAttribute("Slot", k)
 	sign(plaque, "", COLORS.gold, 50, "Name", 20)
 end

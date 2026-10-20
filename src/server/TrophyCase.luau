@@ -1,15 +1,25 @@
 --!strict
 -- The trophy case outside the door of a plot (template folder Entrance, built by
--- tools/studio/BuildEntrance.luau). It starts empty, with the name of each trophy on its plaque; a
--- gold cup appears on the pedestal for every season the owner has finished. Derived from the season
--- number, never stored (docs/PLAN.md, Step 6): a finished season is every season before the current.
+-- tools/studio/BuildEntrance.luau). It starts empty, with the name of each trophy on its plaque; the
+-- trophy of a tier appears on its pedestal for every season the owner has finished. The trophies are
+-- models made in Studio from the trophy drawings (ServerStorage.Trophies, saved in the place: one per
+-- tier, sized for the case, standing on their pivot); a plain gold cup stands in if one is missing.
+-- Derived from the season number, never stored (docs/PLAN.md, Step 6): a finished season is every
+-- season before the current.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
 
 local Season = require(ReplicatedStorage.Shared.Season)
 
 local SLOTS = 5
 local GOLD = Color3.fromRGB(240, 190, 60)
+-- The model of each pedestal's trophy in ServerStorage.Trophies; the last one stands for every World
+-- Cup after it.
+local MODELS = { "StreetCup", "CityCup", "NationalCup", "ContinentalCup", "WorldCup" }
+-- The models face -Z; the case faces the path (-X of the plot), so they turn a quarter to look out of
+-- the glass.
+local FACING = CFrame.Angles(0, math.rad(90), 0)
 
 local TrophyCase = {}
 
@@ -62,6 +72,21 @@ local function buildCup(pedestal: BasePart, name: string): Model
 	return cup
 end
 
+-- The trophy model of `slot` standing on the top of `pedestal`, or the plain cup without a model.
+local function placeTrophy(pedestal: BasePart, name: string, slot: number): Model
+	local folder = ServerStorage:FindFirstChild("Trophies")
+	local source = if folder then folder:FindFirstChild(MODELS[slot]) else nil
+	if source == nil or not source:IsA("Model") then
+		return buildCup(pedestal, name)
+	end
+	local trophy = source:Clone()
+	trophy.Name = name
+	-- The pedestal turns with the plot, so the trophy takes its turn from the pedestal.
+	trophy:PivotTo(pedestal.CFrame * CFrame.new(0, pedestal.Size.Y / 2, 0) * FACING)
+	trophy.Parent = pedestal.Parent
+	return trophy
+end
+
 -- Writes the names on the plaques and puts a cup on every pedestal of a finished season.
 -- `season` is the owner's current season number.
 function TrophyCase.update(plot: Model, season: number)
@@ -84,7 +109,7 @@ function TrophyCase.update(plot: Model, season: number)
 		local earned = finished >= slot
 		local cup = entrance:FindFirstChild(cupName)
 		if earned and cup == nil and pedestal and pedestal:IsA("BasePart") then
-			buildCup(pedestal, cupName)
+			placeTrophy(pedestal, cupName, slot)
 		elseif not earned and cup then
 			cup:Destroy()
 		end
