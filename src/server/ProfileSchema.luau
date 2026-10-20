@@ -36,6 +36,12 @@ export type Profile = {
 	cosmetics: { owned: { [string]: boolean }, chosen: { [string]: string } },
 	daily: { caseClaimedAt: number, penaltyBatchAt: number, kicksUsed: number, goals: number },
 	boosts: { bankedMatches: number, stadiumBoostLeft: number, penaltyBoostLeft: number },
+	-- The Training Gym: the longest streak of the keepie-uppies (touches) and of the free kicks
+	-- (goals), kept across seasons. The medal of a streak comes from its length, so it is not stored.
+	gym: {
+		keepieBestStreak: number,
+		freekickBestStreak: number,
+	},
 	receipts: { [string]: Receipt },
 	pendingReveals: { PendingReveal },
 	seenRarities: { [string]: boolean },
@@ -53,7 +59,7 @@ export type Profile = {
 
 local ProfileSchema = {}
 
-ProfileSchema.CURRENT_VERSION = 1
+ProfileSchema.CURRENT_VERSION = 2
 
 -- Receipts are kept for 30 days or the newest 100, whichever keeps more (Step 6).
 ProfileSchema.RECEIPT_KEEP_SECONDS = 30 * 24 * 60 * 60
@@ -76,6 +82,10 @@ function ProfileSchema.newProfile(): Profile
 		cosmetics = { owned = {}, chosen = {} },
 		daily = { caseClaimedAt = 0, penaltyBatchAt = 0, kicksUsed = 0, goals = 0 },
 		boosts = { bankedMatches = 0, stadiumBoostLeft = 0, penaltyBoostLeft = 0 },
+		gym = {
+			keepieBestStreak = 0,
+			freekickBestStreak = 0,
+		},
 		receipts = {},
 		pendingReveals = {},
 		seenRarities = {},
@@ -121,6 +131,19 @@ end
 -- migration is for a changed meaning. Never rename or repurpose a field without one.
 local migrations: { [number]: (data: { [string]: any }) -> () } = {}
 ProfileSchema.migrations = migrations
+
+-- 1 -> 2: the keepie-uppies became an endless streak and the dribble run became the free kicks. A
+-- round's touches are not a streak, so the old records are dropped and reconcile adds the streak
+-- records at 0.
+migrations[1] = function(data)
+	local gym = data.gym
+	if type(gym) == "table" then
+		gym.keepieBestHits = nil
+		gym.keepieBestMedal = nil
+		gym.dribbleBestPasses = nil
+		gym.dribbleBestMedal = nil
+	end
+end
 
 -- Brings saved data up to the current version in place. Returns false and a reason when
 -- the data is from a newer version (a downgrade must never overwrite it).
@@ -262,6 +285,12 @@ function ProfileSchema.validate(profile: { [string]: any }): (boolean, string?)
 		or profile.daily.goals > profile.daily.kicksUsed
 	then
 		return false, "profile.daily.kicksUsed is out of range"
+	end
+	if
+		not isCount(profile.gym.keepieBestStreak, 100_000)
+		or not isCount(profile.gym.freekickBestStreak, 100_000)
+	then
+		return false, "profile.gym is out of range"
 	end
 	return true, nil
 end

@@ -1,17 +1,21 @@
 --!strict
--- The guide (docs/PLAN.md, Step 2): a beam from the player to the next thing to do. There is no
+-- The guide (docs/PLAN.md, Step 2): a trail of yellow chevrons on the ground from the player to the
+-- next thing to do, marching towards it. There is no
 -- caption or marker above the pad (the pads and the goal row already say what to do). It only guides
 -- the first steps: to a free plot, then to the first player's pad.
 -- After the first purchase it disappears. Then it shows once, for a short time, towards the Store
--- pad, only so the player knows the Store exists, and never again. Later goals are shown by the
+-- pad, only so the player knows the Store exists, and never again. When the first match ends the
+-- training ground opens, and the trail shows once towards the treadmill of the Training Gym. Later goals are shown by the
 -- goal row alone.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local Goals = require(ReplicatedStorage.Shared.Goals)
+local Progress = require(ReplicatedStorage.Shared.Progress)
 local Roster = require(ReplicatedStorage.Shared.Roster)
 local State = require(script.Parent.State)
 
@@ -21,12 +25,24 @@ local ARRIVED_DISTANCE = 7
 local UPDATE_SECONDS = 0.25
 local STORE_HINT_SECONDS = 20 -- how long the Store hint can show at most
 local STORE_HINT_NEAR = 14 -- the hint ends when the player gets this close to the Store pad
-local GOLD = Color3.fromRGB(255, 190, 20)
+local TRAINING_HINT_SECONDS = 40 -- the training ground is further away than the Store
+local TRAINING_HINT_NEAR = 14
+local GOLD = Color3.fromRGB(255, 205, 20)
+local CHEVRONS = 12 -- the most chevrons on the ground at once
+local SPACING = 5 -- studs between two chevrons
+local FIRST_DISTANCE = 4 -- the first chevron is this far ahead of the player
+local CHEVRON_SIZE = 5.5 -- studs, the square the chevron is drawn on
+local MARCH_SPEED = 3 -- studs per second the trail moves towards the target
+local GROUND_OFFSET = 0.12
 
 local guide: { kind: string, endsAt: number }? = nil -- asked for by a HUD icon
 local lastOwned: number? = nil -- players owned at the last state change (nil before the first)
 local storeHintStartedAt: number? = nil
 local storeHintDone = false
+local trainingHintPending = false -- the first match ended during this session
+local trainingHintStartedAt: number? = nil
+local trainingHintDone = false
+local lastMatchPlayed: boolean? = nil -- whether the first match had been played at the last change
 
 local Arrow = {}
 
@@ -85,6 +101,20 @@ local function target(root: BasePart): BasePart?
 		end
 		return store
 	end
+
+	-- Then the training ground, once: it opened with the first match.
+	if trainingHintPending and not trainingHintDone then
+		local spot = nearestPad(root, "training", "trainingTreadmill")
+		local began = trainingHintStartedAt or os.clock()
+		trainingHintStartedAt = began
+		local expired = os.clock() - began > TRAINING_HINT_SECONDS
+		local near = spot ~= nil and (spot.Position - root.Position).Magnitude < TRAINING_HINT_NEAR
+		if expired or near or spot == nil then
+			trainingHintDone = true
+			return nil
+		end
+		return spot
+	end
 	return nil
 end
 
@@ -105,25 +135,66 @@ function Arrow.init()
 			storeHintStartedAt = os.clock()
 		end
 		lastOwned = owned
+		-- The training hint starts when the first match ends during this session. A returning
+		-- player who has played before never sees it.
+		local played = Progress.firstMatchPlayed(State.data)
+		if lastMatchPlayed == false and played and not trainingHintDone then
+			trainingHintPending = true
+		end
+		lastMatchPlayed = played
 	end)
 
-	local beam = Instance.new("Beam")
-	beam.Name = "GuideArrow"
-	beam.Color = ColorSequence.new(GOLD)
-	beam.Width0 = 1.1
-	beam.Width1 = 1.1
-	beam.FaceCamera = true
-	beam.LightEmission = 0 -- solid colour: an additive beam disappears on a bright floor
-	beam.Transparency = NumberSequence.new(0.05)
-	beam.Enabled = false
+	-- The chevrons: flat squares lying on the ground, each with two rounded bars that meet in a point
+	-- (a ">" pointing along the trail). They exist only on this client.
+	local folder = Instance.new("Folder")
+	folder.Name = "GuideChevrons"
+	folder.Parent = Workspace
 
-	local from = Instance.new("Attachment")
-	from.Name = "GuideFrom"
-	local to = Instance.new("Attachment")
-	to.Name = "GuideTo"
-	beam.Attachment0 = from
-	beam.Attachment1 = to
+	type Chevron = { part: Part, gui: SurfaceGui, group: CanvasGroup }
+	local chevrons: { Chevron } = {}
+	local function bar(parent: Instance, x: number, rotation: number)
+		local frame = Instance.new("Frame")
+		frame.AnchorPoint = Vector2.new(0.5, 0.5)
+		frame.Position = UDim2.fromScale(x, 0.45)
+		frame.Size = UDim2.fromScale(0.62, 0.26)
+		frame.Rotation = rotation
+		frame.BackgroundColor3 = GOLD
+		frame.BorderSizePixel = 0
+		frame.Parent = parent
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0.5, 0)
+		corner.Parent = frame
+	end
+	for index = 1, CHEVRONS do
+		local part = Instance.new("Part")
+		part.Name = "Chevron" .. index
+		part.Anchored = true
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		part.CastShadow = false
+		part.Transparency = 1
+		part.Size = Vector3.new(CHEVRON_SIZE, 0.1, CHEVRON_SIZE)
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = Enum.NormalId.Top
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
+		gui.CanvasSize = Vector2.new(200, 200)
+		gui.LightInfluence = 0
+		gui.AlwaysOnTop = false
+		gui.Enabled = false
+		gui.Parent = part
+		local group = Instance.new("CanvasGroup")
+		group.Size = UDim2.fromScale(1, 1)
+		group.BackgroundTransparency = 1
+		group.Rotation = 90 -- the top of a part's surface gui points sideways: turn the tip to the front
+		group.Parent = gui
+		bar(group, 0.28, -45)
+		bar(group, 0.72, 45)
+		part.Parent = folder
+		table.insert(chevrons, { part = part, gui = gui, group = group })
+	end
 
+	local aim: BasePart? = nil -- the pad the trail points at, nil for no trail
 	local elapsed = 0
 	RunService.Heartbeat:Connect(function(dt: number)
 		elapsed += dt
@@ -135,7 +206,7 @@ function Arrow.init()
 		local character = player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 		if not root or not root:IsA("BasePart") then
-			beam.Enabled = false
+			aim = nil
 			return
 		end
 		local part = target(root)
@@ -147,20 +218,57 @@ function Arrow.init()
 			or onTarget
 			or player:GetAttribute("padKey") == part:GetAttribute("PadKey")
 		then
-			beam.Enabled = false
+			aim = nil
 			return
 		end
+		aim = part
+	end)
 
-		if from.Parent ~= root then
-			from.Parent = root
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Exclude
+	RunService.RenderStepped:Connect(function()
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		local goal = aim
+		if goal == nil or not root or not root:IsA("BasePart") then
+			for _, chevron in chevrons do
+				chevron.gui.Enabled = false
+			end
+			return
 		end
-		if to.Parent ~= part then
-			to.Parent = part
+		rayParams.FilterDescendantsInstances = { folder, character }
+		local from = Vector3.new(root.Position.X, 0, root.Position.Z)
+		local to = Vector3.new(goal.Position.X, 0, goal.Position.Z)
+		local flat = to - from
+		local distance = flat.Magnitude
+		if distance < 0.1 then
+			return
 		end
-		if beam.Parent ~= root then
-			beam.Parent = root
+		local direction = flat / distance
+		local lastDistance = distance - ARRIVED_DISTANCE -- no chevron on the pad itself
+		local march = (os.clock() * MARCH_SPEED) % SPACING
+		for index, chevron in chevrons do
+			local along = FIRST_DISTANCE + (index - 1) * SPACING + march
+			-- Fades in just ahead of the player and out before the pad, so nothing pops.
+			local strength =
+				math.min((along - FIRST_DISTANCE) / SPACING, (lastDistance - along) / SPACING, 1)
+			local gui = chevron.gui
+			if strength <= 0 then
+				gui.Enabled = false
+			else
+				local spot = from + direction * along
+				local hit = Workspace:Raycast(
+					Vector3.new(spot.X, root.Position.Y + 3, spot.Z),
+					Vector3.new(0, -40, 0),
+					rayParams
+				)
+				local y = if hit then hit.Position.Y + GROUND_OFFSET else root.Position.Y - 3
+				local position = Vector3.new(spot.X, y, spot.Z)
+				chevron.part.CFrame = CFrame.lookAt(position, position + direction)
+				chevron.group.GroupTransparency = 1 - strength
+				gui.Enabled = true
+			end
 		end
-		beam.Enabled = true
 	end)
 end
 

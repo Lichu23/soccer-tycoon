@@ -148,6 +148,9 @@ local function applySnapshot(snapshot: any)
 	if type(snapshot.cosmetics) == "table" then
 		data.cosmetics = snapshot.cosmetics
 	end
+	if type(snapshot.flags) == "table" and type(snapshot.flags.milestones) == "table" then
+		(data :: any).flags = { milestones = snapshot.flags.milestones } -- read by Progress.firstMatchPlayed
+	end
 	State.loaded = true
 end
 

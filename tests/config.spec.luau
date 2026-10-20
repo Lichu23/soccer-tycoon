@@ -206,7 +206,11 @@ T.test("stars, training and season constants", function()
 	T.eq(Config.Training.bonusPerLevel, 0.03)
 	T.eq(Config.Training.levelCostBase, 40)
 	T.eq(Config.Training.idleTpPerMinute, 10)
-	T.eq(Config.Training.drillTpPerMinuteMax, 30)
+	T.eq(Config.Training.juggleTpPerMinuteMax, 40)
+	T.truthy(
+		Config.Training.juggleTpPerMinuteMax > Config.Training.idleTpPerMinute,
+		"the keepie-uppies must beat the treadmill"
+	)
 	T.eq(Config.Season.bonusPerSeason, 0.5)
 	T.eq(Config.Match.momentumCap, 0.25)
 end)

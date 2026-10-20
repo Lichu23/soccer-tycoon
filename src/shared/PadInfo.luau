@@ -20,6 +20,7 @@ export type Info = {
 	note: string, -- under the price, may be empty
 	lines: { Line }?, -- extra rows under the price (the goals of a Legend)
 	state: string, -- "ready", "cannotAfford", "locked", "owned", "maxed" or "info"
+	icon: string?, -- the name of a picture shown above the text (client/Icons), for the Robux packs
 }
 
 local STORE_NAMES: { [string]: string } = {
@@ -27,6 +28,14 @@ local STORE_NAMES: { [string]: string } = {
 	matchSpeed = "Faster matches",
 	hatTrick = "Hat-trick chance",
 	offline = "Offline earnings",
+}
+
+-- The stations of the Training Gym (the marker's PadId -> its name).
+local TRAINING_NAMES: { [string]: string } = {
+	trainingKeepie = "Keepie-uppies",
+	trainingFreekick = "Free kicks",
+	trainingTreadmill = "Treadmill",
+	trainingLadder = "Agility ladder",
 }
 
 local PadInfo = {}
@@ -154,14 +163,39 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 			}
 		end
 		return { title = title, price = NumberFormat.money(price), note = "", state = status }
-	elseif kind == "training" then
-		local active = padId == "trainingActive"
-		local title = if active then "Active farm" else "AFK farm"
-		if not Progress.trainingUnlocked(data) then
-			return { title = title, price = "", note = "Finish floor 1 first", state = "locked" }
+	elseif kind == "robux" then
+		-- A cash or TP pack bought with Robux: the amount in the ring, the price under it. Whether it
+		-- can be bought yet is the server's call (the first 30 minutes), it says so when stepped on.
+		local product = Config.Products[padId]
+		if product == nil or product.amount == nil then
+			return { title = padId, price = "", note = "", state = "locked" }
 		end
-		local note = if active then "Hit the green for TP" else "Stand here: 10 TP per minute"
-		return { title = title, price = "TP", note = note, state = "info" }
+		local isCash = product.kind == "cash"
+		return {
+			title = if isCash then "Cash pack" else "TP pack",
+			price = if isCash
+				then "+" .. NumberFormat.money(product.amount)
+				else "+" .. NumberFormat.short(product.amount) .. " TP",
+			note = product.robux .. " Robux",
+			state = "ready",
+			icon = if isCash then "cash" else "tp",
+		}
+	elseif kind == "training" then
+		local skill = padId == "trainingKeepie" or padId == "trainingFreekick"
+		local title = TRAINING_NAMES[padId] or "Training"
+		if not Progress.trainingUnlocked(data) then
+			return {
+				title = title,
+				price = "",
+				note = "Play your first match first",
+				state = "locked",
+			}
+		end
+		local note = if padId == "trainingFreekick"
+			then "Score in a row for TP"
+			elseif skill then "Tap in time for TP"
+			else "Stand here: 10 TP per minute"
+		return { title = title, price = "", note = note, state = "info" }
 	elseif kind == "penalty" then
 		-- Whether kicks are left today is the server's call (the client shows the wait time).
 		if Roster.ownedCount(data) < 1 then

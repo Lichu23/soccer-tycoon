@@ -36,6 +36,8 @@ function Sync.scalars(session: Session.Session)
 	player:SetAttribute("boostMultiplier", Formulas.boostMultiplier(Boosts.active(data)))
 	player:SetAttribute("trainingUnlocked", Progress.trainingUnlocked(data))
 	player:SetAttribute("staminaMax", Config.Training.staminaSeconds)
+	player:SetAttribute("keepieBestStreak", data.gym.keepieBestStreak)
+	player:SetAttribute("freekickBestStreak", data.gym.freekickBestStreak)
 	-- The shop: whether cases are on offer yet, the banked boost matches and this visit's total.
 	player:SetAttribute("casesOpen", ShopRules.casesOpen(data, os.time()))
 	player:SetAttribute("bankedMatches", data.boosts.bankedMatches)
@@ -76,6 +78,7 @@ function Sync.snapshot(session: Session.Session)
 		},
 		fieldStarted = data.fieldStarted,
 		players = players,
+		flags = { milestones = { first_match = data.flags.milestones["first_match"] } },
 	})
 end
 

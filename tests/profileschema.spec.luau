@@ -7,7 +7,7 @@ T.suite("profile template")
 
 T.test("a new profile starts with $15, tier 1 and nothing owned", function()
 	local profile = ProfileSchema.newProfile()
-	T.eq(profile.version, 1)
+	T.eq(profile.version, ProfileSchema.CURRENT_VERSION)
 	T.eq(profile.cash, 15)
 	T.eq(profile.tp, 0)
 	T.eq(profile.stadiumTier, 1)
@@ -228,7 +228,7 @@ end)
 T.test("the version must be current", function()
 	T.eq(
 		mutated(function(p)
-			p.version = 2
+			p.version = ProfileSchema.CURRENT_VERSION + 1
 		end),
 		false
 	)
@@ -261,36 +261,50 @@ end)
 T.test("migrations run in order up to the current version", function()
 	local savedVersion = ProfileSchema.CURRENT_VERSION
 	local calls = {}
-	ProfileSchema.CURRENT_VERSION = 3
-	ProfileSchema.migrations[1] = function(data)
+	ProfileSchema.CURRENT_VERSION = savedVersion + 2
+	ProfileSchema.migrations[savedVersion] = function(data)
 		table.insert(calls, 1)
 		data.renamed = data.old
 		data.old = nil
 	end
-	ProfileSchema.migrations[2] = function(_)
+	ProfileSchema.migrations[savedVersion + 1] = function(_)
 		table.insert(calls, 2)
 	end
 
-	local data = { version = 1, old = "value" }
+	local data = { version = savedVersion, old = "value" }
 	local ok = ProfileSchema.migrate(data)
 
 	ProfileSchema.CURRENT_VERSION = savedVersion
-	ProfileSchema.migrations[1] = nil
-	ProfileSchema.migrations[2] = nil
+	ProfileSchema.migrations[savedVersion] = nil
+	ProfileSchema.migrations[savedVersion + 1] = nil
 
 	T.eq(ok, true)
 	T.deepEq(calls, { 1, 2 })
-	T.eq(data.version, 3)
+	T.eq(data.version, savedVersion + 2)
 	T.eq(data.renamed, "value")
 	T.eq(data.old, nil)
 end)
 
 T.test("a missing migration step is an error, not a silent skip", function()
 	local savedVersion = ProfileSchema.CURRENT_VERSION
-	ProfileSchema.CURRENT_VERSION = 2
-	local ok = ProfileSchema.migrate({ version = 1 })
+	ProfileSchema.CURRENT_VERSION = savedVersion + 1
+	local ok = ProfileSchema.migrate({ version = savedVersion })
 	ProfileSchema.CURRENT_VERSION = savedVersion
 	T.eq(ok, false)
+end)
+
+T.test("version 1 drops the round records of the gym, the streak records start at 0", function()
+	local data = ProfileSchema.newProfile()
+	data.version = 1
+	data.gym =
+		{ keepieBestHits = 31, keepieBestMedal = 3, dribbleBestPasses = 20, dribbleBestMedal = 1 }
+	T.eq((ProfileSchema.migrate(data)), true)
+	ProfileSchema.reconcile(data, ProfileSchema.newProfile())
+	T.deepEq(data.gym, { keepieBestStreak = 0, freekickBestStreak = 0 })
+	T.eq((ProfileSchema.validate(data)), true)
+	-- A version 1 profile saved without a gym at all migrates too.
+	local bare = { version = 1 }
+	T.eq((ProfileSchema.migrate(bare)), true)
 end)
 
 T.suite("profile reconcile")
@@ -322,8 +336,9 @@ T.test("reconciled data does not share tables with the template", function()
 	T.deepEq(template.players, {})
 end)
 
-T.test("an old save passes validation after reconcile", function()
+T.test("an old save passes validation after migrate and reconcile", function()
 	local stored = { version = 1, cash = 500, tp = 10 }
+	T.eq((ProfileSchema.migrate(stored)), true)
 	ProfileSchema.reconcile(stored, ProfileSchema.newProfile())
 	T.eq((ProfileSchema.validate(stored)), true)
 end)

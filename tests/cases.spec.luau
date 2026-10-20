@@ -325,3 +325,47 @@ T.test("a banked match doubles one match and is used up", function()
 	T.eq(data.boosts.bankedMatches, 0)
 	T.eq(MatchLogic.resolve(data, state, never).payout, plain)
 end)
+
+-- Cash and TP packs (the Robux pads) -------------------------------------------------------------
+
+T.test("a cash pack adds its fixed amount once, a resent receipt adds nothing", function()
+	local data = profile(0)
+	local cash, tp = data.cash, data.tp
+	local result, granted = Grants.apply(data, Config.Products.cash_medium, "c1", 100, 0)
+	T.eq(granted, true)
+	T.eq(result.kind, "cash")
+	T.eq(result.amount, 100_000)
+	T.eq(data.cash, cash + 100_000)
+	T.eq(data.tp, tp)
+	local _, again = Grants.apply(data, Config.Products.cash_medium, "c1", 200, 0)
+	T.eq(again, false)
+	T.eq(data.cash, cash + 100_000)
+end)
+
+T.test("a TP pack adds its fixed amount to TP and leaves cash alone", function()
+	local data = profile(0)
+	local cash, tp = data.cash, data.tp
+	local result = Grants.apply(data, Config.Products.tp_large, "t1", 100, 0)
+	T.eq(result.kind, "tp")
+	T.eq(result.amount, 10_000)
+	T.eq(data.tp, tp + 10_000)
+	T.eq(data.cash, cash)
+end)
+
+T.test("packs wait for the first 30 minutes after the first purchase like other offers", function()
+	local data = profile(1)
+	T.eq(select(2, ShopRules.canOffer(data, "cash_small", 5000)), "early") -- never bought
+	data.flags.milestones["first_purchase"] = 1000
+	T.eq(select(2, ShopRules.canOffer(data, "tp_small", 1000 + 1799)), "early")
+	T.eq(ShopRules.canOffer(data, "tp_small", 1000 + 1800), true)
+	T.eq(ShopRules.canOffer(data, "cash_large", 1000 + 1800), true)
+end)
+
+T.test("every pack has a fixed amount and a price", function()
+	for _, key in { "cash_small", "cash_medium", "cash_large", "tp_small", "tp_medium", "tp_large" } do
+		local product = Config.Products[key]
+		T.truthy(product, key)
+		T.truthy((product.amount or 0) > 0, key)
+		T.truthy(product.robux > 0, key)
+	end
+end)

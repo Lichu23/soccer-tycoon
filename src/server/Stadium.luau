@@ -21,6 +21,15 @@ local MATERIALS: { [string]: Enum.Material } = {
 	SmoothPlastic = Enum.Material.SmoothPlastic,
 	Wood = Enum.Material.Wood,
 	Neon = Enum.Material.Neon,
+	Concrete = Enum.Material.Concrete,
+	Metal = Enum.Material.Metal,
+}
+
+-- The face of a part its text is drawn on (the default is the one towards the court, -x).
+local FACES: { [string]: Enum.NormalId } = {
+	Left = Enum.NormalId.Left,
+	Right = Enum.NormalId.Right,
+	Front = Enum.NormalId.Front,
 }
 
 local function toColor(rgb: { number }): Color3
@@ -55,7 +64,7 @@ local function buildPart(gate: BasePart, spec: CourtPlan.PartSpec, parent: Insta
 
 	if spec.text then
 		local gui = Instance.new("SurfaceGui")
-		gui.Face = Enum.NormalId.Left -- towards the court (-x)
+		gui.Face = FACES[spec.face or "Left"] or Enum.NormalId.Left
 		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 		gui.PixelsPerStud = 20
 		gui.Parent = part
@@ -65,7 +74,8 @@ local function buildPart(gate: BasePart, spec: CourtPlan.PartSpec, parent: Insta
 		label.Text = spec.text
 		label.TextScaled = true
 		label.Font = Enum.Font.GothamBlack
-		label.TextColor3 = Color3.fromRGB(255, 220, 60)
+		local textColor = spec.textColor or { 255, 220, 60 }
+		label.TextColor3 = toColor(textColor)
 		label.Parent = gui
 	end
 	if spec.emitter then

@@ -9,7 +9,7 @@ local Progress = T.load("shared/Progress")
 local Roster = T.load("shared/Roster")
 local Training = T.load("server/Training")
 
-T.suite("training: TP, stamina, drill and level costs")
+T.suite("training: TP, stamina, keepie-uppies, free kicks and level costs")
 
 local MAX = Config.Training.staminaSeconds
 
@@ -96,145 +96,172 @@ T.test("the fraction of a TP is carried, so slow steps lose nothing", function()
 	T.eq(data.tp, 10)
 end)
 
-local Drill = T.load("shared/Drill")
+local Juggle = T.load("shared/Juggle")
 
-local function runningDrill(now)
-	local state = Drill.new()
-	Drill.press(state, now) -- the first press starts the marker
-	return state
+local WINDOW = Config.Training.juggleWindow
+
+-- A streak whose first ball leaves the foot at 100: it was created `juggleLeadSeconds` earlier, for
+-- the "get ready" time.
+local function streak()
+	return Juggle.new(100 - Config.Training.juggleLeadSeconds)
 end
 
--- A running drill that started at `startedAt`, with the marker at `fraction` of the bar at the
--- returned time (the first pass goes left to right).
-local function markerAt(startedAt, fraction)
-	local state = Drill.new()
-	state.phase = "running"
-	state.startedAt = startedAt
-	return state, startedAt + Config.Training.drillSweepSeconds * fraction
-end
-
-T.test("the drill starts stopped and the first press starts the marker without paying", function()
-	local state = Drill.new()
-	T.eq(state.phase, "stopped")
-	T.eq(Drill.press(state, 10), "start")
+T.test("a tap on the beat keeps the ball up and grows the streak", function()
+	local state = streak()
+	T.eq(Juggle.press(state, Juggle.beatTime(state, 1)), "hit")
+	T.eq(state.combo, 1)
+	T.eq(Juggle.press(state, Juggle.beatTime(state, 2) + WINDOW * 0.9), "hit")
+	T.eq(state.combo, 2)
 	T.eq(state.phase, "running")
-	T.eq(Drill.position(state, 10), 0)
-	local data, carry = fresh()
-	T.eq(Training.drillPay(data, carry, "start", 10), 0)
 end)
 
-T.test("the marker goes back and forth and never stops by itself", function()
-	local sweep = Config.Training.drillSweepSeconds
-	local state = runningDrill(100)
-	T.near(Drill.position(state, 100 + sweep * 0.5), 0.5, 1e-9)
-	T.near(Drill.position(state, 100 + sweep), 1, 1e-9)
-	T.near(Drill.position(state, 100 + sweep * 1.5), 0.5, 1e-9) -- on its way back
-	T.near(Drill.position(state, 100 + sweep * 2), 0, 1e-9)
-	T.near(Drill.position(state, 100 + sweep * 2.25), 0.25, 1e-9)
-	Drill.normalize(state, 100 + sweep * 500)
-	T.eq(state.phase, "running") -- an idle player never makes it stop
+T.test("the edges of the window count, a tap just before it ends the streak", function()
+	local first = streak()
+	T.eq(Juggle.press(first, Juggle.beatTime(first, 1) - WINDOW + 1e-6), "hit")
+	local late = streak()
+	T.eq(Juggle.press(late, Juggle.beatTime(late, 1) + WINDOW - 1e-6), "hit")
+	local early = streak()
+	local outcome, event = Juggle.press(early, Juggle.beatTime(early, 1) - WINDOW - 0.02)
+	T.eq(outcome, "miss")
+	T.eq(event.kind, "over")
+	T.eq(early.phase, "over")
 end)
 
-T.test("the green zone is small, off the sides, and fixed for a whole run", function()
-	local edge = Config.Training.drillWindow
-	T.truthy(edge <= 0.1, "the zone is at most 20% of the bar")
-	local lowest, highest = 1, 0
-	for index = 1, 500 do
-		local centre = Drill.zone(1000 + index * 1.7)
-		lowest = math.min(lowest, centre - edge)
-		highest = math.max(highest, centre + edge)
-	end
-	T.truthy(lowest > 0.02, "the zone stays off the left side")
-	T.truthy(highest < 0.98, "the zone stays off the right side")
-	T.truthy(highest - lowest > 0.6, "and it lands in different places")
-	T.eq(Drill.zone(1234.5), Drill.zone(1234.5)) -- the same run always has the same zone
+T.test("a tap while the ball is in the air ends the streak with its length", function()
+	local state = streak()
+	Juggle.press(state, Juggle.beatTime(state, 1))
+	Juggle.press(state, Juggle.beatTime(state, 2))
+	local outcome, event = Juggle.press(state, Juggle.beatTime(state, 2) + Juggle.period(3) * 0.5)
+	T.eq(outcome, "miss")
+	T.eq(event.streak, 2)
+	T.eq(event.medal, 0)
+	T.eq(Juggle.press(state, state.overAt + 0.1), "ignored") -- nothing while the result shows
 end)
 
-T.test("a press inside the green zone is a hit; a new run starts with a new zone", function()
-	local state = markerAt(500, 0)
-	local zone = Drill.zone(500)
-	-- time when the marker is at the zone centre on the first pass
-	local now = 500 + Config.Training.drillSweepSeconds * zone
-	T.eq(Drill.press(state, now), "hit")
+T.test("a second tap on the same beat, or one in the get-ready time, is ignored", function()
+	local state = streak()
+	T.eq(Juggle.press(state, 99.5), "ignored")
+	T.eq(Juggle.press(state, Juggle.beatTime(state, 1)), "hit")
+	T.eq(Juggle.press(state, Juggle.beatTime(state, 1) + 0.03), "ignored")
+	T.eq(state.combo, 1)
 	T.eq(state.phase, "running")
-	T.eq(state.startedAt, now)
-	T.eq(Drill.position(state, now), 0)
-	T.truthy(Drill.zone(now) ~= zone, "the zone jumped")
-end)
-
-T.test("a press just outside the zone is a miss", function()
-	local edge = Config.Training.drillWindow
-	local zone = Drill.zone(500)
-	local inside, timeInside = markerAt(500, math.min(zone + edge - 0.01, 1))
-	T.eq(Drill.press(inside, timeInside), "hit")
-	local outside, timeOutside = markerAt(500, math.min(zone + edge + 0.02, 1))
-	-- (a zone near the right end can leave no room outside on this side)
-	if zone + edge + 0.02 <= 1 then
-		T.eq(Drill.press(outside, timeOutside), "miss")
-	end
-	local far, timeFar = markerAt(500, if zone > 0.5 then 0.02 else 0.98)
-	T.eq(Drill.press(far, timeFar), "miss")
 end)
 
 T.test(
-	"a miss starts a cooldown: presses are ignored, then the marker restarts by itself",
+	"a ball that is not touched ends the streak, and a new one starts after the result",
 	function()
-		local cooldown = Config.Training.drillCooldownSeconds
-		local far, now = markerAt(500, if Drill.zone(500) > 0.5 then 0.02 else 0.98)
-		T.eq(Drill.press(far, now), "miss")
-		T.eq(far.phase, "cooldown")
-		T.eq(Drill.press(far, now + cooldown - 0.05), "ignored")
-		Drill.normalize(far, now + cooldown + 0.3)
-		T.eq(far.phase, "running")
-		T.eq(far.startedAt, now + cooldown) -- the new run, with its own zone
-		T.near(
-			Drill.position(far, now + cooldown + 0.3),
-			0.3 / Config.Training.drillSweepSeconds,
-			1e-9
-		)
+		local state = streak()
+		Juggle.press(state, Juggle.beatTime(state, 1))
+		local dropAt = Juggle.beatTime(state, 2) + WINDOW
+		local events = Juggle.normalize(state, dropAt + 0.01)
+		T.eq(#events, 1)
+		T.eq(events[1].kind, "over")
+		T.eq(events[1].streak, 1)
+		T.eq(state.phase, "over")
+		T.near(state.overAt, dropAt, 1e-9)
+		local nextStart = dropAt
+			+ Config.Training.juggleOverSeconds
+			+ Config.Training.juggleLeadSeconds
+		Juggle.normalize(state, nextStart - 0.5)
+		T.eq(state.phase, "running")
+		T.eq(state.combo, 0)
+		T.near(state.startedAt, nextStart, 1e-9)
+		T.eq(Juggle.press(state, Juggle.beatTime(state, 1)), "hit") -- the beats count from the new start
 	end
 )
 
+T.test("the beat gets quicker with every touch, down to the floor", function()
+	local training = Config.Training
+	T.near(Juggle.period(1), training.juggleBounceSeconds, 1e-9)
+	T.near(Juggle.period(2), training.juggleBounceSeconds - training.juggleBounceStep, 1e-9)
+	T.near(Juggle.period(500), training.juggleBounceMin, 1e-9)
+	local state = streak()
+	for n = 1, 150 do
+		local gap = Juggle.beatTime(state, n) - Juggle.beatTime(state, n - 1)
+		T.near(gap, Juggle.period(n), 1e-9)
+	end
+end)
+
+T.test("a perfect player keeps a long streak going and earns the gold medal", function()
+	local state = streak()
+	for n = 1, 120 do
+		T.eq(Juggle.press(state, Juggle.beatTime(state, n)), "hit")
+	end
+	T.eq(state.combo, 120)
+	T.eq(Juggle.medal(state.combo), 3)
+end)
+
+T.test("medals: none, bronze, silver, gold", function()
+	local medals = Config.Training.juggleMedals
+	T.eq(Juggle.medal(medals.bronze - 1), 0)
+	T.eq(Juggle.medal(medals.bronze), 1)
+	T.eq(Juggle.medal(medals.silver), 2)
+	T.eq(Juggle.medal(medals.gold), 3)
+	T.eq(Juggle.medal(medals.gold + 5), 3)
+end)
+
+T.test("the ball is at the foot on the beat and highest halfway between", function()
+	local state = streak()
+	for _, n in { 1, 2, 30, 80 } do
+		local beat = Juggle.beatTime(state, n)
+		T.near(Juggle.height(state, beat), 0, 1e-6)
+		T.eq(Juggle.beatAt(state, beat - 0.01), n)
+		T.eq(Juggle.beatAt(state, beat + 0.01), n + 1)
+		T.near(Juggle.height(state, beat - Juggle.period(n) / 2), 1, 1e-6)
+	end
+	T.eq(Juggle.height(state, 99), 0) -- resting on the foot before the first ball
+end)
+
+T.test("a long gap is caught up without looping for ever", function()
+	local state = streak()
+	local events = Juggle.normalize(state, 100 + 100000)
+	T.truthy(#events >= 1 and #events <= 64)
+end)
+
 T.test(
-	"on the active farm only the drill pays: standing there drains stamina but pays no idle TP",
+	"a clean touch pays the base TP plus a little per step of the streak, up to the cap",
 	function()
 		local data, carry = fresh()
-		local paid = 0
-		for _ = 1, 240 do -- 60 seconds
-			paid += Training.step(data, carry, 0.25, true, false)
-		end
-		T.eq(paid, 0)
-		T.eq(data.tp, 0)
-		T.near(data.staminaLeft, MAX - 60, 0.01)
+		local training = Config.Training
+		T.near(
+			Training.gamePay(data, carry, Juggle.tpFor(1), 0),
+			training.juggleBaseTp + training.juggleComboTp,
+			1e-9
+		)
+		local maxPay = training.juggleBaseTp + training.juggleComboTp * training.juggleComboMax
+		T.near(Training.gamePay(data, carry, Juggle.tpFor(50), 1), maxPay, 1e-9) -- the streak stops counting at the cap
+		T.eq(Training.gamePay(data, carry, 0, 2), 0)
 	end
 )
 
-T.test("a hit pays 1 TP plus 0.3 and a miss pays 1 TP", function()
-	local data, carry = fresh()
-	T.near(Training.drillPay(data, carry, "hit", 0), 1.3, 1e-9)
-	T.near(Training.drillPay(data, carry, "miss", 1), 1, 1e-9)
-	T.eq(Training.drillPay(data, carry, "ignored", 2), 0)
-	T.eq(data.tp, 2) -- 2.3 TP so far: 2 whole points, 0.3 carried
-	T.near(carry.fraction, 0.3, 1e-9)
-end)
-
-T.test("the drill pays nothing without stamina", function()
+T.test("the skill games pay nothing without stamina", function()
 	local data, carry = fresh()
 	data.staminaLeft = 0
-	T.eq(Training.drillPay(data, carry, "hit", 0), 0)
-	T.eq(data.tp, 0)
+	T.eq(Training.gamePay(data, carry, Juggle.tpFor(5), 0), 0)
 end)
 
-T.test("the drill part of the rate is capped per minute, and room comes back later", function()
+T.test("a skill station only pays what the game pays: no idle TP there", function()
 	local data, carry = fresh()
-	local room = Config.Training.drillTpPerMinuteMax
+	for _ = 1, 240 do -- 60 s in 0.25 s steps
+		Training.step(data, carry, 0.25, true, false)
+	end
+	T.eq(data.tp, 0)
+	T.truthy(data.staminaLeft < Config.Training.staminaSeconds, "stamina still drains")
+end)
+
+T.test("the game part of the rate is capped per minute, and room comes back later", function()
+	local data, carry = fresh()
+	local room = Config.Training.juggleTpPerMinuteMax
 	local paid = 0
-	for index = 1, 100 do
-		paid += Training.drillPay(data, carry, "hit", index * 0.1) -- 100 hits in 10 seconds
+	for index = 1, 200 do
+		paid += Training.gamePay(data, carry, Juggle.tpFor(10), index * 0.1) -- 200 touches in 20 seconds
 	end
 	T.near(paid, room, 1e-9)
-	T.eq(Training.drillPay(data, carry, "hit", 11), 0)
-	T.truthy(Training.drillPay(data, carry, "hit", 75) > 0, "a minute later the cap has room again")
+	T.eq(Training.gamePay(data, carry, Juggle.tpFor(10), 21), 0)
+	T.truthy(
+		Training.gamePay(data, carry, Juggle.tpFor(10), 85) > 0,
+		"a minute later the cap has room again"
+	)
 end)
 
 T.test("level costs: base x level x rarity factor, 600 TP for a Common to level 5", function()
@@ -247,6 +274,17 @@ T.test("training and the level-up pads open when floor 1 is complete", function(
 	T.eq(Progress.trainingUnlocked(data), false)
 	ownFloor(data, 1)
 	T.eq(Progress.trainingUnlocked(data), true)
+end)
+
+T.test("training also opens with the very first match", function()
+	local data = ProfileSchema.newProfile()
+	Roster.add(data, "rashford")
+	T.eq(Progress.trainingUnlocked(data), false) -- a player is not enough
+	data.flags.milestones["first_match"] = 1000
+	T.eq(Progress.trainingUnlocked(data), true)
+	-- The snapshot the client gets carries only the milestone, and that is enough too.
+	local snapshot = { players = {}, flags = { milestones = { first_match = 1000 } } }
+	T.eq(Progress.trainingUnlocked(snapshot), true)
 end)
 
 T.test("level status: not owned, locked, cannot afford, ready, maxed", function()
@@ -327,4 +365,186 @@ T.test("before floor 1 is complete an owned player's pad still says OWNED", func
 	local data = ProfileSchema.newProfile()
 	Roster.add(data, "rashford")
 	T.eq(PadInfo.describe("player", "rashford", data).price, "OWNED")
+end)
+
+-- Free kicks -------------------------------------------------------------------------------------------
+
+local Freekick = T.load("shared/Freekick")
+
+local FK = Config.Training
+-- The wall on the right, the keeper leaning left.
+local SETUP = { wallX = 0.3, keeperX = -0.2 }
+
+local function judge(power, contactX, contactY, aim, kick)
+	return Freekick.judge(SETUP, kick or 1, power, contactX, contactY, aim)
+end
+
+T.test("a free kick: the power bar starts after the lead time and goes up and down", function()
+	local state = Freekick.new(100)
+	T.eq(state.phase, "power")
+	T.near(state.stageAt, 100 + FK.freekickLeadSeconds, 1e-9)
+	local start = state.stageAt
+	T.near(Freekick.powerAt(state, start), 0, 1e-9)
+	T.near(Freekick.powerAt(state, start + FK.freekickPowerSeconds), 1, 1e-9)
+	T.near(Freekick.powerAt(state, start + FK.freekickPowerSeconds * 1.5), 0.5, 1e-9)
+	T.near(Freekick.powerAt(state, start + FK.freekickPowerSeconds * 2), 0, 1e-9)
+	-- The aim marker starts in the middle and sweeps to each side.
+	T.near(Freekick.aimAt(state, start), 0, 1e-9)
+	T.near(Freekick.aimAt(state, start + FK.freekickAimSeconds / 2), FK.freekickAimRange, 1e-9)
+	T.near(Freekick.aimAt(state, start + FK.freekickAimSeconds * 1.5), -FK.freekickAimRange, 1e-9)
+end)
+
+T.test("a free kick goes power, contact, aim, then flies", function()
+	local state = Freekick.new(100)
+	local start = state.stageAt
+	T.eq(Freekick.tap(state, start - 0.2, start - 0.2), "ignored") -- the bar has not started yet
+	T.eq(Freekick.contact(state, start, 0, 0), false) -- not the contact step yet
+	local powerTap = start + FK.freekickPowerSeconds * 0.8
+	T.eq(Freekick.tap(state, powerTap, powerTap), "power")
+	T.near(state.power, 0.8, 1e-9)
+	T.eq(state.phase, "contact")
+	T.eq(Freekick.tap(state, powerTap + 0.1, powerTap + 0.1), "ignored") -- the ball needs a tap first
+	T.eq(Freekick.contact(state, powerTap + 0.5, 0.72, 0.96), true) -- outside the ball: pulled onto its edge
+	T.near(state.contactX, 0.6, 1e-9)
+	T.near(state.contactY, 0.8, 1e-9)
+	T.eq(state.phase, "aim")
+	local aimTap = powerTap + 1
+	T.eq(Freekick.tap(state, aimTap, aimTap), "kick")
+	T.eq(state.phase, "flight")
+	T.truthy(state.outcome ~= "")
+end)
+
+T.test("a free kick tap stamped in the past counts only inside the grace time", function()
+	local state = Freekick.new(100)
+	local start = state.stageAt
+	local now = start + 0.7
+	Freekick.tap(state, now, now - 5) -- far in the past: clamped to the grace window
+	T.near(state.power, Freekick.powerAt({ stageAt = start }, now - FK.freekickGraceSeconds), 1e-9)
+	local other = Freekick.new(100)
+	Freekick.tap(other, now, now + 5) -- in the future: clamped to now
+	T.near(other.power, Freekick.powerAt({ stageAt = start }, now), 1e-9)
+	local bad = Freekick.new(100)
+	T.eq(Freekick.tap(bad, now, 0 / 0), "power") -- a NaN stamp counts as now
+	T.near(bad.power, Freekick.powerAt({ stageAt = start }, now), 1e-9)
+end)
+
+T.test("a NaN contact point is refused", function()
+	local state = Freekick.new(100)
+	Freekick.tap(state, state.stageAt + 0.5, state.stageAt + 0.5)
+	T.eq(Freekick.contact(state, state.stageAt + 0.6, 0 / 0, 0), false)
+	T.eq(state.phase, "contact")
+end)
+
+T.test("a shot through the wall at the middle of the ball is blocked", function()
+	T.eq(judge(0.75, 0, 0, 0.85), "wall")
+end)
+
+T.test(
+	"a hit below the middle lifts the ball over the wall, too low sends it over the bar",
+	function()
+		T.eq(judge(0.75, 0, -0.3, 0.85), "goal")
+		T.eq(judge(0.75, 0, -1, 0.85), "over")
+		T.eq(judge(1, 0, -0.6, 0.85), "over") -- full power on top of it
+	end
+)
+
+T.test("a hit on the side of the ball curls it round the wall", function()
+	T.eq(judge(0.75, 0.8, 0, 0.9), "goal")
+end)
+
+T.test("a shot away from the wall beats the keeper in the corner, not near him", function()
+	T.eq(judge(0.75, 0, 0, -0.85), "goal")
+	T.eq(judge(0.75, 0, 0, -0.3), "saved")
+	T.eq(judge(0.2, 0, 0, -0.85), "saved") -- too weak: it rolls to the keeper
+end)
+
+T.test("a shot past the post is wide, one on the post misses too", function()
+	T.eq(judge(0.75, 0, 0, -1.2), "wide")
+	T.eq(judge(0.75, 0, 0, -0.98), "post")
+end)
+
+T.test("the keeper reaches further with every goal of the streak", function()
+	T.eq(judge(0.75, 0, 0, -0.7, 1), "goal")
+	T.eq(judge(0.75, 0, 0, -0.7, 11), "saved")
+end)
+
+T.test("the wall and the keeper stand on opposite sides, both sides come up", function()
+	local left, right = 0, 0
+	for kick = 1, 200 do
+		local setup = Freekick.setup(1234.5, kick)
+		T.truthy(setup.wallX * setup.keeperX < 0, "kick " .. kick)
+		T.truthy(math.abs(setup.wallX) <= 0.4 and math.abs(setup.keeperX) <= 0.27)
+		if setup.wallX < 0 then
+			left += 1
+		else
+			right += 1
+		end
+	end
+	T.truthy(left > 50 and right > 50, "left " .. left .. ", right " .. right)
+	T.eq(Freekick.setup(77, 3).wallX, Freekick.setup(77, 3).wallX)
+end)
+
+-- Plays one kick of `state` with these values (the taps land on the exact bar values asked for).
+local function kick(state, power, contactX, contactY, aim)
+	local start = state.stageAt
+	local powerTap = start + FK.freekickPowerSeconds * power
+	Freekick.tap(state, powerTap, powerTap)
+	Freekick.contact(state, powerTap + 0.3, contactX, contactY)
+	-- The aim marker is at `aim` this long after the aim step starts (going right from the middle).
+	local stage = state.stageAt
+	local toAim = (aim / FK.freekickAimRange) * FK.freekickAimSeconds / 2
+	if toAim < 0 then
+		toAim += FK.freekickAimSeconds * 2
+	end
+	Freekick.tap(state, stage + toAim, stage + toAim)
+	return state.outcome
+end
+
+T.test("a goal brings the next kick, a miss ends the streak and a new one starts", function()
+	local state = Freekick.new(100)
+	-- Shoot into the corner away from the wall every time.
+	local function openCorner()
+		local setup = Freekick.setup(state.seed, state.kick)
+		return if setup.wallX > 0 then -0.85 else 0.85
+	end
+	T.eq(kick(state, 0.75, 0, 0, openCorner()), "goal")
+	T.eq(state.streak, 1)
+	local landed = state.stageAt + FK.freekickFlightSeconds
+	Freekick.normalize(state, landed + 0.01)
+	T.eq(state.phase, "power")
+	T.eq(state.kick, 2)
+	T.near(state.stageAt, landed + FK.freekickLeadSeconds, 1e-9)
+	T.eq(kick(state, 0.75, 0, 0, openCorner()), "goal")
+	T.eq(state.streak, 2)
+	Freekick.normalize(state, state.stageAt + FK.freekickFlightSeconds + 0.01)
+	T.eq(kick(state, 0.75, 0, 0, openCorner() * 1.45), "wide")
+	local missLanded = state.stageAt + FK.freekickFlightSeconds
+	local events = Freekick.normalize(state, missLanded + 0.01)
+	T.eq(#events, 1)
+	T.eq(events[1].kind, "over")
+	T.eq(events[1].streak, 2)
+	T.eq(state.phase, "over")
+	Freekick.normalize(state, missLanded + FK.freekickOverSeconds + 0.01)
+	T.eq(state.phase, "power")
+	T.eq(state.streak, 0)
+	T.eq(state.kick, 1)
+	T.near(state.seed, missLanded + FK.freekickOverSeconds, 1e-9)
+end)
+
+T.test("free kick medals and pay grow with the streak", function()
+	local medals = FK.freekickMedals
+	T.eq(Freekick.medal(medals.bronze - 1), 0)
+	T.eq(Freekick.medal(medals.bronze), 1)
+	T.eq(Freekick.medal(medals.silver), 2)
+	T.eq(Freekick.medal(medals.gold), 3)
+	T.near(Freekick.tpFor(1), FK.freekickBaseTp + FK.freekickStreakTp, 1e-9)
+	T.near(Freekick.tpFor(99), FK.freekickBaseTp + FK.freekickStreakTp * FK.freekickStreakMax, 1e-9)
+end)
+
+T.test("a long gap in the free kicks is caught up without looping for ever", function()
+	local state = Freekick.new(100)
+	state.phase = "flight"
+	state.outcome = "wall"
+	local events = Freekick.normalize(state, 100 + 100000)
+	T.truthy(#events >= 1 and #events <= 16)
 end)

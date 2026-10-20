@@ -238,6 +238,20 @@ local function purchaseCard(result: any): Content?
 			detail = `Your next {result.matches or Config.Boost.matchPackSize} matches pay x{Config.Boost.matchMultiplier}`,
 			icon = "boost",
 		}
+	elseif result.kind == "cash" and type(result.amount) == "number" then
+		return {
+			title = "PURCHASE",
+			big = "+" .. NumberFormat.money(result.amount),
+			detail = "Added to your cash",
+			icon = "cash",
+		}
+	elseif result.kind == "tp" and type(result.amount) == "number" then
+		return {
+			title = "PURCHASE",
+			big = "+" .. NumberFormat.short(result.amount) .. " TP",
+			detail = "Added to your training points",
+			icon = "tp",
+		}
 	elseif result.kind == "cosmetic" then
 		local def = Config.CosmeticsById[result.cosmeticId or ""]
 		if def == nil then

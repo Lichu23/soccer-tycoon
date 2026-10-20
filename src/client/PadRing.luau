@@ -2,7 +2,8 @@
 -- What every pad looks like (docs/PLAN.md, Step 1 and 7). Pads that buy or upgrade something are
 -- small round discs coloured by what the player can do: green = can use it now, red = it is open but
 -- costs more than the player has, grey = not open yet (a floor or the goals of a Legend). Above each
--- pad sits a dark label with the name, the price and a short note (the goals, for a Legend). The
+-- pad sits a label with the name, the price and a short note (the goals, for a Legend), as white and
+-- green text with a thick black outline and no box, like the signs of other tycoons. The
 -- server times the hold; this only draws it from the player's attributes: padKey, padState, padStart
 -- and padHold, as a thin bar at the bottom of the label.
 
@@ -13,6 +14,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local DailyInfo = require(ReplicatedStorage.Shared.DailyInfo)
+local Icons = require(script.Parent.Icons)
 local PadInfo = require(ReplicatedStorage.Shared.PadInfo)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
@@ -27,27 +29,35 @@ local SHOWN_KINDS = {
 	stadium = true,
 	penalty = true,
 	training = true,
+	robux = true,
 }
 -- These kinds are drawn as a round disc; the others keep the glowing square of the template.
-local DISC_KINDS = { player = true, legend = true, store = true, stadium = true }
+local DISC_KINDS = { player = true, legend = true, store = true, stadium = true, robux = true }
 local MAX_DISTANCE = 30
-local STADIUM_MAX_DISTANCE = 140
-local LABEL_WIDTH = 190
+local STADIUM_MAX_DISTANCE = 45
+local LABEL_WIDTH = 240
+-- The six Robux packs stand side by side in a row, so their labels are smaller and narrower, and they
+-- show from a little further away.
+local PACK_LABEL_WIDTH = 150
+local PACK_SCALE = 0.62
+local PACK_MAX_DISTANCE = 60
 local DISC_THICKNESS = 0.5
 local MAX_LINES = 3
 
 local COLORS = {
-	ready = Color3.fromRGB(70, 200, 105),
-	cannotAfford = Color3.fromRGB(225, 70, 70),
-	idle = Color3.fromRGB(125, 130, 145),
+	ready = Color3.fromRGB(88, 160, 112),
+	cannotAfford = Color3.fromRGB(184, 92, 88),
+	idle = Color3.fromRGB(132, 134, 142),
 }
--- Text colours on the solid black card, all above 7:1 contrast (WCAG AAA for normal text).
-local TITLE_COLOR = Color3.fromRGB(215, 230, 255)
-local NOTE_COLOR = Color3.fromRGB(215, 220, 232)
-local PRICE_COLOR = Color3.fromRGB(130, 240, 150)
-local BAD_COLOR = Color3.fromRGB(255, 130, 130)
-local GOAL_DONE_COLOR = Color3.fromRGB(130, 240, 150)
-local CARD_COLOR = Color3.fromRGB(0, 0, 0)
+-- Soft text colours (no neon); the thick black outline keeps them readable on any floor or sky.
+local TITLE_COLOR = Color3.fromRGB(255, 255, 255)
+local NOTE_COLOR = Color3.fromRGB(235, 238, 245)
+local ROBUX_COLOR = Color3.fromRGB(226, 184, 84) -- the disc of a Robux pack
+local ICON_SIZE = 64
+local PRICE_COLOR = Color3.fromRGB(150, 214, 160)
+local BAD_COLOR = Color3.fromRGB(232, 142, 138)
+local GOAL_DONE_COLOR = Color3.fromRGB(150, 214, 160)
+local OUTLINE_COLOR = Color3.fromRGB(0, 0, 0)
 
 type Entry = {
 	part: BasePart,
@@ -89,12 +99,20 @@ local function label(parent: Instance, name: string, size: number, color: Color3
 	text.TextSize = size
 	text.TextColor3 = color
 	text.Parent = parent
+	local outline = Instance.new("UIStroke")
+	outline.Thickness = math.max(2, size / 7)
+	outline.Color = OUTLINE_COLOR
+	outline.LineJoinMode = Enum.LineJoinMode.Round
+	outline.Parent = text
 	return text
 end
 
--- The dark label above the pad. It grows upward from its bottom edge, so a Legend's goal rows sit
+-- The text label above the pad. It grows upward from its bottom edge, so a Legend's goal rows sit
 -- above the name and the price stays close to the pad.
-local function buildBillboard(part: BasePart): (
+local function buildBillboard(
+	part: BasePart,
+	compact: boolean
+): (
 	BillboardGui,
 	TextLabel,
 	TextLabel,
@@ -105,9 +123,11 @@ local function buildBillboard(part: BasePart): (
 )
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "PadBillboard"
-	billboard.Size = UDim2.fromOffset(LABEL_WIDTH, 190)
+	-- The label sits on the middle line and grows upward from it, so its bottom edge stays at the
+	-- offset height (above the disc) at any distance, not 110 pixels below it.
+	billboard.Size = UDim2.fromOffset(if compact then PACK_LABEL_WIDTH else LABEL_WIDTH, 440)
 	billboard.StudsOffset = Vector3.new(0, 5.5, 0)
-	billboard.MaxDistance = MAX_DISTANCE
+	billboard.MaxDistance = if compact then PACK_MAX_DISTANCE else MAX_DISTANCE
 	billboard.AlwaysOnTop = false
 	billboard.LightInfluence = 0
 	billboard.ResetOnSpawn = false
@@ -116,37 +136,39 @@ local function buildBillboard(part: BasePart): (
 	local frame = Instance.new("Frame")
 	frame.Name = "Label"
 	frame.AnchorPoint = Vector2.new(0.5, 1)
-	frame.Position = UDim2.fromScale(0.5, 1)
+	frame.Position = UDim2.fromScale(0.5, 0.5)
 	frame.Size = UDim2.fromScale(1, 0)
 	frame.AutomaticSize = Enum.AutomaticSize.Y
-	frame.BackgroundColor3 = CARD_COLOR
-	frame.BackgroundTransparency = 0
+	frame.BackgroundTransparency = 1
 	frame.BorderSizePixel = 0
 	frame.Parent = billboard
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 10)
-	corner.Parent = frame
-	local padding = Instance.new("UIPadding")
-	padding.PaddingTop = UDim.new(0, 8)
-	padding.PaddingBottom = UDim.new(0, 8)
-	padding.PaddingLeft = UDim.new(0, 10)
-	padding.PaddingRight = UDim.new(0, 10)
-	padding.Parent = frame
 	local layout = Instance.new("UIListLayout")
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	layout.Padding = UDim.new(0, 3)
 	layout.Parent = frame
 
-	local title = label(frame, "Title", 18, TITLE_COLOR)
+	-- The picture of a Robux pack, above the text (hidden for every other pad).
+	local icon = Instance.new("ImageLabel")
+	icon.Name = "Icon"
+	icon.LayoutOrder = 0
+	icon.BackgroundTransparency = 1
+	local iconSize = if compact then math.floor(ICON_SIZE * PACK_SCALE) else ICON_SIZE
+	icon.Size = UDim2.fromOffset(iconSize, iconSize)
+	icon.ScaleType = Enum.ScaleType.Fit
+	icon.Visible = false
+	icon.Parent = frame
+
+	local scale = if compact then PACK_SCALE else 1
+	local title = label(frame, "Title", math.floor(24 * scale), TITLE_COLOR)
 	title.LayoutOrder = 1
-	local price = label(frame, "Price", 22, PRICE_COLOR)
+	local price = label(frame, "Price", math.floor(30 * scale), PRICE_COLOR)
 	price.LayoutOrder = 2
-	local note = label(frame, "Note", 15, NOTE_COLOR)
+	local note = label(frame, "Note", math.floor(18 * scale), NOTE_COLOR)
 	note.LayoutOrder = 3
 	local lines: { TextLabel } = {}
 	for index = 1, MAX_LINES do
-		local line = label(frame, "Line" .. index, 15, NOTE_COLOR)
+		local line = label(frame, "Line" .. index, 18, NOTE_COLOR)
 		line.LayoutOrder = 3 + index
 		table.insert(lines, line)
 	end
@@ -175,7 +197,7 @@ local function buildDisc(part: BasePart): BasePart
 	local disc = Instance.new("Part")
 	disc.Name = "PadDisc"
 	disc.Shape = Enum.PartType.Cylinder
-	disc.Material = Enum.Material.Neon
+	disc.Material = Enum.Material.SmoothPlastic
 	disc.Anchored = true
 	disc.CanCollide = false
 	disc.CanQuery = false
@@ -207,23 +229,37 @@ local function refresh(entry: Entry)
 			}
 		end
 	end
+	-- A player is named as on the back of the shirt ("ALEXANDER-ARNOLD"), not by the full name.
+	local isPlayer = entry.kind == "player" or entry.kind == "legend"
+	-- The name of a player is on the plaque of his capsule, so the pad shows only the price.
 	entry.title.Text = string.upper(info.title)
+	entry.title.Visible = not isPlayer
 	entry.price.Text = info.price
 	entry.price.Visible = info.price ~= ""
 	entry.price.TextColor3 = if info.state == "cannotAfford" then BAD_COLOR else PRICE_COLOR
+	-- Why a pad cannot be used is said by PadHint when the player steps on it, not under every pad.
+	local blocked = entry.kind ~= "penalty"
+		and (info.state == "cannotAfford" or info.state == "locked")
 	entry.note.Text = info.note
-	entry.note.Visible = info.note ~= ""
-	entry.note.TextColor3 = if info.state == "cannotAfford" then BAD_COLOR else NOTE_COLOR
+	entry.note.Visible = info.note ~= "" and not blocked
+	entry.note.TextColor3 = NOTE_COLOR
 	for index, line in entry.lines do
 		local goal = if info.lines then info.lines[index] else nil
 		line.Visible = goal ~= nil
 		if goal then
 			line.Text = goal.text
-			line.TextColor3 = if goal.done then GOAL_DONE_COLOR else Style.ui.text
+			line.TextColor3 = if goal.done then GOAL_DONE_COLOR else NOTE_COLOR
 		end
 	end
+	local labelFrame = entry.billboard:FindFirstChild("Label")
+	local icon = if labelFrame then labelFrame:FindFirstChild("Icon") else nil
+	if icon and icon:IsA("ImageLabel") then
+		local image = if info.icon then Icons.id(info.icon) else ""
+		icon.Image = image
+		icon.Visible = image ~= ""
+	end
 	if entry.disc then
-		entry.disc.Color = padColor(info.state)
+		entry.disc.Color = if entry.kind == "robux" then ROBUX_COLOR else padColor(info.state)
 	end
 	-- The claim rings of free plots only matter to a player who has no plot yet.
 	-- Locked Store pads stay hidden until they unlock, so the middle of the room is not cluttered.
@@ -256,9 +292,9 @@ local function track(part: Instance)
 	if ownerId ~= 0 and ownerId ~= player.UserId then
 		return
 	end
-	local billboard, title, price, note, lines, bar, fill = buildBillboard(part)
+	local billboard, title, price, note, lines, bar, fill = buildBillboard(part, kind == "robux")
 	if kind == "stadium" then
-		billboard.MaxDistance = STADIUM_MAX_DISTANCE -- it stands far from the pitch, so show it from afar
+		billboard.MaxDistance = STADIUM_MAX_DISTANCE -- only shown once the player is close to it
 	end
 	local entry: Entry = {
 		part = part,

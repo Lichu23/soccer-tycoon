@@ -10,7 +10,8 @@ local ProfileSchema = require(script.Parent.ProfileSchema)
 local Roster = require(ReplicatedStorage.Shared.Roster)
 local Season = require(ReplicatedStorage.Shared.Season)
 
-export type Result = { season: number, trophy: string, headStart: { string } }
+-- `field` is the lineup of the finished season (the celebration shows those players).
+export type Result = { season: number, trophy: string, headStart: { string }, field: { string } }
 
 local NewSeason = {}
 
@@ -27,6 +28,8 @@ function NewSeason.start(data: ProfileSchema.Profile, seasonSeen: number?): (Res
 	if seasonSeen ~= nil and seasonSeen ~= finished then
 		return nil, "stale"
 	end
+	-- The lineup is read before the reset takes the players away.
+	local field = Roster.field(data)
 	-- Goals reached so far are kept for good before the stadium, levels and floors are reset.
 	Legends.record(data)
 
@@ -54,6 +57,7 @@ function NewSeason.start(data: ProfileSchema.Profile, seasonSeen: number?): (Res
 		season = data.season.number,
 		trophy = Season.trophyName(finished),
 		headStart = headStart,
+		field = field,
 	},
 		nil
 end

@@ -16,12 +16,13 @@ local Net = require(script.Parent.Net)
 local Season = require(ReplicatedStorage.Shared.Season)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
+local TrophyScene = require(script.Parent.TrophyScene)
 
 local player = Players.LocalPlayer
 
 local BADGE_W, BADGE_H = 160, 28
 local CARD_W = 400
-local CELEBRATION_SECONDS = 3.5
+local CELEBRATION_SECONDS = 6
 local CELEBRATION_REDUCED_SECONDS = 2.5
 local HIGHLIGHT_SECONDS = 2 -- the badge is bright this long when floor 3 opens
 local RETRY_SECONDS = 4 -- the button comes back if the server never answered
@@ -396,7 +397,7 @@ function SeasonUi.init()
 		local box = new("Frame", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromOffset(300, 230),
+			Size = UDim2.fromOffset(380, 340),
 			BackgroundTransparency = 1,
 			ZIndex = 9,
 		}, screen)
@@ -404,26 +405,23 @@ function SeasonUi.init()
 		local camera = Workspace.CurrentCamera
 		if camera then
 			local size = camera.ViewportSize
-			boxScale.Scale = math.min(1, size.X / 340, size.Y / 250)
+			boxScale.Scale = math.min(1, size.X / 400, size.Y / 360)
 		end
-		-- A plain gold cup: bowl, stem and base.
-		local function part(x: number, y: number, w: number, h: number, radius: number)
-			local frame = new("Frame", {
-				AnchorPoint = Vector2.new(0.5, 0),
-				Position = UDim2.new(0.5, x, 0, y),
-				Size = UDim2.fromOffset(w, h),
-				BackgroundColor3 = Style.ui.gold,
-				ZIndex = 9,
-			}, box)
-			rounded(frame, radius)
-		end
-		part(0, 0, 90, 70, 22)
-		part(-52, 10, 22, 30, 11)
-		part(52, 10, 22, 30, 11)
-		part(0, 66, 22, 38, 4)
-		part(0, 100, 70, 14, 5)
+		-- The players of the finished season's lineup cheer, one holds the cup up; confetti falls.
+		local sceneBox = new("Frame", {
+			Name = "Scene",
+			Size = UDim2.fromOffset(380, 230),
+			BackgroundTransparency = 1,
+			ClipsDescendants = true,
+			ZIndex = 9,
+		}, box)
+		local stopScene = TrophyScene.build(
+			sceneBox,
+			if type(info.field) == "table" then info.field else {},
+			reduced
+		)
 		new("TextLabel", {
-			Position = UDim2.fromOffset(0, 122),
+			Position = UDim2.fromOffset(0, 236),
 			Size = UDim2.new(1, 0, 0, 40),
 			BackgroundTransparency = 1,
 			Text = info.trophy,
@@ -433,7 +431,7 @@ function SeasonUi.init()
 			ZIndex = 9,
 		}, box)
 		new("TextLabel", {
-			Position = UDim2.fromOffset(0, 164),
+			Position = UDim2.fromOffset(0, 278),
 			Size = UDim2.new(1, 0, 0, 26),
 			BackgroundTransparency = 1,
 			Text = `Season {info.season} begins · {multiplierText(info.season)}`,
@@ -443,7 +441,7 @@ function SeasonUi.init()
 			ZIndex = 9,
 		}, box)
 		new("TextLabel", {
-			Position = UDim2.fromOffset(0, 194),
+			Position = UDim2.fromOffset(0, 308),
 			Size = UDim2.new(1, 0, 0, 22),
 			BackgroundTransparency = 1,
 			Text = "Tap to continue",
@@ -459,6 +457,7 @@ function SeasonUi.init()
 				return
 			end
 			done = true
+			stopScene()
 			screen:Destroy()
 			celebrating = false
 		end

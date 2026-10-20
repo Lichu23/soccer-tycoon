@@ -8,6 +8,7 @@ local Actions = require(script.Parent.Actions)
 local Legends = require(ReplicatedStorage.Shared.Legends)
 local Pads = require(script.Parent.Pads)
 local Progress = require(ReplicatedStorage.Shared.Progress)
+local Purchases = require(script.Parent.Purchases)
 local Roster = require(ReplicatedStorage.Shared.Roster)
 local Session = require(script.Parent.Session)
 
@@ -79,6 +80,15 @@ local builders: { [string]: Builder } = {
 			Actions.buyStore(session, id, nil)
 		end
 	end,
+	-- A cash or TP pack for Robux: standing on the pad asks the server's purchase path, which decides
+	-- whether the Robux prompt is shown (Purchases.request). The pad itself only starts the request.
+	robux = function(session, _part, padId)
+		return function()
+			return "ready"
+		end, function()
+			Purchases.request(session.player, padId)
+		end
+	end,
 	stadium = function(session, _part, _padId)
 		return function()
 			return Progress.stadiumStatus(session.data)
@@ -91,7 +101,7 @@ local builders: { [string]: Builder } = {
 -- The pads that buy or upgrade something are small round discs (drawn by the client): the part that
 -- the server tests a player against shrinks to match.
 local PAD_STUDS = 5
-local SMALL_KINDS = { player = true, legend = true, store = true, stadium = true }
+local SMALL_KINDS = { player = true, legend = true, store = true, stadium = true, robux = true }
 
 -- Registers the pads of a freshly placed plot for its owner.
 function PadActions.registerPlot(session: Session.Session, plot: Model)

@@ -79,9 +79,20 @@ end
 
 -- Training ----------------------------------------------------------------------------------
 
--- The training ground and the level-up pads open when floor 1 is complete (Step 4).
+-- The training ground and the level-up pads open after the first match (owner decision, 2026-10-20;
+-- they used to wait for floor 1, which still opens them for a profile that has no first match saved).
+-- Whether the very first match has been played. The server profile has it as flags.milestones.first_match
+-- and the client's snapshot copies just that (State); neither is part of ProgressData, so it is read
+-- loosely here.
+function Progress.firstMatchPlayed(data: ProgressData): boolean
+	local flags = (data :: any).flags
+	return flags ~= nil and flags.milestones ~= nil and flags.milestones.first_match ~= nil
+end
+
 function Progress.trainingUnlocked(data: ProgressData): boolean
-	return Roster.floorsComplete(data) >= 1
+	-- Training opens once the very first match has been played (and stays open for good), or when
+	-- floor 1 is complete, whichever comes first.
+	return Progress.firstMatchPlayed(data) or Roster.floorsComplete(data) >= 1
 end
 
 -- TP for the next level of an owned player, or nil at the cap (or when not owned).

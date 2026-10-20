@@ -81,14 +81,16 @@ local CLIENT_TO_SERVER = {
 	"SetCosmetic",
 	"SetNotifications",
 	"StartNewSeason",
-	"TrainingDrillHit",
+	"TrainingTap",
+	"FreekickTap",
+	"FreekickContact",
 	"RequestPurchase",
 	"AckReveal",
 	"DevCommand",
 }
 
 T.test(
-	"the eleven client-to-server remotes from Step 5 and the Studio-only DevCommand exist",
+	"the client-to-server remotes (the eleven of Step 5, the three of the Training Gym) and the Studio-only DevCommand exist",
 	function()
 		local count = 0
 		for name, def in RemoteSpec.remotes do
@@ -96,7 +98,7 @@ T.test(
 				count += 1
 			end
 		end
-		T.eq(count, 13)
+		T.eq(count, 15)
 		for _, name in CLIENT_TO_SERVER do
 			local def = RemoteSpec.remotes[name]
 			T.truthy(def, name .. " is missing")

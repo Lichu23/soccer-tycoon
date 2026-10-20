@@ -53,12 +53,13 @@ export type CaseDef = {
 
 export type ProductDef = {
 	key: string,
-	kind: "case" | "boost" | "legend" | "cosmetic",
+	kind: "case" | "boost" | "legend" | "cosmetic" | "cash" | "tp",
 	robux: number, -- the price shown on the button (the real price is set on the dashboard)
 	productId: number, -- the Developer Product id, 0 until it is created on the dashboard
 	caseId: string?,
 	playerId: string?,
 	cosmeticId: string?,
+	amount: number?, -- the cash or the training points a pack gives (fixed amounts)
 }
 
 export type CosmeticSlotDef = { id: string, name: string, tier: number }
@@ -338,21 +339,68 @@ Config.Training = {
 	idleTpPerMinute = 10,
 	staminaSeconds = 300,
 	staminaRefillSeconds = 300, -- time away to refill from empty
-	-- The timing drill (active farm): a marker moves back and forth across the bar, one pass in
-	-- `drillSweepSeconds`, until the player presses. A press inside the green zone (`drillWindow`
-	-- either side of its centre) is a hit: base TP plus the bonus. A press outside it is a miss: the
-	-- base TP only, then a short cooldown with a red bar. Either way the marker starts again and the
-	-- green zone jumps to a new place (never touching the sides: zone centre between `drillZoneMin`
-	-- and `drillZoneMax`). The active farm pays only for presses; the idle rate is the AFK farm's.
-	-- The drill pays at most `drillTpPerMinuteMax` TP in any minute.
-	drillTpPerMinuteMax = 30,
-	drillSweepSeconds = 1.2,
-	drillWindow = 0.08, -- half the width of the green zone, as a fraction of the bar
-	drillZoneMin = 0.12,
-	drillZoneMax = 0.88,
-	drillCooldownSeconds = 1.2,
-	drillBaseTp = 1,
-	drillHitBonusTp = 0.3,
+	-- Keepie-uppies (a skill station of the Training Gym), an endless streak: the ball is kicked up and
+	-- comes back to the foot on a beat that starts at `juggleBounceSeconds` and gets
+	-- `juggleBounceStep` shorter with every touch, down to `juggleBounceMin`. A tap within
+	-- `juggleWindow` seconds either side of that moment is a clean touch and the streak grows; a tap
+	-- outside it or a ball left to drop ends the streak. The result shows for `juggleOverSeconds`, then
+	-- a new streak starts after `juggleLeadSeconds`. The longest streak is the personal best; the
+	-- medals (`juggleMedals`: bronze, silver, gold) are streak milestones. Each touch pays
+	-- `juggleBaseTp` plus `juggleComboTp` per step of the streak up to `juggleComboMax`, at most
+	-- `juggleTpPerMinuteMax` TP in any minute for the skill games together (the treadmill pays 10).
+	juggleBounceSeconds = 0.8,
+	juggleBounceStep = 0.006,
+	juggleBounceMin = 0.5,
+	juggleWindow = 0.14,
+	juggleLeadSeconds = 2, -- "get ready": the first ball of a streak leaves the foot this long after it starts
+	juggleIntroSeconds = 4, -- extra time before the first streak after stepping on the mat, to read how to play
+	juggleOverSeconds = 2.5, -- the result of a streak shows this long before the next one starts
+	juggleBaseTp = 0.35,
+	juggleComboTp = 0.05,
+	juggleComboMax = 10,
+	juggleTpPerMinuteMax = 40,
+	juggleMedals = { bronze = 10, silver = 25, gold = 50 },
+	-- Free kicks (the other skill station), an endless streak of goals. Each kick has three steps: a
+	-- power bar that goes up and down (`freekickPowerSeconds` from empty to full), a tap on the ball
+	-- for the contact point (the side curls it, below the middle lifts it), and an aim marker that
+	-- sweeps across the goal (`freekickAimSeconds` from one side to the other). A tap may be stamped up
+	-- to `freekickGraceSeconds` in the past (a slow connection). The shot then flies for
+	-- `freekickFlightSeconds`: a goal adds one to the streak and the next kick comes, anything else
+	-- ends the streak and the result shows for `freekickOverSeconds`.
+	-- The shot, in goal units: the posts are at x -1 and 1, the bar at height 1. The wall stands
+	-- `freekickWallAt` of the way to the goal; `freekickWallHalf` wide either side of its middle and
+	-- `freekickWallTop` high. The height of the ball at the wall and at the goal grows with the lift
+	-- (0 for a hit at the top of the ball, 1 at the bottom) and the power (`freekickPowerSweet` is the
+	-- power for a normal flight). The keeper reaches `freekickKeeperReach` from where he stands, less
+	-- for a hard shot and more with every goal of the streak (`freekickKeeperReachStep`, up to
+	-- `freekickKeeperReachMax` more).
+	freekickPowerSeconds = 0.75,
+	freekickAimSeconds = 1.4,
+	freekickGraceSeconds = 0.2,
+	freekickFlightSeconds = 1.6,
+	freekickLeadSeconds = 1, -- the power bar starts this long after a kick begins
+	freekickIntroSeconds = 1.5, -- extra time before the first kick after stepping on the spot, to get ready
+	freekickOverSeconds = 2.5,
+	freekickAimRange = 1.3, -- the aim marker sweeps from -this to +this (a little past the posts)
+	freekickBallRadius = 0.05,
+	freekickWallAt = 0.4,
+	freekickWallHalf = 0.3,
+	freekickWallTop = 0.6,
+	freekickWallLift = 1.1, -- height at the wall per unit of lift
+	freekickGoalLift = 1.3, -- height at the goal per unit of lift
+	freekickWallPower = 0.3, -- extra height at the wall per unit of power above the sweet power
+	freekickGoalPower = 1.2, -- extra height at the goal per unit of power above the sweet power
+	freekickPowerSweet = 0.75,
+	freekickWeakPower = 0.35, -- below this the shot rolls to the keeper
+	freekickCurl = 0.7, -- how far a hit at the very side of the ball bends the flight at its middle
+	freekickKeeperReach = 0.42,
+	freekickKeeperReachStep = 0.015,
+	freekickKeeperReachMax = 0.15,
+	freekickTopCorner = 0.4, -- a high shot is harder to reach: extra distance per unit of height over 0.6
+	freekickBaseTp = 1.5,
+	freekickStreakTp = 0.25,
+	freekickStreakMax = 10,
+	freekickMedals = { bronze = 3, silver = 6, gold = 10 },
 }
 
 -- The Robux cases (docs/PLAN.md, Step 3). Within a floor a cheaper player is likelier (each step up
@@ -428,6 +476,26 @@ Config.Products = {
 		productId = 0,
 		playerId = "pele",
 	},
+	-- Cash and TP packs, bought on the Robux pads outside the building. Fixed amounts (the same for
+	-- everyone); the Robux prices are placeholders like the rest.
+	cash_small = { key = "cash_small", kind = "cash", robux = 25, productId = 0, amount = 10_000 },
+	cash_medium = {
+		key = "cash_medium",
+		kind = "cash",
+		robux = 99,
+		productId = 0,
+		amount = 100_000,
+	},
+	cash_large = {
+		key = "cash_large",
+		kind = "cash",
+		robux = 349,
+		productId = 0,
+		amount = 1_000_000,
+	},
+	tp_small = { key = "tp_small", kind = "tp", robux = 25, productId = 0, amount = 500 },
+	tp_medium = { key = "tp_medium", kind = "tp", robux = 99, productId = 0, amount = 2_500 },
+	tp_large = { key = "tp_large", kind = "tp", robux = 349, productId = 0, amount = 10_000 },
 } :: { [string]: ProductDef }
 
 -- Team customization (docs/PLAN.md, Step 3): each stadium tier opens one slot with free styles and a

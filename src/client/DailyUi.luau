@@ -24,6 +24,7 @@ local player = Players.LocalPlayer
 local GLOW_SECONDS = 4 -- how long a newly ready icon pulses
 local TOAST_SECONDS = 2.5
 local PRIZE_SECONDS = 4
+local AUTO_OPEN_SECONDS = 1.6 -- after the first match, the VICTORY text has faded by then
 
 local DailyUi = {}
 
@@ -221,18 +222,37 @@ function DailyUi.init()
 	end)
 
 	-- Taps -------------------------------------------------------------------------------------
+	-- Opens the kick screen with the kicks left today.
+	local function openKick()
+		local kicks = player:GetAttribute("penaltyKicksLeft")
+		PenaltyUi.open(if type(kicks) == "number" and kicks > 0 then kicks else 3)
+	end
 	kickIcon.button.Activated:Connect(function()
 		if kickIcon.status == "locked" then
 			Dock.reason(kickIcon.tile, closedReason())
 			return
 		end
 		if kickIcon.status == "ready" then
-			-- The icon opens the kick screen with the kicks left today.
-			local kicks = player:GetAttribute("penaltyKicksLeft")
-			PenaltyUi.open(if type(kicks) == "number" and kicks > 0 then kicks else 3)
+			openKick()
 		elseif kickIcon.status == "waiting" then
 			showToast(DailyInfo.waitText(readyAt("penaltyReadyAt") - Workspace:GetServerTimeNow()))
 		end
+	end)
+
+	-- After the very first match the kick screen opens by itself, once: the VICTORY text fades first.
+	-- Sending SeenTile marks the Kick button as seen for good, so it never opens by itself again.
+	local autoOpened = false
+	Net.on("MatchResult", function()
+		if autoOpened or kickIcon.status ~= "ready" or player:GetAttribute("tile_kick") ~= 0 then
+			return
+		end
+		autoOpened = true
+		task.delay(AUTO_OPEN_SECONDS, function()
+			if kickIcon.status == "ready" then
+				Net.fire("SeenTile", "kick")
+				openKick()
+			end
+		end)
 	end)
 
 	-- Every frame: the icon status follows the server's ready times, the glow fades after a while.

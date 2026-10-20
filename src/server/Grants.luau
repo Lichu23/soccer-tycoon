@@ -56,6 +56,10 @@ function Grants.apply(
 		-- Granted in full even when the bank has filled up since the prompt.
 		data.boosts.bankedMatches += Config.Boost.matchPackSize
 		result = { kind = "boost", matches = Config.Boost.matchPackSize }
+	elseif product.kind == "cash" then
+		result = { kind = "cash", amount = Economy.grant(data, product.amount or 0) }
+	elseif product.kind == "tp" then
+		result = { kind = "tp", amount = Economy.grantTp(data, product.amount or 0) }
 	elseif product.kind == "cosmetic" then
 		-- Owned for good (a New Season keeps it) and put on at once; a resent receipt never reaches here.
 		local id = product.cosmeticId or ""
