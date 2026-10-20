@@ -192,7 +192,7 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 			}
 		end
 		local note = if skill then "Tap in time for TP" else "Stand here: 10 TP per minute"
-		return { title = title, price = "TP", note = note, state = "info" }
+		return { title = title, price = "", note = note, state = "info" }
 	elseif kind == "penalty" then
 		-- Whether kicks are left today is the server's call (the client shows the wait time).
 		if Roster.ownedCount(data) < 1 then

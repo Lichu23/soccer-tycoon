@@ -103,11 +103,24 @@ RemoteSpec.remotes = {
 		ratePerSecond = 0.5,
 		burst = 1,
 	},
-	TrainingDrillHit = {
+	-- A tap at a skill station of the Training Gym (the keepie-uppies). The server judges it on its own
+	-- clock; no argument.
+	TrainingTap = {
 		direction = "toServer",
 		args = {},
-		ratePerSecond = 5,
-		burst = 5,
+		ratePerSecond = 6,
+		burst = 6,
+	},
+	-- A lane change in the dribble run: left or right, and the server time the player's screen showed
+	-- when he moved (the server never trusts it more than a fraction of a second into the past).
+	TrainingMove = {
+		direction = "toServer",
+		args = {
+			{ kind = "enum", values = { "left", "right" } },
+			{ kind = "number", min = 0, max = 4_000_000_000 },
+		},
+		ratePerSecond = 8,
+		burst = 8,
 	},
 	RequestPurchase = {
 		direction = "toServer",

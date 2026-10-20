@@ -11,8 +11,7 @@
 --
 -- Each station has a 14 x 14 marker (Kind "training", PadId trainingKeepie, trainingDribble,
 -- trainingTreadmill, trainingLadder); the server reads the pad key (TrainingActions) and PadInfo names
--- the stations. The dribble run is built in a later step, so its marker is not placed yet (its cell
--- holds the cones of the run).
+-- the stations.
 
 local ServerStorage = game:GetService("ServerStorage")
 
@@ -76,39 +75,6 @@ local function soft(part: Part): Part
 	return part
 end
 
--- A name board over a station (a billboard that always faces the player).
-local function stationSign(name: string, title: string, sub: string, cx: number, cz: number, color: Color3)
-	local anchor = box(name, cx - 1, cx + 1, 9, 11, cz - 1, cz + 1, COLORS.line)
-	anchor.Transparency = 1
-	anchor.CanCollide = false
-	anchor.CanQuery = false
-	anchor.CanTouch = false
-	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromOffset(170, 48)
-	gui.MaxDistance = 50
-	gui.LightInfluence = 0
-	gui.Parent = anchor
-	local top = Instance.new("TextLabel")
-	top.Size = UDim2.new(1, 0, 0.6, 0)
-	top.BackgroundTransparency = 1
-	top.Text = title
-	top.Font = Enum.Font.GothamBold
-	top.TextScaled = true
-	top.TextColor3 = color
-	top.TextStrokeTransparency = 0
-	top.Parent = gui
-	local bottom = Instance.new("TextLabel")
-	bottom.Position = UDim2.fromScale(0, 0.6)
-	bottom.Size = UDim2.new(1, 0, 0.4, 0)
-	bottom.BackgroundTransparency = 1
-	bottom.Text = sub
-	bottom.Font = Enum.Font.GothamBold
-	bottom.TextScaled = true
-	bottom.TextColor3 = Color3.fromRGB(255, 255, 255)
-	bottom.TextStrokeTransparency = 0
-	bottom.Parent = gui
-end
-
 local function marker(name: string, padId: string, cx: number, cz: number)
 	local pad = Instance.new("Part")
 	pad.Name = name
@@ -117,7 +83,7 @@ local function marker(name: string, padId: string, cx: number, cz: number)
 	pad.Anchored = true
 	pad.Color = Color3.fromRGB(60, 220, 220)
 	pad.Material = Enum.Material.Neon
-	pad.Transparency = 0.4
+	pad.Transparency = 0.88 -- a faint glow, so the equipment on the floor stays visible
 	pad.CanCollide = false
 	pad.CanTouch = false
 	pad.CanQuery = false
@@ -166,10 +132,10 @@ for i = 0, 5 do
 end
 
 -- Agility ladder (conditioning, x -70, z 120): two rails and nine rungs lying along x.
-soft(box("LadderRail", -77, -63, TOP, TOP + 0.12, 117.6, 118.2, COLORS.yellow))
-soft(box("LadderRail", -77, -63, TOP, TOP + 0.12, 121.8, 122.4, COLORS.yellow))
+soft(box("LadderRail", -78, -62, TOP, TOP + 0.25, 117.2, 117.8, COLORS.line))
+soft(box("LadderRail", -78, -62, TOP, TOP + 0.25, 122.2, 122.8, COLORS.line))
 for i = 0, 8 do
-	soft(box("LadderRung", -76.5 + i * 1.6, -76.1 + i * 1.6, TOP, TOP + 0.12, 117.6, 122.4, COLORS.yellow))
+	soft(box("LadderRung", -77 + i * 1.9, -76.6 + i * 1.9, TOP, TOP + 0.2, 117.2, 122.8, COLORS.yellow))
 end
 
 -- Keepie-uppies (skill, x -110, z 80): a turf mat with a painted circle and a ball.
@@ -184,18 +150,17 @@ ball.CFrame = CFrame.new(-110, TOP + 1.2, 80)
 ball.Size = Vector3.new(2, 2, 2)
 ball.CanCollide = false
 
--- Dribble run (skill, x -110, z 120): a lane of cones for the run built in a later step.
-for index, spot in { { -118, 112 }, { -112, 128 }, { -106, 112 }, { -100, 128 }, { -94, 116 } } do
-	local cone = box("DribbleCone" .. index, spot[1] - 0.6, spot[1] + 0.6, TOP, TOP + 1.5, spot[2] - 0.6, spot[2] + 0.6, COLORS.cone)
-	cone.CanCollide = false
+-- Dribble run (skill, x -110, z 120): two lane lines and a few cones along the run.
+for _, z in { 116, 124 } do
+	soft(box("DribbleLine", -118, -102, TOP, TOP + 0.08, z - 0.15, z + 0.15, COLORS.line))
+end
+for index, spot in { { -116, 112 }, { -112, 120 }, { -108, 128 }, { -104, 112 }, { -102, 120 } } do
+	soft(box("DribbleCone" .. index, spot[1] - 0.6, spot[1] + 0.6, TOP, TOP + 1.5, spot[2] - 0.6, spot[2] + 0.6, COLORS.cone))
 end
 
--- Name boards and the markers.
-stationSign("SignKeepie", "KEEPIE-UPPIES", "Tap in time for a combo", -110, 80, Color3.fromRGB(255, 190, 110))
-stationSign("SignDribble", "DRIBBLE RUN", "Coming soon", -110, 120, Color3.fromRGB(255, 190, 110))
-stationSign("SignTreadmill", "TREADMILL", "Stand here: 10 TP per minute", -70, 80, Color3.fromRGB(140, 200, 255))
-stationSign("SignLadder", "AGILITY LADDER", "Stand here: 10 TP per minute", -70, 120, Color3.fromRGB(140, 200, 255))
+-- The name of each station is written by the pad label (client/PadRing), so there are no boards here.
 marker("TrainingKeepie", "trainingKeepie", -110, 80)
+marker("TrainingDribble", "trainingDribble", -110, 120)
 marker("TrainingTreadmill", "trainingTreadmill", -70, 80)
 marker("TrainingLadder", "trainingLadder", -70, 120)
 

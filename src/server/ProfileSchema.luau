@@ -36,6 +36,13 @@ export type Profile = {
 	cosmetics: { owned: { [string]: boolean }, chosen: { [string]: string } },
 	daily: { caseClaimedAt: number, penaltyBatchAt: number, kicksUsed: number, goals: number },
 	boosts: { bankedMatches: number, stadiumBoostLeft: number, penaltyBoostLeft: number },
+	-- The Training Gym: the best round of the keepie-uppies (touches and medal), kept across seasons.
+	gym: {
+		keepieBestHits: number,
+		keepieBestMedal: number,
+		dribbleBestPasses: number,
+		dribbleBestMedal: number,
+	},
 	receipts: { [string]: Receipt },
 	pendingReveals: { PendingReveal },
 	seenRarities: { [string]: boolean },
@@ -76,6 +83,12 @@ function ProfileSchema.newProfile(): Profile
 		cosmetics = { owned = {}, chosen = {} },
 		daily = { caseClaimedAt = 0, penaltyBatchAt = 0, kicksUsed = 0, goals = 0 },
 		boosts = { bankedMatches = 0, stadiumBoostLeft = 0, penaltyBoostLeft = 0 },
+		gym = {
+			keepieBestHits = 0,
+			keepieBestMedal = 0,
+			dribbleBestPasses = 0,
+			dribbleBestMedal = 0,
+		},
 		receipts = {},
 		pendingReveals = {},
 		seenRarities = {},
@@ -262,6 +275,14 @@ function ProfileSchema.validate(profile: { [string]: any }): (boolean, string?)
 		or profile.daily.goals > profile.daily.kicksUsed
 	then
 		return false, "profile.daily.kicksUsed is out of range"
+	end
+	if
+		not isCount(profile.gym.keepieBestHits, 10_000)
+		or not isCount(profile.gym.keepieBestMedal, 3)
+		or not isCount(profile.gym.dribbleBestPasses, 10_000)
+		or not isCount(profile.gym.dribbleBestMedal, 3)
+	then
+		return false, "profile.gym is out of range"
 	end
 	return true, nil
 end

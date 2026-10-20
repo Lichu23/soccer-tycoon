@@ -339,21 +339,39 @@ Config.Training = {
 	idleTpPerMinute = 10,
 	staminaSeconds = 300,
 	staminaRefillSeconds = 300, -- time away to refill from empty
-	-- The timing drill (active farm): a marker moves back and forth across the bar, one pass in
-	-- `drillSweepSeconds`, until the player presses. A press inside the green zone (`drillWindow`
-	-- either side of its centre) is a hit: base TP plus the bonus. A press outside it is a miss: the
-	-- base TP only, then a short cooldown with a red bar. Either way the marker starts again and the
-	-- green zone jumps to a new place (never touching the sides: zone centre between `drillZoneMin`
-	-- and `drillZoneMax`). A skill station pays only for presses; the idle rate is the conditioning stations'.
-	-- The drill pays at most `drillTpPerMinuteMax` TP in any minute.
-	drillTpPerMinuteMax = 30,
-	drillSweepSeconds = 1.2,
-	drillWindow = 0.08, -- half the width of the green zone, as a fraction of the bar
-	drillZoneMin = 0.12,
-	drillZoneMax = 0.88,
-	drillCooldownSeconds = 1.2,
-	drillBaseTp = 1,
-	drillHitBonusTp = 0.3,
+	-- Keepie-uppies (a skill station of the Training Gym): the ball is kicked up and comes back to the
+	-- foot every `juggleBounceSeconds`; a tap within `juggleWindow` seconds either side of that moment
+	-- is a clean touch and the combo grows, a tap outside it or a ball left to drop breaks the combo
+	-- and the ball starts again after `juggleCooldownSeconds`. A round lasts `juggleRoundSeconds`; the
+	-- medal comes from the touches of the round (`juggleMedals`: bronze, silver, gold). Each touch pays
+	-- `juggleBaseTp` plus `juggleComboTp` per combo step up to `juggleComboMax`, at most
+	-- `juggleTpPerMinuteMax` TP in any minute (the treadmill pays 10, so this one is clearly better).
+	juggleBounceSeconds = 0.8,
+	juggleWindow = 0.14,
+	juggleCooldownSeconds = 0.8,
+	juggleRoundSeconds = 30,
+	juggleLeadSeconds = 2, -- "get ready": the first ball of a round leaves the foot this long after the round starts
+	juggleRoundPauseSeconds = 3, -- the result of a round shows this long before the next one starts
+	juggleBaseTp = 0.35,
+	juggleComboTp = 0.05,
+	juggleComboMax = 10,
+	juggleTpPerMinuteMax = 40,
+	juggleMedals = { bronze = 12, silver = 22, gold = 30 },
+	-- The dribble run (the other skill station): rows of cones reach the player every
+	-- `dribbleRowSeconds` and block one lane (a wide row blocks two, with one way through); he moves
+	-- one lane left or right to stay clear. A row passed clean pays like a touch of the keepie-uppies
+	-- (the same TP and the same per-minute cap, only one station can be played at a time); a cone
+	-- breaks the combo and the player gets up after `dribbleStumbleSeconds`, skipping the rows meanwhile.
+	-- A move may be stamped up to `dribbleGraceSeconds` in the past (a slow connection), so a row is
+	-- judged only that long after it arrives. The round and the medals work like the keepie-uppies.
+	dribbleRowSeconds = 0.9,
+	dribbleApproachSeconds = 1.8, -- how long a row is on screen before it reaches the player
+	dribbleStumbleSeconds = 0.9,
+	dribbleGraceSeconds = 0.2,
+	dribbleLeadSeconds = 2,
+	dribbleRoundSeconds = 30,
+	dribbleRoundPauseSeconds = 3,
+	dribbleMedals = { bronze = 14, silver = 22, gold = 29 },
 }
 
 -- The Robux cases (docs/PLAN.md, Step 3). Within a floor a cheaper player is likelier (each step up
