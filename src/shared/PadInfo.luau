@@ -164,7 +164,7 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 		end
 		local isCash = product.kind == "cash"
 		return {
-			title = if isCash then "Cash pack" else "Training points",
+			title = if isCash then "Cash pack" else "TP pack",
 			price = if isCash
 				then "+" .. NumberFormat.money(product.amount)
 				else "+" .. NumberFormat.short(product.amount) .. " TP",

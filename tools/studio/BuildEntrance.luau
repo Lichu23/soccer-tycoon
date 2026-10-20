@@ -63,16 +63,16 @@ local function sign(part: BasePart, text: string, textColor: Color3, pixelsPerSt
 	label.Parent = gui
 end
 
--- The Robux packs: six pads on the ground left of the door, cash in the front row and TP behind. The
+-- The Robux packs: six pads side by side in one row on the ground left of the door, on the same line as the trophy case (x 40), cash first, then TP. The
 -- server turns each into a pad (Kind "robux", PadId = the product key in Config.Products); the
 -- client draws the disc, the picture above it and the text.
 local PADS = {
-	{ "cash_small", 28, 44 },
-	{ "cash_medium", 28, 56 },
-	{ "cash_large", 28, 68 },
-	{ "tp_small", 42, 44 },
-	{ "tp_medium", 42, 56 },
-	{ "tp_large", 42, 68 },
+	{ "cash_small", 40, 23 },
+	{ "cash_medium", 40, 34 },
+	{ "cash_large", 40, 45 },
+	{ "tp_small", 40, 56 },
+	{ "tp_medium", 40, 67 },
+	{ "tp_large", 40, 78 },
 }
 local markers = template:FindFirstChild("Markers")
 assert(markers, "the template has no Markers folder")

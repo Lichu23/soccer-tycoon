@@ -36,6 +36,11 @@ local DISC_KINDS = { player = true, legend = true, store = true, stadium = true,
 local MAX_DISTANCE = 30
 local STADIUM_MAX_DISTANCE = 45
 local LABEL_WIDTH = 240
+-- The six Robux packs stand side by side in a row, so their labels are smaller and narrower, and they
+-- show from a little further away.
+local PACK_LABEL_WIDTH = 150
+local PACK_SCALE = 0.62
+local PACK_MAX_DISTANCE = 60
 local DISC_THICKNESS = 0.5
 local MAX_LINES = 3
 
@@ -104,7 +109,10 @@ end
 
 -- The text label above the pad. It grows upward from its bottom edge, so a Legend's goal rows sit
 -- above the name and the price stays close to the pad.
-local function buildBillboard(part: BasePart): (
+local function buildBillboard(
+	part: BasePart,
+	compact: boolean
+): (
 	BillboardGui,
 	TextLabel,
 	TextLabel,
@@ -117,9 +125,9 @@ local function buildBillboard(part: BasePart): (
 	billboard.Name = "PadBillboard"
 	-- The label sits on the middle line and grows upward from it, so its bottom edge stays at the
 	-- offset height (above the disc) at any distance, not 110 pixels below it.
-	billboard.Size = UDim2.fromOffset(LABEL_WIDTH, 440)
+	billboard.Size = UDim2.fromOffset(if compact then PACK_LABEL_WIDTH else LABEL_WIDTH, 440)
 	billboard.StudsOffset = Vector3.new(0, 5.5, 0)
-	billboard.MaxDistance = MAX_DISTANCE
+	billboard.MaxDistance = if compact then PACK_MAX_DISTANCE else MAX_DISTANCE
 	billboard.AlwaysOnTop = false
 	billboard.LightInfluence = 0
 	billboard.ResetOnSpawn = false
@@ -145,16 +153,18 @@ local function buildBillboard(part: BasePart): (
 	icon.Name = "Icon"
 	icon.LayoutOrder = 0
 	icon.BackgroundTransparency = 1
-	icon.Size = UDim2.fromOffset(ICON_SIZE, ICON_SIZE)
+	local iconSize = if compact then math.floor(ICON_SIZE * PACK_SCALE) else ICON_SIZE
+	icon.Size = UDim2.fromOffset(iconSize, iconSize)
 	icon.ScaleType = Enum.ScaleType.Fit
 	icon.Visible = false
 	icon.Parent = frame
 
-	local title = label(frame, "Title", 24, TITLE_COLOR)
+	local scale = if compact then PACK_SCALE else 1
+	local title = label(frame, "Title", math.floor(24 * scale), TITLE_COLOR)
 	title.LayoutOrder = 1
-	local price = label(frame, "Price", 30, PRICE_COLOR)
+	local price = label(frame, "Price", math.floor(30 * scale), PRICE_COLOR)
 	price.LayoutOrder = 2
-	local note = label(frame, "Note", 18, NOTE_COLOR)
+	local note = label(frame, "Note", math.floor(18 * scale), NOTE_COLOR)
 	note.LayoutOrder = 3
 	local lines: { TextLabel } = {}
 	for index = 1, MAX_LINES do
@@ -282,7 +292,7 @@ local function track(part: Instance)
 	if ownerId ~= 0 and ownerId ~= player.UserId then
 		return
 	end
-	local billboard, title, price, note, lines, bar, fill = buildBillboard(part)
+	local billboard, title, price, note, lines, bar, fill = buildBillboard(part, kind == "robux")
 	if kind == "stadium" then
 		billboard.MaxDistance = STADIUM_MAX_DISTANCE -- only shown once the player is close to it
 	end
