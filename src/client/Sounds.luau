@@ -5,6 +5,7 @@
 -- Toolbox > Marketplace > Audio (or upload your own file in Creator Hub), pick a short sound, copy its
 -- asset id and paste "rbxassetid://<id>" below. Only sounds the experience may use will play.
 
+local ContentProvider = game:GetService("ContentProvider")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 
@@ -33,15 +34,48 @@ Sounds.maxSeconds = {
 } :: { [string]: number }
 local FADE_SECONDS = 0.6
 
+local templates: { [string]: Sound } = {}
+
+-- Downloads every sound once at the start, so the first kick does not wait for the files: a sound
+-- loaded only when it plays arrives a moment late. Each effect then plays a copy of its template.
+function Sounds.preload()
+	local folder = Instance.new("Folder")
+	folder.Name = "SoundTemplates"
+	folder.Parent = SoundService
+	local list: { Instance } = {}
+	for name, id in Sounds.ids do
+		if id ~= "" then
+			local template = Instance.new("Sound")
+			template.Name = name
+			template.SoundId = id
+			template.Volume = Sounds.volumes[name] or 0.6
+			template.Parent = folder
+			templates[name] = template
+			table.insert(list, template)
+		end
+	end
+	task.spawn(function()
+		pcall(function()
+			ContentProvider:PreloadAsync(list)
+		end)
+	end)
+end
+
 -- Plays `name` once, for this player only. Nothing happens while its id is empty.
 function Sounds.play(name: string)
 	local id = Sounds.ids[name]
 	if id == nil or id == "" then
 		return
 	end
-	local sound = Instance.new("Sound")
-	sound.SoundId = id
-	sound.Volume = Sounds.volumes[name] or 0.6
+	local template = templates[name]
+	local sound: Sound
+	if template then
+		sound = template:Clone()
+	else
+		sound = Instance.new("Sound")
+		sound.SoundId = id
+		sound.Volume = Sounds.volumes[name] or 0.6
+	end
 	sound.Parent = SoundService
 	sound.Ended:Connect(function()
 		sound:Destroy()

@@ -288,6 +288,7 @@ local function buildScene(parent: Frame): Scene
 end
 
 function PenaltyUi.init()
+	Sounds.preload()
 	local gui = new("ScreenGui", {
 		Name = "Penalty",
 		ResetOnSpawn = false,
@@ -635,6 +636,7 @@ function PenaltyUi.init()
 		waiting = true
 		setButtons(false)
 		local myToken = token
+		Sounds.play("kick") -- at the tap, not when the answer comes back
 		Net.fire("PenaltyKick", zone)
 		task.delay(REPLY_TIMEOUT, function()
 			if waiting and token == myToken then
@@ -667,7 +669,6 @@ function PenaltyUi.init()
 		setButtons(false)
 		buttons[info.aim].BackgroundColor3 = Style.ui.gold
 		setResult("", Panel.TEXT)
-		Sounds.play("kick")
 
 		local scored = info.goal == true
 		local wide = info.wide == true
