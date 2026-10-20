@@ -25,18 +25,30 @@ local started = false
 
 local TrainingActions = {}
 
--- Which training field the player stands on: "afk" (stand and earn), "active" (play the drill) or
--- nil. The pad system publishes each player's padKey, which ends with the marker's name.
-local function fieldOf(session: Session.Session): string?
+-- The stations of the Training Gym by marker name: a "conditioning" station runs by itself (stand
+-- on it and earn), a "skill" station is played (the timing drill). The station names are what the
+-- HUD shows.
+local STATIONS: { [string]: { field: string, station: string } } = {
+	TrainingTreadmill = { field = "conditioning", station = "treadmill" },
+	TrainingLadder = { field = "conditioning", station = "ladder" },
+	TrainingKeepie = { field = "skill", station = "keepie" },
+}
+
+-- Which station the player stands on, or nil. The pad system publishes each player's padKey, which
+-- ends with the marker's name.
+local function stationOf(session: Session.Session): { field: string, station: string }?
 	local plot = session.runtime.plot
 	if plot == nil or not Progress.trainingUnlocked(session.data) then
 		return nil
 	end
 	local key = session.player:GetAttribute("padKey")
-	if key == plot.Name .. ":TrainingAfk" then
-		return "afk"
-	elseif key == plot.Name .. ":TrainingActive" then
-		return "active"
+	if type(key) ~= "string" then
+		return nil
+	end
+	for marker, info in STATIONS do
+		if key == plot.Name .. ":" .. marker then
+			return info
+		end
 	end
 	return nil
 end
@@ -60,23 +72,25 @@ local function step(session: Session.Session, dt: number)
 		carries[player] = carry
 	end
 
-	local field = fieldOf(session)
+	local at = stationOf(session)
+	local field = if at then at.field else nil
 	local standing = field ~= nil
-	local paid = Training.step(data, carry, dt, standing, field == "afk")
+	local paid = Training.step(data, carry, dt, standing, field == "conditioning")
 	local active = standing and Training.hasStamina(data)
 	training[player] = active
 
-	-- The drill exists only on the active field. Stepping onto the field starts the marker at once;
-	-- after a miss, or when the marker runs out, the bar is red until the next press starts it.
-	-- On the AFK field there is no drill.
-	if field == "active" and drills[player] == nil then
+	-- The drill exists only at a skill station. Stepping onto it starts the marker at once; after a
+	-- miss, or when the marker runs out, the bar is red until the next press starts it. A
+	-- conditioning station has no drill.
+	if field == "skill" and drills[player] == nil then
 		local fresh = Drill.new()
-		Drill.press(fresh, Workspace:GetServerTimeNow()) -- stepping on the field starts the marker
+		Drill.press(fresh, Workspace:GetServerTimeNow()) -- stepping on the station starts the marker
 		drills[player] = fresh
-	elseif field ~= "active" then
+	elseif field ~= "skill" then
 		drills[player] = nil
 	end
 	player:SetAttribute("trainingField", field or "off")
+	player:SetAttribute("trainingStation", if at then at.station else "off")
 	player:SetAttribute("tpFraction", carry.fraction)
 	publishDrill(player)
 	player:SetAttribute("training", active)

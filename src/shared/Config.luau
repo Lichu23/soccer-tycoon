@@ -344,7 +344,7 @@ Config.Training = {
 	-- either side of its centre) is a hit: base TP plus the bonus. A press outside it is a miss: the
 	-- base TP only, then a short cooldown with a red bar. Either way the marker starts again and the
 	-- green zone jumps to a new place (never touching the sides: zone centre between `drillZoneMin`
-	-- and `drillZoneMax`). The active farm pays only for presses; the idle rate is the AFK farm's.
+	-- and `drillZoneMax`). A skill station pays only for presses; the idle rate is the conditioning stations'.
 	-- The drill pays at most `drillTpPerMinuteMax` TP in any minute.
 	drillTpPerMinuteMax = 30,
 	drillSweepSeconds = 1.2,

@@ -5,7 +5,7 @@
 -- the first steps: to a free plot, then to the first player's pad.
 -- After the first purchase it disappears. Then it shows once, for a short time, towards the Store
 -- pad, only so the player knows the Store exists, and never again. When the first match ends the
--- training ground opens, and the trail shows once towards its AFK farm. Later goals are shown by the
+-- training ground opens, and the trail shows once towards the treadmill of the Training Gym. Later goals are shown by the
 -- goal row alone.
 
 local CollectionService = game:GetService("CollectionService")
@@ -104,7 +104,7 @@ local function target(root: BasePart): BasePart?
 
 	-- Then the training ground, once: it opened with the first match.
 	if trainingHintPending and not trainingHintDone then
-		local spot = nearestPad(root, "training", "trainingAfk")
+		local spot = nearestPad(root, "training", "trainingTreadmill")
 		local began = trainingHintStartedAt or os.clock()
 		trainingHintStartedAt = began
 		local expired = os.clock() - began > TRAINING_HINT_SECONDS

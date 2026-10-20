@@ -20,6 +20,8 @@
 --   * this script builds the greybox with solid stair walls; run tools/studio/OpenStairs.luau
 --     after it to open them up (glass handrails, FloorSpot_k for the HUD floor
 --     switcher).
+--   * the training yard it builds (the AFK and active fields) is replaced by the Training Gym: run
+--     tools/studio/BuildGym.luau after it (four stations, an arch, new markers).
 
 local ServerStorage = game:GetService("ServerStorage")
 

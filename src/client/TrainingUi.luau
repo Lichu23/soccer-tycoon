@@ -27,6 +27,13 @@ local FLASH_SECONDS = 0.5
 local FEEDBACK_HOLD_SECONDS = 0.65 -- like the VICTORY text
 local FEEDBACK_FADE_SECONDS = 0.35
 
+-- What the screen is called at each station of the Training Gym.
+local STATION_TITLES: { [any]: string } = {
+	treadmill = "TREADMILL",
+	ladder = "AGILITY LADDER",
+	keepie = "KEEPIE-UPPIES",
+}
+
 local TrainingUi = {}
 
 local function new(className: string, props: { [string]: any }, parent: Instance?): any
@@ -80,7 +87,7 @@ function TrainingUi.init()
 	}, gui)
 	new("UIStroke", { Color = Style.ui.dark, Thickness = 2 }, title)
 
-	-- The AFK farm bar: it fills towards the next whole TP, so the passive gain is visible.
+	-- The conditioning bar: it fills towards the next whole TP, so the passive gain is visible.
 	local afkBar = new("Frame", {
 		Name = "AfkBar",
 		AnchorPoint = Vector2.new(0.5, 1),
@@ -251,14 +258,18 @@ function TrainingUi.init()
 		end
 	end)
 
-	-- On the AFK field each whole TP that arrives shows as a temporary "+N TP".
+	-- At a conditioning station each whole TP that arrives shows as a temporary "+N TP".
 	local lastTp = 0
 	player:GetAttributeChangedSignal("tp"):Connect(function()
 		local tp = player:GetAttribute("tp")
 		if type(tp) ~= "number" then
 			return
 		end
-		if player:GetAttribute("trainingField") == "afk" and tp > lastTp and lastTp > 0 then
+		if
+			player:GetAttribute("trainingField") == "conditioning"
+			and tp > lastTp
+			and lastTp > 0
+		then
 			popFeedback(string.format("+%d TP", tp - lastTp), Style.ui.bar)
 		end
 		lastTp = tp
@@ -287,7 +298,7 @@ function TrainingUi.init()
 	RunService.RenderStepped:Connect(function()
 		local field = player:GetAttribute("trainingField")
 		local active = player:GetAttribute("training") == true
-			and (field == "afk" or field == "active")
+			and (field == "conditioning" or field == "skill")
 		gui.Enabled = active
 		if not active then
 			wasActive = false
@@ -297,11 +308,11 @@ function TrainingUi.init()
 			wasActive = true
 			streak = 0
 		end
-		local isActive = field == "active"
-		title.Text = if isActive then "ACTIVE FARM" else "AFK FARM"
+		local isActive = field == "skill"
+		title.Text = STATION_TITLES[player:GetAttribute("trainingStation")] or "TRAINING"
 		hint.Text = if isActive
 			then "Hit the green: every press gives +1 TP, a hit gives extra!"
-			else "Just stand here: 10 TP per minute. Want more? Try the active farm!"
+			else "Just keep going: 10 TP per minute. Want more? Try the keepie-uppies!"
 		afkBar.Visible = not isActive
 		bar.Visible = isActive
 		button.Visible = isActive

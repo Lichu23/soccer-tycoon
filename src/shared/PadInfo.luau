@@ -30,6 +30,14 @@ local STORE_NAMES: { [string]: string } = {
 	offline = "Offline earnings",
 }
 
+-- The stations of the Training Gym (the marker's PadId -> its name).
+local TRAINING_NAMES: { [string]: string } = {
+	trainingKeepie = "Keepie-uppies",
+	trainingDribble = "Dribble run",
+	trainingTreadmill = "Treadmill",
+	trainingLadder = "Agility ladder",
+}
+
 local PadInfo = {}
 
 -- Whether Config has a Store upgrade with this id (a pad id is just a string).
@@ -173,8 +181,8 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 			icon = if isCash then "cash" else "tp",
 		}
 	elseif kind == "training" then
-		local active = padId == "trainingActive"
-		local title = if active then "Active farm" else "AFK farm"
+		local skill = padId == "trainingKeepie" or padId == "trainingDribble"
+		local title = TRAINING_NAMES[padId] or "Training"
 		if not Progress.trainingUnlocked(data) then
 			return {
 				title = title,
@@ -183,7 +191,7 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 				state = "locked",
 			}
 		end
-		local note = if active then "Hit the green for TP" else "Stand here: 10 TP per minute"
+		local note = if skill then "Tap in time for TP" else "Stand here: 10 TP per minute"
 		return { title = title, price = "TP", note = note, state = "info" }
 	elseif kind == "penalty" then
 		-- Whether kicks are left today is the server's call (the client shows the wait time).
