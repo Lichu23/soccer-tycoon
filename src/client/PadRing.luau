@@ -13,7 +13,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local BackPrint = require(ReplicatedStorage.Shared.BackPrint)
 local DailyInfo = require(ReplicatedStorage.Shared.DailyInfo)
 local PadInfo = require(ReplicatedStorage.Shared.PadInfo)
 local State = require(script.Parent.State)
@@ -206,13 +205,18 @@ local function refresh(entry: Entry)
 	end
 	-- A player is named as on the back of the shirt ("ALEXANDER-ARNOLD"), not by the full name.
 	local isPlayer = entry.kind == "player" or entry.kind == "legend"
-	entry.title.Text = if isPlayer then BackPrint.surname(info.title) else string.upper(info.title)
+	-- The name of a player is on the plaque of his capsule, so the pad shows only the price.
+	entry.title.Text = string.upper(info.title)
+	entry.title.Visible = not isPlayer
 	entry.price.Text = info.price
 	entry.price.Visible = info.price ~= ""
 	entry.price.TextColor3 = if info.state == "cannotAfford" then BAD_COLOR else PRICE_COLOR
+	-- Why a pad cannot be used is said by PadHint when the player steps on it, not under every pad.
+	local blocked = entry.kind ~= "penalty"
+		and (info.state == "cannotAfford" or info.state == "locked")
 	entry.note.Text = info.note
-	entry.note.Visible = info.note ~= ""
-	entry.note.TextColor3 = if info.state == "cannotAfford" then BAD_COLOR else NOTE_COLOR
+	entry.note.Visible = info.note ~= "" and not blocked
+	entry.note.TextColor3 = NOTE_COLOR
 	for index, line in entry.lines do
 		local goal = if info.lines then info.lines[index] else nil
 		line.Visible = goal ~= nil

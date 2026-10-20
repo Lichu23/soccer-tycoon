@@ -10,6 +10,7 @@ local ServerStorage = game:GetService("ServerStorage")
 local Workspace = game:GetService("Workspace")
 
 local Analytics = require(script.Parent.Analytics)
+local BackPrint = require(ReplicatedStorage.Shared.BackPrint)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local Mannequin = require(ReplicatedStorage.Shared.Mannequin)
@@ -32,6 +33,49 @@ local slotOwner: { [number]: Player? } = {}
 local started = false
 
 local Plots = {}
+
+local PLAQUE_SIZE = Vector3.new(4.2, 1.1, 0.15)
+local PLAQUE_COLOR = Color3.fromRGB(20, 24, 35)
+
+-- A small sign standing on the front edge of the pedestal, facing the way the player faces, with the
+-- name as printed on his shirt. `facing` points from the figure into the building.
+local function buildPlaque(pedestal: BasePart, facing: Vector3, name: string): Part
+	local plaque = Instance.new("Part")
+	plaque.Name = "Plaque"
+	plaque.Anchored = true
+	plaque.CanCollide = false
+	plaque.CanQuery = false
+	plaque.CanTouch = false
+	plaque.CastShadow = false
+	plaque.Material = Enum.Material.SmoothPlastic
+	plaque.Color = PLAQUE_COLOR
+	plaque.Size = PLAQUE_SIZE
+	-- The pedestal is a round slab: the shortest side is its thickness, the longest its width.
+	local size = pedestal.Size
+	local thickness = math.min(size.X, size.Y, size.Z)
+	local radius = math.max(size.X, size.Y, size.Z) / 2
+	local top = pedestal.Position + Vector3.new(0, thickness / 2 + PLAQUE_SIZE.Y / 2, 0)
+	local spot = top + facing * (radius - 0.8)
+	-- Leaning back a little, like a plaque in a museum, so it reads from standing height.
+	plaque.CFrame = CFrame.lookAt(spot, spot + facing) * CFrame.Angles(math.rad(20), 0, 0)
+
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 60
+	gui.LightInfluence = 0
+	gui.Parent = plaque
+	local text = Instance.new("TextLabel")
+	text.BackgroundTransparency = 1
+	text.Size = UDim2.fromScale(0.92, 0.7)
+	text.Position = UDim2.fromScale(0.04, 0.15)
+	text.Text = BackPrint.surname(name)
+	text.TextColor3 = Style.ui.text
+	text.Font = Style.font
+	text.TextScaled = true
+	text.Parent = gui
+	return plaque
+end
 
 local function slotAnchor(index: number): BasePart
 	local map = Workspace:FindFirstChild("Map")
@@ -306,6 +350,12 @@ function Plots.refresh(session: Session.Session)
 					model:PivotTo(CFrame.lookAt(stand.Position, ahead))
 				else
 					model:PivotTo(stand)
+				end
+				if gate and bounds then
+					local inside =
+						inwardDirection(gate.CFrame:PointToObjectSpace(stand.Position), bounds)
+					local facing = gate.CFrame:VectorToWorldSpace(inside).Unit
+					buildPlaque(pedestal, facing, def.name).Parent = model
 				end
 				model.Parent = capsule
 			end
