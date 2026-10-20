@@ -371,6 +371,7 @@ Config.Training = {
 	dribbleGraceSeconds = 0.2,
 	dribbleLeadSeconds = 2,
 	dribbleRoundSeconds = 30,
+	dribbleIntroSeconds = 4, -- extra time before the first round after stepping on the mat, to read how to play
 	dribbleRoundPauseSeconds = 3,
 	dribbleMedals = { bronze = 14, silver = 22, gold = 29 },
 }

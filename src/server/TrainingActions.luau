@@ -191,7 +191,7 @@ local function step(session: Session.Session, dt: number)
 	if at and at.station == "dribble" then
 		local run = runs[player]
 		if run == nil then
-			run = Dribble.new(now)
+			run = Dribble.new(now + Config.Training.dribbleIntroSeconds)
 			runs[player] = run
 		end
 		handleRunEvents(session, Dribble.normalize(run, now))
