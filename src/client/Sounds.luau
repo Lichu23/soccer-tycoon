@@ -27,7 +27,7 @@ Sounds.volumes = {
 	goal = 0.6,
 	net = 0.7,
 	post = 0.7,
-	save = 0.6,
+	save = 7, -- the file is very quiet (about 15 on the loudness scale, the others 100 to 340), so it is boosted
 	ambience = 0.35,
 } :: { [string]: number }
 
@@ -35,6 +35,10 @@ Sounds.volumes = {
 Sounds.maxSeconds = {
 	goal = 2,
 	save = 2,
+} :: { [string]: number }
+-- Where in the file a sound starts, in seconds (the save sound has a quiet first second).
+Sounds.startAt = {
+	save = 1,
 } :: { [string]: number }
 local FADE_SECONDS = 0.6 -- the fade at the end of a sound that is cut short
 local AMBIENCE_FADE_IN = 0.8
@@ -109,6 +113,10 @@ function Sounds.play(name: string)
 	sound.Ended:Connect(function()
 		sound:Destroy()
 	end)
+	local startAt = Sounds.startAt[name]
+	if startAt then
+		sound.TimePosition = startAt
+	end
 	sound:Play()
 	local limit = Sounds.maxSeconds[name]
 	if limit then
