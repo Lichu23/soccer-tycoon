@@ -4,7 +4,8 @@
 -- caption or marker above the pad (the pads and the goal row already say what to do). It only guides
 -- the first steps: to a free plot, then to the first player's pad.
 -- After the first purchase it disappears. Then it shows once, for a short time, towards the Store
--- pad, only so the player knows the Store exists, and never again. Later goals are shown by the
+-- pad, only so the player knows the Store exists, and never again. When the first match ends the
+-- training ground opens, and the trail shows once towards its AFK farm. Later goals are shown by the
 -- goal row alone.
 
 local CollectionService = game:GetService("CollectionService")
@@ -14,6 +15,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Goals = require(ReplicatedStorage.Shared.Goals)
+local Progress = require(ReplicatedStorage.Shared.Progress)
 local Roster = require(ReplicatedStorage.Shared.Roster)
 local State = require(script.Parent.State)
 
@@ -23,6 +25,8 @@ local ARRIVED_DISTANCE = 7
 local UPDATE_SECONDS = 0.25
 local STORE_HINT_SECONDS = 20 -- how long the Store hint can show at most
 local STORE_HINT_NEAR = 14 -- the hint ends when the player gets this close to the Store pad
+local TRAINING_HINT_SECONDS = 40 -- the training ground is further away than the Store
+local TRAINING_HINT_NEAR = 14
 local GOLD = Color3.fromRGB(255, 205, 20)
 local CHEVRONS = 12 -- the most chevrons on the ground at once
 local SPACING = 5 -- studs between two chevrons
@@ -35,6 +39,10 @@ local guide: { kind: string, endsAt: number }? = nil -- asked for by a HUD icon
 local lastOwned: number? = nil -- players owned at the last state change (nil before the first)
 local storeHintStartedAt: number? = nil
 local storeHintDone = false
+local trainingHintPending = false -- the first match ended during this session
+local trainingHintStartedAt: number? = nil
+local trainingHintDone = false
+local lastMatchPlayed: boolean? = nil -- whether the first match had been played at the last change
 
 local Arrow = {}
 
@@ -93,6 +101,20 @@ local function target(root: BasePart): BasePart?
 		end
 		return store
 	end
+
+	-- Then the training ground, once: it opened with the first match.
+	if trainingHintPending and not trainingHintDone then
+		local spot = nearestPad(root, "training", "trainingAfk")
+		local began = trainingHintStartedAt or os.clock()
+		trainingHintStartedAt = began
+		local expired = os.clock() - began > TRAINING_HINT_SECONDS
+		local near = spot ~= nil and (spot.Position - root.Position).Magnitude < TRAINING_HINT_NEAR
+		if expired or near or spot == nil then
+			trainingHintDone = true
+			return nil
+		end
+		return spot
+	end
 	return nil
 end
 
@@ -113,6 +135,13 @@ function Arrow.init()
 			storeHintStartedAt = os.clock()
 		end
 		lastOwned = owned
+		-- The training hint starts when the first match ends during this session. A returning
+		-- player who has played before never sees it.
+		local played = Progress.firstMatchPlayed(State.data)
+		if lastMatchPlayed == false and played and not trainingHintDone then
+			trainingHintPending = true
+		end
+		lastMatchPlayed = played
 	end)
 
 	-- The chevrons: flat squares lying on the ground, each with two rounded bars that meet in a point

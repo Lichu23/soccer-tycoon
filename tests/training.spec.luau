@@ -249,6 +249,17 @@ T.test("training and the level-up pads open when floor 1 is complete", function(
 	T.eq(Progress.trainingUnlocked(data), true)
 end)
 
+T.test("training also opens with the very first match", function()
+	local data = ProfileSchema.newProfile()
+	Roster.add(data, "rashford")
+	T.eq(Progress.trainingUnlocked(data), false) -- a player is not enough
+	data.flags.milestones["first_match"] = 1000
+	T.eq(Progress.trainingUnlocked(data), true)
+	-- The snapshot the client gets carries only the milestone, and that is enough too.
+	local snapshot = { players = {}, flags = { milestones = { first_match = 1000 } } }
+	T.eq(Progress.trainingUnlocked(snapshot), true)
+end)
+
 T.test("level status: not owned, locked, cannot afford, ready, maxed", function()
 	local data = ProfileSchema.newProfile()
 	T.eq(Progress.levelStatus(data, "rashford"), "notOwned")

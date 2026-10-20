@@ -51,7 +51,10 @@ local function finishMatch(session: Session.Session)
 	runtime.matchesPlayed += 1
 	runtime.matchesInRow += 1
 	Sync.scalars(session)
-	Analytics.milestone(session, "first_match")
+	if Analytics.milestone(session, "first_match") then
+		-- The first match opens the training ground: the pads and the guide need the new flag.
+		Sync.all(session)
+	end
 
 	local plot = runtime.plot
 	if plot then
