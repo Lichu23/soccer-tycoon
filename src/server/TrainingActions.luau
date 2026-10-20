@@ -11,6 +11,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local Config = require(ReplicatedStorage.Shared.Config)
 local Dribble = require(ReplicatedStorage.Shared.Dribble)
 local Economy = require(script.Parent.Economy)
 local Juggle = require(ReplicatedStorage.Shared.Juggle)
@@ -178,7 +179,7 @@ local function step(session: Session.Session, dt: number)
 	if at and at.station == "keepie" then
 		local round = games[player]
 		if round == nil then
-			round = Juggle.new(now)
+			round = Juggle.new(now + Config.Training.juggleIntroSeconds)
 			games[player] = round
 		end
 		handleEvents(session, Juggle.normalize(round, now))

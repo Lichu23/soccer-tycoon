@@ -351,6 +351,7 @@ Config.Training = {
 	juggleCooldownSeconds = 0.8,
 	juggleRoundSeconds = 30,
 	juggleLeadSeconds = 2, -- "get ready": the first ball of a round leaves the foot this long after the round starts
+	juggleIntroSeconds = 4, -- extra time before the first round after stepping on the mat, to read how to play
 	juggleRoundPauseSeconds = 3, -- the result of a round shows this long before the next one starts
 	juggleBaseTp = 0.35,
 	juggleComboTp = 0.05,
