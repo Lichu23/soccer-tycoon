@@ -2,9 +2,10 @@
 -- The keepie-uppies screen (docs/PLAN.md, Step 4), in the look of the penalty screen (the shared
 -- Panel): your best player keeps a ball up, and you tap when the ball comes back to his foot. A ring
 -- closes in on the TAP button on the beat; a tap close to it is a clean touch, the combo grows and each
--- touch pays a little TP, and his foot kicks at the same moment. Rounds last 30 seconds and end in a
--- Bronze, Silver or Gold medal, with your best round kept. Before the first round a short text says
--- how to play. The ball is drawn from the server's state (the same Juggle functions the server judges
+-- touch pays a little TP, and his foot kicks at the same moment. It is an endless streak: the ball
+-- gets a little quicker with every touch, and a tap in the air or a dropped ball ends it. The medals
+-- (Bronze, Silver, Gold) are streak milestones and your longest streak is kept. Before the first
+-- streak a short text says how to play. The ball is drawn from the server's state (the same Juggle functions the server judges
 -- with); the server pays and keeps the record. The screen shows while the player stands on the mat.
 
 local GuiService = game:GetService("GuiService")
@@ -32,7 +33,7 @@ local PANEL_TOP = 10 -- the panel has no title, so the content starts near its t
 local CARD_CHROME = 4 + 20 + 8 -- the card padding and the gap above the hint
 local MIN_SCENE_HEIGHT = 120
 local CHIPS_HEIGHT = 44
-local CHIPS_WIDTH = 240
+local CHIPS_WIDTH = 170
 local HINT_HEIGHT = 18
 local RING_START = 2.1 -- the ring starts this many times the size of the button
 local BALL_RADIUS = 0.55
@@ -42,7 +43,7 @@ local KICK_SECONDS = 0.28
 local KICK_ANGLE = 55 -- degrees the kicking leg swings forward
 local FEEDBACK_HOLD_SECONDS = 0.55
 local FEEDBACK_FADE_SECONDS = 0.3
-local GO_SECONDS = 0.7 -- how long "GO!" shows after the round starts
+local GO_SECONDS = 0.7 -- how long "GO!" shows after a streak starts
 
 local MEDAL_NAMES = { [0] = "No medal", [1] = "BRONZE", [2] = "SILVER", [3] = "GOLD" }
 local MEDAL_COLORS = {
@@ -56,8 +57,8 @@ local WHITE = Color3.fromRGB(255, 255, 255)
 
 local HOW_TO_PLAY = {
 	"Tap TAP when the ring closes.",
-	"Keep the ball up until time runs out.",
-	"More touches in a row = more TP.",
+	"Keep the ball up as long as you can.",
+	"It gets faster. Longer streak = more TP.",
 }
 
 local KeepieUi = {}
@@ -301,7 +302,7 @@ function KeepieUi.init()
 		end)
 	end
 
-	-- How to play, before the first round -------------------------------------------------------------
+	-- How to play, before the first streak -------------------------------------------------------------
 	local intro = new("Frame", {
 		Name = "HowToPlay",
 		Size = UDim2.fromScale(1, 1),
@@ -348,7 +349,7 @@ function KeepieUi.init()
 	}, sceneBox)
 	fitted(bigText, 80)
 
-	-- The result of a round, over the scene -----------------------------------------------------------
+	-- The result of a streak, over the scene -----------------------------------------------------------
 	local resultCard = new("Frame", {
 		Name = "Result",
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -386,7 +387,7 @@ function KeepieUi.init()
 	}, resultCard)
 	fitted(bestLine, 18)
 
-	-- The numbers: time left, touches in this round and the best round -------------------------------
+	-- The numbers: the streak running now and the longest one ---------------------------------------
 	local chipRow = new("Frame", {
 		Name = "Chips",
 		AnchorPoint = Vector2.new(1, 0),
@@ -406,7 +407,7 @@ function KeepieUi.init()
 		local box = new("Frame", {
 			Name = name,
 			LayoutOrder = order,
-			Size = UDim2.new(1 / 3, -4, 1, 0),
+			Size = UDim2.new(1 / 2, -4, 1, 0),
 			BackgroundTransparency = 1,
 			ZIndex = 9,
 		}, chipRow)
@@ -428,9 +429,8 @@ function KeepieUi.init()
 			ZIndex = 9,
 		}, box)
 	end
-	local timeValue = chip(1, "Time")
-	local touchesValue = chip(2, "Touches")
-	local bestValue = chip(3, "Best")
+	local streakValue = chip(1, "Streak")
+	local bestValue = chip(2, "Best")
 
 	-- The TAP button with the closing ring ---------------------------------------------------------------
 	local buttonHolder = new("Frame", {
@@ -527,7 +527,7 @@ function KeepieUi.init()
 	local round: Juggle.State = Juggle.new(0)
 	local function readServerState()
 		local phase = player:GetAttribute("juggleState")
-		if phase == "running" or phase == "cooldown" or phase == "finished" then
+		if phase == "running" or phase == "over" then
 			round.phase = phase
 		end
 		local function number(name: string): number
@@ -535,22 +535,18 @@ function KeepieUi.init()
 			return if type(value) == "number" then value else 0
 		end
 		round.startedAt = number("juggleStart")
-		round.cooldownUntil = number("juggleCooldownUntil")
 		round.combo = number("juggleCombo")
-		round.hits = number("juggleHits")
 		round.lastIndex = number("juggleLast")
-		round.roundEndsAt = number("juggleRoundEnds")
+		round.overAt = number("juggleOverAt")
 	end
 	readServerState()
 	for _, name in
 		{
 			"juggleState",
 			"juggleStart",
-			"juggleCooldownUntil",
 			"juggleCombo",
-			"juggleHits",
 			"juggleLast",
-			"juggleRoundEnds",
+			"juggleOverAt",
 		}
 	do
 		player:GetAttributeChangedSignal(name):Connect(readServerState)
@@ -576,7 +572,6 @@ function KeepieUi.init()
 	end)
 
 	-- What the server tells us -----------------------------------------------------------------------
-	local lastCombo = 0
 	Net.on("Notice", function(info: any)
 		if type(info) ~= "table" then
 			return
@@ -599,21 +594,18 @@ function KeepieUi.init()
 			elseif info.outcome == "miss" then
 				popFeedback("TOO EARLY", BAD)
 			end
-			lastCombo = combo
-		elseif info.kind == "juggleDrop" then
-			if lastCombo >= 3 then
-				popFeedback("DROPPED", BAD)
-			end
-			lastCombo = 0
-		elseif info.kind == "juggleRound" then
+		elseif info.kind == "juggleOver" then
 			local medal = if type(info.medal) == "number" then info.medal else 0
-			local hits = if type(info.hits) == "number" then info.hits else 0
-			local best = if type(info.bestCombo) == "number" then info.bestCombo else 0
+			local streak = if type(info.streak) == "number" then info.streak else 0
+			if streak <= 0 then
+				popFeedback("DROPPED", BAD) -- no card for a streak that never started
+				return
+			end
 			medalText.Text = MEDAL_NAMES[medal] or ""
 			medalText.TextColor3 = MEDAL_COLORS[medal] or MEDAL_COLORS[0]
 			resultStroke.Color = MEDAL_COLORS[medal] or MEDAL_COLORS[0]
-			resultLine.Text = string.format("%d touches  ·  best combo %d", hits, best)
-			local record = player:GetAttribute("keepieBestHits")
+			resultLine.Text = string.format("Streak: %d touches", streak)
+			local record = player:GetAttribute("keepieBestStreak")
 			bestLine.Text = if info.newBest == true
 				then "NEW PERSONAL BEST!"
 				else string.format(
@@ -623,12 +615,10 @@ function KeepieUi.init()
 			bestLine.TextColor3 = if info.newBest == true then Style.ui.gold else Style.ui.idle
 			resultCard.Visible = true
 			pulse(resultScale, 0.6)
-			lastCombo = 0
 		end
 	end)
 
 	-- Every frame ------------------------------------------------------------------------------------
-	local bounce = Config.Training.juggleBounceSeconds
 	local window = Config.Training.juggleWindow
 	local lead = Config.Training.juggleLeadSeconds
 	RunService.RenderStepped:Connect(function()
@@ -661,16 +651,16 @@ function KeepieUi.init()
 		-- The ring closes in on the button on the next beat.
 		local ringAlpha = 0
 		if running then
-			local index = math.max(math.ceil((now - round.startedAt - window) / bounce), 1)
+			local index = Juggle.beatAt(round, now - window)
 			local untilBeat = Juggle.beatTime(round, index) - now
-			ringAlpha = math.clamp(1 - untilBeat / bounce, 0, 1)
+			ringAlpha = math.clamp(1 - untilBeat / Juggle.period(index), 0, 1)
 		end
 		local size = buttonSize * (RING_START + (1 - RING_START) * ringAlpha)
 		ring.Size = UDim2.fromOffset(size, size)
 		ringStroke.Transparency = if running then 0.45 - 0.45 * ringAlpha else 1
 
 		-- The numbers and the texts over the scene.
-		local finished = round.phase == "finished"
+		local finished = round.phase == "over"
 		resultCard.Visible = finished and resultCard.Visible
 		local untilStart = round.startedAt - now
 		local leadIn = running and untilStart > 0
@@ -681,31 +671,22 @@ function KeepieUi.init()
 		bigText.Visible = (leadIn and not showIntro) or showGo
 		bigText.Text = if leadIn then tostring(math.ceil(untilStart)) else "GO!"
 
-		local timeLeft = if leadIn
-			then Config.Training.juggleRoundSeconds
-			else math.max(round.roundEndsAt - now, 0)
-		timeValue.Text = if finished then "0" else string.format("%d s", math.ceil(timeLeft))
-		timeValue.TextColor3 = if not finished
-				and not leadIn
-				and timeLeft <= 5
-			then BAD
-			else Style.ui.text
-		touchesValue.Text = tostring(round.hits)
-		local record = player:GetAttribute("keepieBestHits")
+		streakValue.Text = tostring(round.combo)
+		local record = player:GetAttribute("keepieBestStreak")
 		bestValue.Text = tostring(math.max(if type(record) == "number" then record else 0, 0))
-		bestValue.TextColor3 = if round.hits > 0
+		bestValue.TextColor3 = if round.combo > 0
 				and type(record) == "number"
-				and round.hits >= record
+				and round.combo >= record
 			then Style.ui.gold
 			else Style.ui.text
 		comboText.Text = if round.combo >= 2 then "x" .. round.combo else ""
 		comboText.TextColor3 = if round.combo >= Config.Training.juggleComboMax
 			then Style.ui.gold
 			else WHITE
-		local progress = math.clamp(round.hits / medals.gold, 0, 1)
+		local progress = math.clamp(round.combo / medals.gold, 0, 1)
 		medalFill.Size = UDim2.fromScale(progress, 1)
-		medalFill.BackgroundColor3 = MEDAL_COLORS[math.max(Juggle.medal(round.hits), 1)]
-		-- The button greys while the ball is down or the round is over.
+		medalFill.BackgroundColor3 = MEDAL_COLORS[math.max(Juggle.medal(round.combo), 1)]
+		-- The button greys before the first ball and while the result shows.
 		local waiting = round.phase ~= "running" or leadIn
 		button.BackgroundColor3 = if waiting then Color3.fromRGB(95, 100, 115) else Style.ui.good
 	end)

@@ -33,7 +33,7 @@ local STORE_NAMES: { [string]: string } = {
 -- The stations of the Training Gym (the marker's PadId -> its name).
 local TRAINING_NAMES: { [string]: string } = {
 	trainingKeepie = "Keepie-uppies",
-	trainingDribble = "Dribble run",
+	trainingFreekick = "Free kicks",
 	trainingTreadmill = "Treadmill",
 	trainingLadder = "Agility ladder",
 }
@@ -181,7 +181,7 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 			icon = if isCash then "cash" else "tp",
 		}
 	elseif kind == "training" then
-		local skill = padId == "trainingKeepie" or padId == "trainingDribble"
+		local skill = padId == "trainingKeepie" or padId == "trainingFreekick"
 		local title = TRAINING_NAMES[padId] or "Training"
 		if not Progress.trainingUnlocked(data) then
 			return {
@@ -191,7 +191,10 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 				state = "locked",
 			}
 		end
-		local note = if skill then "Tap in time for TP" else "Stand here: 10 TP per minute"
+		local note = if padId == "trainingFreekick"
+			then "Score in a row for TP"
+			elseif skill then "Tap in time for TP"
+			else "Stand here: 10 TP per minute"
 		return { title = title, price = "", note = note, state = "info" }
 	elseif kind == "penalty" then
 		-- Whether kicks are left today is the server's call (the client shows the wait time).

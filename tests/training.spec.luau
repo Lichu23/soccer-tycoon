@@ -9,7 +9,7 @@ local Progress = T.load("shared/Progress")
 local Roster = T.load("shared/Roster")
 local Training = T.load("server/Training")
 
-T.suite("training: TP, stamina, keepie-uppies and level costs")
+T.suite("training: TP, stamina, keepie-uppies, free kicks and level costs")
 
 local MAX = Config.Training.staminaSeconds
 
@@ -98,99 +98,98 @@ end)
 
 local Juggle = T.load("shared/Juggle")
 
-local BOUNCE = Config.Training.juggleBounceSeconds
 local WINDOW = Config.Training.juggleWindow
 
--- A round whose first ball leaves the foot at 100 (the ball is at the foot at 100 + n x BOUNCE): it was
--- created `juggleLeadSeconds` earlier, for the "get ready" time.
-local function round()
+-- A streak whose first ball leaves the foot at 100: it was created `juggleLeadSeconds` earlier, for
+-- the "get ready" time.
+local function streak()
 	return Juggle.new(100 - Config.Training.juggleLeadSeconds)
 end
 
-local function beat(n)
-	return 100 + n * BOUNCE
-end
-
-T.test("a tap on the beat keeps the ball up and grows the combo", function()
-	local state = round()
-	T.eq(Juggle.press(state, beat(1)), "hit")
+T.test("a tap on the beat keeps the ball up and grows the streak", function()
+	local state = streak()
+	T.eq(Juggle.press(state, Juggle.beatTime(state, 1)), "hit")
 	T.eq(state.combo, 1)
-	T.eq(Juggle.press(state, beat(2) + WINDOW * 0.9), "hit")
+	T.eq(Juggle.press(state, Juggle.beatTime(state, 2) + WINDOW * 0.9), "hit")
 	T.eq(state.combo, 2)
-	T.eq(state.hits, 2)
-	T.eq(state.bestCombo, 2)
-end)
-
-T.test("the edges of the window count, just outside it does not", function()
-	T.eq(Juggle.press(round(), beat(1) - WINDOW + 1e-6), "hit")
-	T.eq(Juggle.press(round(), beat(1) + WINDOW - 1e-6), "hit")
-	T.eq(Juggle.press(round(), beat(1) - WINDOW - 0.02), "miss")
-end)
-
-T.test("a tap while the ball is in the air breaks the combo and drops the ball", function()
-	local state = round()
-	Juggle.press(state, beat(1))
-	Juggle.press(state, beat(2))
-	T.eq(state.combo, 2)
-	T.eq(Juggle.press(state, beat(2) + BOUNCE * 0.5), "miss")
-	T.eq(state.combo, 0)
-	T.eq(state.phase, "cooldown")
-	T.eq(Juggle.press(state, beat(2) + BOUNCE * 0.5 + 0.1), "ignored") -- nothing while the ball is down
-	T.eq(state.hits, 2) -- the touches before it still count
-end)
-
-T.test("a second tap on the same beat is ignored, not a miss", function()
-	local state = round()
-	T.eq(Juggle.press(state, beat(1)), "hit")
-	T.eq(Juggle.press(state, beat(1) + 0.03), "ignored")
-	T.eq(state.combo, 1)
 	T.eq(state.phase, "running")
 end)
 
-T.test("a ball that is not touched drops, and the ball starts again after the cooldown", function()
-	local state = round()
-	Juggle.press(state, beat(1))
-	local events = Juggle.normalize(state, beat(2) + WINDOW + 0.01)
-	T.eq(#events, 1)
-	T.eq(events[1].kind, "drop")
-	T.eq(state.combo, 0)
-	T.eq(state.phase, "cooldown")
-	local back = beat(2) + WINDOW + Config.Training.juggleCooldownSeconds
-	Juggle.normalize(state, back + 0.01)
+T.test("the edges of the window count, a tap just before it ends the streak", function()
+	local first = streak()
+	T.eq(Juggle.press(first, Juggle.beatTime(first, 1) - WINDOW + 1e-6), "hit")
+	local late = streak()
+	T.eq(Juggle.press(late, Juggle.beatTime(late, 1) + WINDOW - 1e-6), "hit")
+	local early = streak()
+	local outcome, event = Juggle.press(early, Juggle.beatTime(early, 1) - WINDOW - 0.02)
+	T.eq(outcome, "miss")
+	T.eq(event.kind, "over")
+	T.eq(early.phase, "over")
+end)
+
+T.test("a tap while the ball is in the air ends the streak with its length", function()
+	local state = streak()
+	Juggle.press(state, Juggle.beatTime(state, 1))
+	Juggle.press(state, Juggle.beatTime(state, 2))
+	local outcome, event = Juggle.press(state, Juggle.beatTime(state, 2) + Juggle.period(3) * 0.5)
+	T.eq(outcome, "miss")
+	T.eq(event.streak, 2)
+	T.eq(event.medal, 0)
+	T.eq(Juggle.press(state, state.overAt + 0.1), "ignored") -- nothing while the result shows
+end)
+
+T.test("a second tap on the same beat, or one in the get-ready time, is ignored", function()
+	local state = streak()
+	T.eq(Juggle.press(state, 99.5), "ignored")
+	T.eq(Juggle.press(state, Juggle.beatTime(state, 1)), "hit")
+	T.eq(Juggle.press(state, Juggle.beatTime(state, 1) + 0.03), "ignored")
+	T.eq(state.combo, 1)
 	T.eq(state.phase, "running")
-	T.near(state.startedAt, back, 1e-9)
-	T.eq(state.lastIndex, 0)
-	T.eq(Juggle.press(state, back + BOUNCE), "hit") -- the beat counts from the new start
 end)
 
 T.test(
-	"the round ends after its time with a medal, and the next one starts after the pause",
+	"a ball that is not touched ends the streak, and a new one starts after the result",
 	function()
-		local state = round()
-		for n = 1, 25 do
-			T.eq(Juggle.press(state, beat(n)), "hit")
-		end
-		local events = Juggle.normalize(state, 100 + Config.Training.juggleRoundSeconds + 0.01)
-		-- The player stopped tapping after 25 touches: the ball dropped (more than once) before the end.
-		local last = events[#events]
-		T.eq(events[1].kind, "drop")
-		T.eq(last.kind, "round")
-		T.eq(last.hits, 25)
-		T.eq(last.bestCombo, 25)
-		T.eq(last.medal, 2) -- silver from 22 touches
-		T.eq(state.phase, "finished")
-		T.eq(Juggle.press(state, 100 + Config.Training.juggleRoundSeconds + 1), "ignored")
-		local nextStart = 100
-			+ Config.Training.juggleRoundSeconds
-			+ Config.Training.juggleRoundPauseSeconds
+		local state = streak()
+		Juggle.press(state, Juggle.beatTime(state, 1))
+		local dropAt = Juggle.beatTime(state, 2) + WINDOW
+		local events = Juggle.normalize(state, dropAt + 0.01)
+		T.eq(#events, 1)
+		T.eq(events[1].kind, "over")
+		T.eq(events[1].streak, 1)
+		T.eq(state.phase, "over")
+		T.near(state.overAt, dropAt, 1e-9)
+		local nextStart = dropAt
+			+ Config.Training.juggleOverSeconds
 			+ Config.Training.juggleLeadSeconds
-		Juggle.normalize(state, nextStart + 0.1)
+		Juggle.normalize(state, nextStart - 0.5)
 		T.eq(state.phase, "running")
-		T.eq(state.hits, 0)
 		T.eq(state.combo, 0)
 		T.near(state.startedAt, nextStart, 1e-9)
+		T.eq(Juggle.press(state, Juggle.beatTime(state, 1)), "hit") -- the beats count from the new start
 	end
 )
+
+T.test("the beat gets quicker with every touch, down to the floor", function()
+	local training = Config.Training
+	T.near(Juggle.period(1), training.juggleBounceSeconds, 1e-9)
+	T.near(Juggle.period(2), training.juggleBounceSeconds - training.juggleBounceStep, 1e-9)
+	T.near(Juggle.period(500), training.juggleBounceMin, 1e-9)
+	local state = streak()
+	for n = 1, 150 do
+		local gap = Juggle.beatTime(state, n) - Juggle.beatTime(state, n - 1)
+		T.near(gap, Juggle.period(n), 1e-9)
+	end
+end)
+
+T.test("a perfect player keeps a long streak going and earns the gold medal", function()
+	local state = streak()
+	for n = 1, 120 do
+		T.eq(Juggle.press(state, Juggle.beatTime(state, n)), "hit")
+	end
+	T.eq(state.combo, 120)
+	T.eq(Juggle.medal(state.combo), 3)
+end)
 
 T.test("medals: none, bronze, silver, gold", function()
 	local medals = Config.Training.juggleMedals
@@ -202,38 +201,43 @@ T.test("medals: none, bronze, silver, gold", function()
 end)
 
 T.test("the ball is at the foot on the beat and highest halfway between", function()
-	local state = round()
-	T.near(Juggle.height(state, beat(1)), 0, 1e-9)
-	T.near(Juggle.height(state, 100 + BOUNCE * 0.5), 1, 1e-9)
-	T.near(Juggle.height(state, 100 + BOUNCE * 1.5), 1, 1e-9)
+	local state = streak()
+	for _, n in { 1, 2, 30, 80 } do
+		local beat = Juggle.beatTime(state, n)
+		T.near(Juggle.height(state, beat), 0, 1e-6)
+		T.eq(Juggle.beatAt(state, beat - 0.01), n)
+		T.eq(Juggle.beatAt(state, beat + 0.01), n + 1)
+		T.near(Juggle.height(state, beat - Juggle.period(n) / 2), 1, 1e-6)
+	end
+	T.eq(Juggle.height(state, 99), 0) -- resting on the foot before the first ball
 end)
 
-T.test("a long gap is caught up: drops, then rounds, without looping for ever", function()
-	local state = round()
+T.test("a long gap is caught up without looping for ever", function()
+	local state = streak()
 	local events = Juggle.normalize(state, 100 + 100000)
 	T.truthy(#events >= 1 and #events <= 64)
 end)
 
 T.test(
-	"a clean touch pays the base TP plus a little per combo step, up to the combo cap",
+	"a clean touch pays the base TP plus a little per step of the streak, up to the cap",
 	function()
 		local data, carry = fresh()
 		local training = Config.Training
 		T.near(
-			Training.gamePay(data, carry, 1, 0),
+			Training.gamePay(data, carry, Juggle.tpFor(1), 0),
 			training.juggleBaseTp + training.juggleComboTp,
 			1e-9
 		)
 		local maxPay = training.juggleBaseTp + training.juggleComboTp * training.juggleComboMax
-		T.near(Training.gamePay(data, carry, 50, 1), maxPay, 1e-9) -- the combo stops counting at the cap
+		T.near(Training.gamePay(data, carry, Juggle.tpFor(50), 1), maxPay, 1e-9) -- the streak stops counting at the cap
 		T.eq(Training.gamePay(data, carry, 0, 2), 0)
 	end
 )
 
-T.test("the keepie-uppies pay nothing without stamina", function()
+T.test("the skill games pay nothing without stamina", function()
 	local data, carry = fresh()
 	data.staminaLeft = 0
-	T.eq(Training.gamePay(data, carry, 5, 0), 0)
+	T.eq(Training.gamePay(data, carry, Juggle.tpFor(5), 0), 0)
 end)
 
 T.test("a skill station only pays what the game pays: no idle TP there", function()
@@ -250,11 +254,14 @@ T.test("the game part of the rate is capped per minute, and room comes back late
 	local room = Config.Training.juggleTpPerMinuteMax
 	local paid = 0
 	for index = 1, 200 do
-		paid += Training.gamePay(data, carry, 10, index * 0.1) -- 200 touches in 20 seconds
+		paid += Training.gamePay(data, carry, Juggle.tpFor(10), index * 0.1) -- 200 touches in 20 seconds
 	end
 	T.near(paid, room, 1e-9)
-	T.eq(Training.gamePay(data, carry, 10, 21), 0)
-	T.truthy(Training.gamePay(data, carry, 10, 85) > 0, "a minute later the cap has room again")
+	T.eq(Training.gamePay(data, carry, Juggle.tpFor(10), 21), 0)
+	T.truthy(
+		Training.gamePay(data, carry, Juggle.tpFor(10), 85) > 0,
+		"a minute later the cap has room again"
+	)
 end)
 
 T.test("level costs: base x level x rarity factor, 600 TP for a Common to level 5", function()
@@ -360,167 +367,184 @@ T.test("before floor 1 is complete an owned player's pad still says OWNED", func
 	T.eq(PadInfo.describe("player", "rashford", data).price, "OWNED")
 end)
 
--- The dribble run ---------------------------------------------------------------------------------
+-- Free kicks -------------------------------------------------------------------------------------------
 
-local Dribble = T.load("shared/Dribble")
+local Freekick = T.load("shared/Freekick")
 
-local ROW = Config.Training.dribbleRowSeconds
-local GRACE = Config.Training.dribbleGraceSeconds
+local FK = Config.Training
+-- The wall on the right, the keeper leaning left.
+local SETUP = { wallX = 0.3, keeperX = -0.2 }
 
--- A run whose first row reaches the player at 100 + ROW (it was created `dribbleLeadSeconds` earlier).
-local function run()
-	return Dribble.new(100 - Config.Training.dribbleLeadSeconds)
+local function judge(power, contactX, contactY, aim, kick)
+	return Freekick.judge(SETUP, kick or 1, power, contactX, contactY, aim)
 end
 
-local function rowAt(n)
-	return 100 + n * ROW
-end
-
--- The rows of a run that start at 100, and the lane that is free in every one of them.
-local function freeLane(row)
-	local blocked = Dribble.blocked(100, row)
-	for lane = 1, 3 do
-		if not blocked[lane] then
-			return lane
-		end
-	end
-	return 2
-end
-
-T.test("every row leaves at least one way through, and some rows are wide", function()
-	local wide = 0
-	for index = 1, 300 do
-		local blocked = Dribble.blocked(100, index)
-		local count = 0
-		for lane = 1, 3 do
-			if blocked[lane] then
-				count += 1
-			end
-		end
-		T.truthy(count == 1 or count == 2, "row " .. index .. " blocks " .. count)
-		if count == 2 then
-			wide += 1
-		end
-	end
-	T.truthy(wide > 60 and wide < 140, "about one row in three is wide, got " .. wide)
-	-- The rows come from the start time alone.
-	local function show(blocked)
-		return tostring(blocked[1]) .. tostring(blocked[2]) .. tostring(blocked[3])
-	end
-	T.eq(show(Dribble.blocked(500, 7)), show(Dribble.blocked(500, 7)))
+T.test("a free kick: the power bar starts after the lead time and goes up and down", function()
+	local state = Freekick.new(100)
+	T.eq(state.phase, "power")
+	T.near(state.stageAt, 100 + FK.freekickLeadSeconds, 1e-9)
+	local start = state.stageAt
+	T.near(Freekick.powerAt(state, start), 0, 1e-9)
+	T.near(Freekick.powerAt(state, start + FK.freekickPowerSeconds), 1, 1e-9)
+	T.near(Freekick.powerAt(state, start + FK.freekickPowerSeconds * 1.5), 0.5, 1e-9)
+	T.near(Freekick.powerAt(state, start + FK.freekickPowerSeconds * 2), 0, 1e-9)
+	-- The aim marker starts in the middle and sweeps to each side.
+	T.near(Freekick.aimAt(state, start), 0, 1e-9)
+	T.near(Freekick.aimAt(state, start + FK.freekickAimSeconds / 2), FK.freekickAimRange, 1e-9)
+	T.near(Freekick.aimAt(state, start + FK.freekickAimSeconds * 1.5), -FK.freekickAimRange, 1e-9)
 end)
 
-T.test("standing in a free lane passes the row and grows the combo", function()
-	local state = run()
-	local lane = freeLane(1)
-	local now = rowAt(1) - 0.5
-	-- Go to the free lane in time (one or two steps from the middle).
-	while Dribble.lane(state) ~= lane do
-		T.eq(Dribble.move(state, now, if lane < Dribble.lane(state) then -1 else 1, now), true)
+T.test("a free kick goes power, contact, aim, then flies", function()
+	local state = Freekick.new(100)
+	local start = state.stageAt
+	T.eq(Freekick.tap(state, start - 0.2, start - 0.2), "ignored") -- the bar has not started yet
+	T.eq(Freekick.contact(state, start, 0, 0), false) -- not the contact step yet
+	local powerTap = start + FK.freekickPowerSeconds * 0.8
+	T.eq(Freekick.tap(state, powerTap, powerTap), "power")
+	T.near(state.power, 0.8, 1e-9)
+	T.eq(state.phase, "contact")
+	T.eq(Freekick.tap(state, powerTap + 0.1, powerTap + 0.1), "ignored") -- the ball needs a tap first
+	T.eq(Freekick.contact(state, powerTap + 0.5, 0.72, 0.96), true) -- outside the ball: pulled onto its edge
+	T.near(state.contactX, 0.6, 1e-9)
+	T.near(state.contactY, 0.8, 1e-9)
+	T.eq(state.phase, "aim")
+	local aimTap = powerTap + 1
+	T.eq(Freekick.tap(state, aimTap, aimTap), "kick")
+	T.eq(state.phase, "flight")
+	T.truthy(state.outcome ~= "")
+end)
+
+T.test("a free kick tap stamped in the past counts only inside the grace time", function()
+	local state = Freekick.new(100)
+	local start = state.stageAt
+	local now = start + 0.7
+	Freekick.tap(state, now, now - 5) -- far in the past: clamped to the grace window
+	T.near(state.power, Freekick.powerAt({ stageAt = start }, now - FK.freekickGraceSeconds), 1e-9)
+	local other = Freekick.new(100)
+	Freekick.tap(other, now, now + 5) -- in the future: clamped to now
+	T.near(other.power, Freekick.powerAt({ stageAt = start }, now), 1e-9)
+	local bad = Freekick.new(100)
+	T.eq(Freekick.tap(bad, now, 0 / 0), "power") -- a NaN stamp counts as now
+	T.near(bad.power, Freekick.powerAt({ stageAt = start }, now), 1e-9)
+end)
+
+T.test("a NaN contact point is refused", function()
+	local state = Freekick.new(100)
+	Freekick.tap(state, state.stageAt + 0.5, state.stageAt + 0.5)
+	T.eq(Freekick.contact(state, state.stageAt + 0.6, 0 / 0, 0), false)
+	T.eq(state.phase, "contact")
+end)
+
+T.test("a shot through the wall at the middle of the ball is blocked", function()
+	T.eq(judge(0.75, 0, 0, 0.85), "wall")
+end)
+
+T.test(
+	"a hit below the middle lifts the ball over the wall, too low sends it over the bar",
+	function()
+		T.eq(judge(0.75, 0, -0.3, 0.85), "goal")
+		T.eq(judge(0.75, 0, -1, 0.85), "over")
+		T.eq(judge(1, 0, -0.6, 0.85), "over") -- full power on top of it
 	end
-	local events = Dribble.normalize(state, rowAt(1) + GRACE + 0.01)
+)
+
+T.test("a hit on the side of the ball curls it round the wall", function()
+	T.eq(judge(0.75, 0.8, 0, 0.9), "goal")
+end)
+
+T.test("a shot away from the wall beats the keeper in the corner, not near him", function()
+	T.eq(judge(0.75, 0, 0, -0.85), "goal")
+	T.eq(judge(0.75, 0, 0, -0.3), "saved")
+	T.eq(judge(0.2, 0, 0, -0.85), "saved") -- too weak: it rolls to the keeper
+end)
+
+T.test("a shot past the post is wide, one on the post misses too", function()
+	T.eq(judge(0.75, 0, 0, -1.2), "wide")
+	T.eq(judge(0.75, 0, 0, -0.98), "post")
+end)
+
+T.test("the keeper reaches further with every goal of the streak", function()
+	T.eq(judge(0.75, 0, 0, -0.7, 1), "goal")
+	T.eq(judge(0.75, 0, 0, -0.7, 11), "saved")
+end)
+
+T.test("the wall and the keeper stand on opposite sides, both sides come up", function()
+	local left, right = 0, 0
+	for kick = 1, 200 do
+		local setup = Freekick.setup(1234.5, kick)
+		T.truthy(setup.wallX * setup.keeperX < 0, "kick " .. kick)
+		T.truthy(math.abs(setup.wallX) <= 0.4 and math.abs(setup.keeperX) <= 0.27)
+		if setup.wallX < 0 then
+			left += 1
+		else
+			right += 1
+		end
+	end
+	T.truthy(left > 50 and right > 50, "left " .. left .. ", right " .. right)
+	T.eq(Freekick.setup(77, 3).wallX, Freekick.setup(77, 3).wallX)
+end)
+
+-- Plays one kick of `state` with these values (the taps land on the exact bar values asked for).
+local function kick(state, power, contactX, contactY, aim)
+	local start = state.stageAt
+	local powerTap = start + FK.freekickPowerSeconds * power
+	Freekick.tap(state, powerTap, powerTap)
+	Freekick.contact(state, powerTap + 0.3, contactX, contactY)
+	-- The aim marker is at `aim` this long after the aim step starts (going right from the middle).
+	local stage = state.stageAt
+	local toAim = (aim / FK.freekickAimRange) * FK.freekickAimSeconds / 2
+	if toAim < 0 then
+		toAim += FK.freekickAimSeconds * 2
+	end
+	Freekick.tap(state, stage + toAim, stage + toAim)
+	return state.outcome
+end
+
+T.test("a goal brings the next kick, a miss ends the streak and a new one starts", function()
+	local state = Freekick.new(100)
+	-- Shoot into the corner away from the wall every time.
+	local function openCorner()
+		local setup = Freekick.setup(state.seed, state.kick)
+		return if setup.wallX > 0 then -0.85 else 0.85
+	end
+	T.eq(kick(state, 0.75, 0, 0, openCorner()), "goal")
+	T.eq(state.streak, 1)
+	local landed = state.stageAt + FK.freekickFlightSeconds
+	Freekick.normalize(state, landed + 0.01)
+	T.eq(state.phase, "power")
+	T.eq(state.kick, 2)
+	T.near(state.stageAt, landed + FK.freekickLeadSeconds, 1e-9)
+	T.eq(kick(state, 0.75, 0, 0, openCorner()), "goal")
+	T.eq(state.streak, 2)
+	Freekick.normalize(state, state.stageAt + FK.freekickFlightSeconds + 0.01)
+	T.eq(kick(state, 0.75, 0, 0, openCorner() * 1.45), "wide")
+	local missLanded = state.stageAt + FK.freekickFlightSeconds
+	local events = Freekick.normalize(state, missLanded + 0.01)
 	T.eq(#events, 1)
-	T.eq(events[1].kind, "pass")
-	T.eq(state.passes, 1)
-	T.eq(state.combo, 1)
+	T.eq(events[1].kind, "over")
+	T.eq(events[1].streak, 2)
+	T.eq(state.phase, "over")
+	Freekick.normalize(state, missLanded + FK.freekickOverSeconds + 0.01)
+	T.eq(state.phase, "power")
+	T.eq(state.streak, 0)
+	T.eq(state.kick, 1)
+	T.near(state.seed, missLanded + FK.freekickOverSeconds, 1e-9)
 end)
 
-T.test("a cone breaks the combo, the player stumbles and the rows during it are skipped", function()
-	local state = run()
-	-- Find a row that blocks the middle lane (where the player stands).
-	local blockedRow = 0
-	for index = 2, 40 do
-		if Dribble.blocked(state.startedAt, index)[2] then
-			blockedRow = index
-			break
-		end
-	end
-	T.truthy(blockedRow > 0)
-	state.combo = 4
-	state.lastRow = blockedRow - 1 -- the rows before were judged
-	local events = Dribble.normalize(state, rowAt(blockedRow) + GRACE + 0.01)
-	T.eq(events[#events].kind, "stumble")
-	T.eq(state.combo, 0)
-	T.eq(state.phase, "stumble")
-	-- The next row comes inside the stumble: it is skipped, not judged.
-	local passesBefore = state.passes
-	Dribble.normalize(state, rowAt(blockedRow + 1) + GRACE + 0.01)
-	T.eq(state.passes, passesBefore)
-	T.eq(state.lastRow, blockedRow + 1)
+T.test("free kick medals and pay grow with the streak", function()
+	local medals = FK.freekickMedals
+	T.eq(Freekick.medal(medals.bronze - 1), 0)
+	T.eq(Freekick.medal(medals.bronze), 1)
+	T.eq(Freekick.medal(medals.silver), 2)
+	T.eq(Freekick.medal(medals.gold), 3)
+	T.near(Freekick.tpFor(1), FK.freekickBaseTp + FK.freekickStreakTp, 1e-9)
+	T.near(Freekick.tpFor(99), FK.freekickBaseTp + FK.freekickStreakTp * FK.freekickStreakMax, 1e-9)
 end)
 
-T.test(
-	"a move stamped a little in the past still counts for the next row, a late one does not",
-	function()
-		local state = run()
-		local now = rowAt(3) + 0.05 -- row 3 just passed, still inside the grace window
-		local lane = Dribble.lane(state)
-		T.eq(Dribble.move(state, now, 1, now - 0.5), true) -- the stamp is clamped to the grace window
-		local move = state.moves[#state.moves]
-		T.near(move.at, now - GRACE, 1e-9)
-		T.eq(Dribble.laneAt(state, now - GRACE - 0.01), lane) -- rows before the window keep the old lane
-		T.eq(Dribble.laneAt(state, now), lane + 1)
-	end
-)
-
-T.test(
-	"a move cannot change the lane past the edges, nor while stumbling or after the round",
-	function()
-		local state = run()
-		T.eq(Dribble.move(state, 100, -1, 100), true) -- middle to left
-		T.eq(Dribble.move(state, 100, -1, 100), false) -- already at the left edge
-		state.phase = "finished"
-		state.finishedAt = 1e9
-		T.eq(Dribble.move(state, 101, 1, 101), false)
-	end
-)
-
-T.test("the round ends with a medal and the next round starts after the pause", function()
-	local state = run()
-	-- Play it perfectly: stand in a free lane before every row.
-	for row = 1, 33 do
-		local lane = freeLane(row)
-		while Dribble.lane(state) ~= lane do
-			Dribble.move(
-				state,
-				rowAt(row) - 0.4,
-				if lane < Dribble.lane(state) then -1 else 1,
-				rowAt(row) - 0.4
-			)
-		end
-		Dribble.normalize(state, rowAt(row) + GRACE + 0.001)
-	end
-	local events =
-		Dribble.normalize(state, 100 + Config.Training.dribbleRoundSeconds + GRACE + 0.01)
-	local last = events[#events]
-	T.eq(last.kind, "round")
-	T.eq(last.passes, state.passes)
-	T.truthy(
-		state.passes >= 29,
-		"a perfect round should pass nearly every row, got " .. state.passes
-	)
-	T.eq(last.medal, Dribble.medal(state.passes))
-	T.eq(state.phase, "finished")
-	local nextStart = 100
-		+ Config.Training.dribbleRoundSeconds
-		+ Config.Training.dribbleRoundPauseSeconds
-		+ Config.Training.dribbleLeadSeconds
-	Dribble.normalize(state, nextStart + 0.1)
-	T.eq(state.phase, "running")
-	T.eq(state.passes, 0)
-	T.near(state.startedAt, nextStart, 1e-9)
-end)
-
-T.test("dribble medals: none, bronze, silver, gold", function()
-	local medals = Config.Training.dribbleMedals
-	T.eq(Dribble.medal(medals.bronze - 1), 0)
-	T.eq(Dribble.medal(medals.bronze), 1)
-	T.eq(Dribble.medal(medals.silver), 2)
-	T.eq(Dribble.medal(medals.gold), 3)
-end)
-
-T.test("a long gap in the dribble run is caught up without looping for ever", function()
-	local state = run()
-	local events = Dribble.normalize(state, 100 + 100000)
-	T.truthy(#events >= 1 and #events <= 96)
+T.test("a long gap in the free kicks is caught up without looping for ever", function()
+	local state = Freekick.new(100)
+	state.phase = "flight"
+	state.outcome = "wall"
+	local events = Freekick.normalize(state, 100 + 100000)
+	T.truthy(#events >= 1 and #events <= 16)
 end)

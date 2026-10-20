@@ -88,7 +88,7 @@ function Training.refillAway(data: Profile, secondsAway: number)
 	)
 end
 
--- The skill games (keepie-uppies, dribble run) ------------------------------------------------------------------------------
+-- The skill games (keepie-uppies, free kicks) ------------------------------------------------------------------------------
 
 local WINDOW_SECONDS = 60
 
@@ -105,16 +105,13 @@ function Training.gameRoomLeft(carry: Carry, now: number): number
 	return math.max(Config.Training.juggleTpPerMinuteMax - paid, 0)
 end
 
--- Pays a clean touch of the keepie-uppies or a row of the dribble run at `combo` (the combo after it): the base TP plus a little for each step
--- of the combo. Only while the player is training with stamina left and under the rate cap. Returns
--- the TP paid (a fraction), which can be less than asked when the cap is reached.
-function Training.gamePay(data: Profile, carry: Carry, combo: number, now: number): number
-	if data.staminaLeft <= 0 or combo < 1 then
+-- Pays `wanted` TP for a clean touch of the keepie-uppies or a goal of the free kicks (the game's
+-- `tpFor` of the streak). Only while the player is training with stamina left and under the rate
+-- cap. Returns the TP paid (a fraction), which can be less than asked when the cap is reached.
+function Training.gamePay(data: Profile, carry: Carry, wanted: number, now: number): number
+	if data.staminaLeft <= 0 or not (wanted > 0) then
 		return 0
 	end
-	local training = Config.Training
-	local wanted = training.juggleBaseTp
-		+ training.juggleComboTp * math.min(combo, training.juggleComboMax)
 	local paid = math.min(wanted, Training.gameRoomLeft(carry, now))
 	if paid <= 0 then
 		return 0

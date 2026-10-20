@@ -9,9 +9,9 @@
 --
 --   outdoor yard (open sky)             gym hall (roof)
 --   x -110: keepie-uppies (z 80)        x -70: treadmill (z 80)
---           dribble run (z 120)                 agility ladder (z 120)
+--           free kicks (z 120)                  agility ladder (z 120)
 --
--- Each station has a 14 x 14 marker (Kind "training", PadId trainingKeepie, trainingDribble,
+-- Each station has a 14 x 14 marker (Kind "training", PadId trainingKeepie, trainingFreekick,
 -- trainingTreadmill, trainingLadder); the server reads the pad key (TrainingActions) and PadInfo names
 -- the stations.
 
@@ -28,7 +28,7 @@ for _, name in { "TrainingFloorAfk", "TrainingFloorActive", "TrainingDivider", "
 		old:Destroy()
 	end
 end
-for _, name in { "TrainingAfk", "TrainingActive", "TrainingTreadmill", "TrainingLadder", "TrainingKeepie", "TrainingDribble" } do
+for _, name in { "TrainingAfk", "TrainingActive", "TrainingTreadmill", "TrainingLadder", "TrainingKeepie", "TrainingDribble", "TrainingFreekick" } do
 	local old = markers:FindFirstChild(name)
 	if old then
 		old:Destroy()
@@ -315,17 +315,36 @@ ball.CFrame = CFrame.new(-110, TOP + 1.2, 80)
 ball.Size = Vector3.new(2, 2, 2)
 ball.CanCollide = false
 
--- Dribble run (skill, x -110, z 120): two lane lines and a few cones along the run.
-for _, z in { 116, 124 } do
-	soft(box("DribbleLine", -118, -102, TOP + 0.1, TOP + 0.18, z - 0.15, z + 0.15, COLORS.line))
-end
-for index, spot in { { -116, 112 }, { -112, 120 }, { -108, 128 }, { -104, 112 }, { -102, 120 } } do
-	soft(box("DribbleCone" .. index, spot[1] - 0.6, spot[1] + 0.6, TOP, TOP + 1.5, spot[2] - 0.6, spot[2] + 0.6, COLORS.cone))
+-- Free kicks (skill, x -110, z 120): a white spot with a ball and a dummy wall of three, lined up
+-- on the small goal at the back fence (x -128, z 100).
+local spot = box("FreekickSpot", -111, -109, TOP + 0.1, TOP + 0.14, 119, 121, COLORS.line)
+spot.Shape = Enum.PartType.Cylinder
+spot.CFrame = CFrame.new(-110, TOP + 0.12, 120) * CFrame.Angles(0, 0, math.pi / 2)
+spot.Size = Vector3.new(0.04, 1.8, 1.8)
+spot.CanCollide = false
+local kickBall = box("FreekickBall", -111, -109, TOP + 0.14, TOP + 2.14, 119, 121, COLORS.line)
+kickBall.Shape = Enum.PartType.Ball
+kickBall.CFrame = CFrame.new(-110, TOP + 1.14, 120)
+kickBall.Size = Vector3.new(2, 2, 2)
+kickBall.CanCollide = false
+do
+	local from = Vector3.new(-110, 0, 120)
+	local toGoal = (Vector3.new(-128, 0, 100) - from).Unit
+	local across = Vector3.new(-toGoal.Z, 0, toGoal.X)
+	local middle = from + toGoal * 6
+	for index = -1, 1 do
+		local at = middle + across * (index * 1.6)
+		local dummy = soft(box("FreekickDummy", -0.7, 0.7, TOP, TOP + 4.6, -0.2, 0.2, COLORS.yellow))
+		dummy.CFrame = CFrame.lookAt(Vector3.new(at.X, TOP + 2.3, at.Z), Vector3.new(from.X, TOP + 2.3, from.Z))
+		local head = soft(box("FreekickDummyHead", -0.45, 0.45, 0, 0.9, -0.45, 0.45, COLORS.yellow))
+		head.Shape = Enum.PartType.Ball
+		head.CFrame = CFrame.new(at.X, TOP + 5.1, at.Z)
+	end
 end
 
 -- The name of each station is written by the pad label (client/PadRing), so there are no boards here.
 marker("TrainingKeepie", "trainingKeepie", -110, 80)
-marker("TrainingDribble", "trainingDribble", -110, 120)
+marker("TrainingFreekick", "trainingFreekick", -110, 120)
 marker("TrainingTreadmill", "trainingTreadmill", -70, 80)
 marker("TrainingLadder", "trainingLadder", -70, 120)
 

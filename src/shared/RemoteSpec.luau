@@ -111,16 +111,24 @@ RemoteSpec.remotes = {
 		ratePerSecond = 6,
 		burst = 6,
 	},
-	-- A lane change in the dribble run: left or right, and the server time the player's screen showed
-	-- when he moved (the server never trusts it more than a fraction of a second into the past).
-	TrainingMove = {
+	-- A tap on the bar of the free kicks (it sets the power, or the aim and kicks) and the server time
+	-- the player's screen showed when he tapped (the server never trusts it more than a fraction of a
+	-- second into the past).
+	FreekickTap = {
+		direction = "toServer",
+		args = { { kind = "number", min = 0, max = 4_000_000_000 } },
+		ratePerSecond = 6,
+		burst = 6,
+	},
+	-- A tap on the ball of the free kicks: the contact point, each axis -1 to 1.
+	FreekickContact = {
 		direction = "toServer",
 		args = {
-			{ kind = "enum", values = { "left", "right" } },
-			{ kind = "number", min = 0, max = 4_000_000_000 },
+			{ kind = "number", min = -1, max = 1 },
+			{ kind = "number", min = -1, max = 1 },
 		},
-		ratePerSecond = 8,
-		burst = 8,
+		ratePerSecond = 6,
+		burst = 6,
 	},
 	RequestPurchase = {
 		direction = "toServer",
