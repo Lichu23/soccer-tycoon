@@ -700,11 +700,12 @@ function PenaltyUi.init()
 					Style.ui.gold
 				)
 				showLadder(goalsNow, true)
+				Sounds.play("net")
 				Sounds.play("goal")
 			else
 				if wide then
 					showBanner("WIDE!", "So close", BAD_BANNER)
-					Sounds.play("miss")
+					Sounds.play("post")
 				else
 					showBanner("SAVED!", "Great save by the keeper", BAD_BANNER)
 					Sounds.play("save")
