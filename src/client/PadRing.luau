@@ -2,7 +2,8 @@
 -- What every pad looks like (docs/PLAN.md, Step 1 and 7). Pads that buy or upgrade something are
 -- small round discs coloured by what the player can do: green = can use it now, red = it is open but
 -- costs more than the player has, grey = not open yet (a floor or the goals of a Legend). Above each
--- pad sits a dark label with the name, the price and a short note (the goals, for a Legend). The
+-- pad sits a label with the name, the price and a short note (the goals, for a Legend), as white and
+-- green text with a thick black outline and no box, like the signs of other tycoons. The
 -- server times the hold; this only draws it from the player's attributes: padKey, padState, padStart
 -- and padHold, as a thin bar at the bottom of the label.
 
@@ -12,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
+local BackPrint = require(ReplicatedStorage.Shared.BackPrint)
 local DailyInfo = require(ReplicatedStorage.Shared.DailyInfo)
 local PadInfo = require(ReplicatedStorage.Shared.PadInfo)
 local State = require(script.Parent.State)
@@ -32,7 +34,7 @@ local SHOWN_KINDS = {
 local DISC_KINDS = { player = true, legend = true, store = true, stadium = true }
 local MAX_DISTANCE = 30
 local STADIUM_MAX_DISTANCE = 140
-local LABEL_WIDTH = 190
+local LABEL_WIDTH = 240
 local DISC_THICKNESS = 0.5
 local MAX_LINES = 3
 
@@ -41,13 +43,13 @@ local COLORS = {
 	cannotAfford = Color3.fromRGB(225, 70, 70),
 	idle = Color3.fromRGB(125, 130, 145),
 }
--- Text colours on the solid black card, all above 7:1 contrast (WCAG AAA for normal text).
-local TITLE_COLOR = Color3.fromRGB(215, 230, 255)
-local NOTE_COLOR = Color3.fromRGB(215, 220, 232)
-local PRICE_COLOR = Color3.fromRGB(130, 240, 150)
-local BAD_COLOR = Color3.fromRGB(255, 130, 130)
-local GOAL_DONE_COLOR = Color3.fromRGB(130, 240, 150)
-local CARD_COLOR = Color3.fromRGB(0, 0, 0)
+-- Bright text colours; the thick black outline keeps them readable on any floor or sky.
+local TITLE_COLOR = Color3.fromRGB(255, 255, 255)
+local NOTE_COLOR = Color3.fromRGB(235, 238, 245)
+local PRICE_COLOR = Color3.fromRGB(95, 235, 120)
+local BAD_COLOR = Color3.fromRGB(255, 110, 110)
+local GOAL_DONE_COLOR = Color3.fromRGB(95, 235, 120)
+local OUTLINE_COLOR = Color3.fromRGB(0, 0, 0)
 
 type Entry = {
 	part: BasePart,
@@ -89,10 +91,15 @@ local function label(parent: Instance, name: string, size: number, color: Color3
 	text.TextSize = size
 	text.TextColor3 = color
 	text.Parent = parent
+	local outline = Instance.new("UIStroke")
+	outline.Thickness = math.max(2, size / 7)
+	outline.Color = OUTLINE_COLOR
+	outline.LineJoinMode = Enum.LineJoinMode.Round
+	outline.Parent = text
 	return text
 end
 
--- The dark label above the pad. It grows upward from its bottom edge, so a Legend's goal rows sit
+-- The text label above the pad. It grows upward from its bottom edge, so a Legend's goal rows sit
 -- above the name and the price stays close to the pad.
 local function buildBillboard(part: BasePart): (
 	BillboardGui,
@@ -105,7 +112,7 @@ local function buildBillboard(part: BasePart): (
 )
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "PadBillboard"
-	billboard.Size = UDim2.fromOffset(LABEL_WIDTH, 190)
+	billboard.Size = UDim2.fromOffset(LABEL_WIDTH, 220)
 	billboard.StudsOffset = Vector3.new(0, 5.5, 0)
 	billboard.MaxDistance = MAX_DISTANCE
 	billboard.AlwaysOnTop = false
@@ -119,34 +126,24 @@ local function buildBillboard(part: BasePart): (
 	frame.Position = UDim2.fromScale(0.5, 1)
 	frame.Size = UDim2.fromScale(1, 0)
 	frame.AutomaticSize = Enum.AutomaticSize.Y
-	frame.BackgroundColor3 = CARD_COLOR
-	frame.BackgroundTransparency = 0
+	frame.BackgroundTransparency = 1
 	frame.BorderSizePixel = 0
 	frame.Parent = billboard
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 10)
-	corner.Parent = frame
-	local padding = Instance.new("UIPadding")
-	padding.PaddingTop = UDim.new(0, 8)
-	padding.PaddingBottom = UDim.new(0, 8)
-	padding.PaddingLeft = UDim.new(0, 10)
-	padding.PaddingRight = UDim.new(0, 10)
-	padding.Parent = frame
 	local layout = Instance.new("UIListLayout")
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	layout.Padding = UDim.new(0, 3)
 	layout.Parent = frame
 
-	local title = label(frame, "Title", 18, TITLE_COLOR)
+	local title = label(frame, "Title", 24, TITLE_COLOR)
 	title.LayoutOrder = 1
-	local price = label(frame, "Price", 22, PRICE_COLOR)
+	local price = label(frame, "Price", 30, PRICE_COLOR)
 	price.LayoutOrder = 2
-	local note = label(frame, "Note", 15, NOTE_COLOR)
+	local note = label(frame, "Note", 18, NOTE_COLOR)
 	note.LayoutOrder = 3
 	local lines: { TextLabel } = {}
 	for index = 1, MAX_LINES do
-		local line = label(frame, "Line" .. index, 15, NOTE_COLOR)
+		local line = label(frame, "Line" .. index, 18, NOTE_COLOR)
 		line.LayoutOrder = 3 + index
 		table.insert(lines, line)
 	end
@@ -207,7 +204,9 @@ local function refresh(entry: Entry)
 			}
 		end
 	end
-	entry.title.Text = string.upper(info.title)
+	-- A player is named as on the back of the shirt ("ALEXANDER-ARNOLD"), not by the full name.
+	local isPlayer = entry.kind == "player" or entry.kind == "legend"
+	entry.title.Text = if isPlayer then BackPrint.surname(info.title) else string.upper(info.title)
 	entry.price.Text = info.price
 	entry.price.Visible = info.price ~= ""
 	entry.price.TextColor3 = if info.state == "cannotAfford" then BAD_COLOR else PRICE_COLOR
@@ -219,7 +218,7 @@ local function refresh(entry: Entry)
 		line.Visible = goal ~= nil
 		if goal then
 			line.Text = goal.text
-			line.TextColor3 = if goal.done then GOAL_DONE_COLOR else Style.ui.text
+			line.TextColor3 = if goal.done then GOAL_DONE_COLOR else NOTE_COLOR
 		end
 	end
 	if entry.disc then
