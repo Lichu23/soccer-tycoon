@@ -32,6 +32,10 @@ local SPOTS: { { number } } = {
 	{ 96, 146 },
 }
 local WARM = Color3.fromRGB(255, 244, 225)
+-- Measured in Studio: with the same value, floors 2 to 4 look much brighter and shinier than floor 1,
+-- so they use a lower brightness (compared by screenshots) to look like floor 1.
+local RANGE = 20 -- reaches its own floor (14.5 studs down), not the storey above
+local BRIGHTNESS = { 0.9, 0.35, 0.35, 0.35 }
 
 -- Adds the lights to `plot`. `templatePivot` is the pivot the template had before it was moved, so a
 -- template position becomes the matching position on the placed plot.
@@ -39,7 +43,7 @@ function PlotLights.build(plot: Model, templatePivot: CFrame)
 	local folder = Instance.new("Folder")
 	folder.Name = "Lights"
 	local plotPivot = plot:GetPivot()
-	for _, y in CEILING_Y do
+	for floorIndex, y in CEILING_Y do
 		for _, spot in SPOTS do
 			local x, z = spot[1], spot[2]
 			local fixture = Instance.new("Part")
@@ -56,8 +60,8 @@ function PlotLights.build(plot: Model, templatePivot: CFrame)
 
 			local light = Instance.new("PointLight")
 			light.Color = WARM
-			light.Range = 36
-			light.Brightness = 0.22
+			light.Range = RANGE
+			light.Brightness = BRIGHTNESS[floorIndex]
 			light.Shadows = false
 			light.Parent = fixture
 			fixture.Parent = folder
