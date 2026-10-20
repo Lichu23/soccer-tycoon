@@ -90,6 +90,11 @@ T.test(
 		T.truthy(result)
 		T.eq(result.season, 2)
 		T.eq(result.trophy, "Street Cup")
+		-- The celebration shows the lineup of the season that just ended (read before the reset).
+		T.truthy(#result.field > 0)
+		for _, id in result.field do
+			T.truthy(Config.PlayersById[id], id)
+		end
 		T.eq(data.season.number, 2)
 		T.eq(data.cash, Config.StartingCash)
 		T.eq(data.tp, 0)
