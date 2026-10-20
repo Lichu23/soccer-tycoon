@@ -44,7 +44,14 @@ local function box(name: string, size: Vector3, position: Vector3, color: Color3
 end
 
 -- Text on the side that faces the path (the -X face of an unturned part).
-local function sign(part: BasePart, text: string, textColor: Color3, pixelsPerStud: number, name: string?)
+local function sign(
+	part: BasePart,
+	text: string,
+	textColor: Color3,
+	pixelsPerStud: number,
+	name: string?,
+	fixedSize: number?
+)
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = Enum.NormalId.Left
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
@@ -59,7 +66,12 @@ local function sign(part: BasePart, text: string, textColor: Color3, pixelsPerSt
 	label.Text = text
 	label.TextColor3 = textColor
 	label.Font = Enum.Font.GothamBold
-	label.TextScaled = true
+	if fixedSize then
+		-- The same size on every plaque; a long name ("CONTINENTAL CUP") wraps to two lines.
+		label.TextSize = fixedSize
+	else
+		label.TextScaled = true
+	end
 	label.Parent = gui
 end
 
@@ -117,7 +129,7 @@ for k = 1, slots do
 	pedestal:SetAttribute("Slot", k)
 	local plaque = box("TrophyPlaque_" .. k, Vector3.new(0.3, 1.1, pitch - 0.6), Vector3.new(X - 2.1, GROUND + 0.9, z), COLORS.plaque)
 	plaque:SetAttribute("Slot", k)
-	sign(plaque, "", COLORS.gold, 50, "Name")
+	sign(plaque, "", COLORS.gold, 50, "Name", 20)
 end
 
 return "Entrance built: " .. #folder:GetChildren() .. " parts"
