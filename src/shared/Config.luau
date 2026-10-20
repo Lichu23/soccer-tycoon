@@ -53,12 +53,13 @@ export type CaseDef = {
 
 export type ProductDef = {
 	key: string,
-	kind: "case" | "boost" | "legend" | "cosmetic",
+	kind: "case" | "boost" | "legend" | "cosmetic" | "cash" | "tp",
 	robux: number, -- the price shown on the button (the real price is set on the dashboard)
 	productId: number, -- the Developer Product id, 0 until it is created on the dashboard
 	caseId: string?,
 	playerId: string?,
 	cosmeticId: string?,
+	amount: number?, -- the cash or the training points a pack gives (fixed amounts)
 }
 
 export type CosmeticSlotDef = { id: string, name: string, tier: number }
@@ -428,6 +429,26 @@ Config.Products = {
 		productId = 0,
 		playerId = "pele",
 	},
+	-- Cash and TP packs, bought on the Robux pads outside the building. Fixed amounts (the same for
+	-- everyone); the Robux prices are placeholders like the rest.
+	cash_small = { key = "cash_small", kind = "cash", robux = 25, productId = 0, amount = 10_000 },
+	cash_medium = {
+		key = "cash_medium",
+		kind = "cash",
+		robux = 99,
+		productId = 0,
+		amount = 100_000,
+	},
+	cash_large = {
+		key = "cash_large",
+		kind = "cash",
+		robux = 349,
+		productId = 0,
+		amount = 1_000_000,
+	},
+	tp_small = { key = "tp_small", kind = "tp", robux = 25, productId = 0, amount = 500 },
+	tp_medium = { key = "tp_medium", kind = "tp", robux = 99, productId = 0, amount = 2_500 },
+	tp_large = { key = "tp_large", kind = "tp", robux = 349, productId = 0, amount = 10_000 },
 } :: { [string]: ProductDef }
 
 -- Team customization (docs/PLAN.md, Step 3): each stadium tier opens one slot with free styles and a

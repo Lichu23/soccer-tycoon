@@ -8,11 +8,18 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
+local Net = require(script.Parent.Net)
 local PadInfo = require(ReplicatedStorage.Shared.PadInfo)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
+
+-- Why a pack on a Robux pad was not offered (the server's answer to the pad).
+local PACK_REFUSALS: { [string]: string } = {
+	early = "Packs open a little later.",
+	unavailable = "Not available right now.",
+}
 
 local HINT_KINDS = { player = true, legend = true, store = true, stadium = true }
 local SHOW_SECONDS = 2.2
@@ -94,6 +101,15 @@ function PadHint.init()
 		end
 	end
 	player:GetAttributeChangedSignal("padKey"):Connect(onPad)
+
+	Net.on("Notice", function(info: any)
+		if type(info) == "table" and info.kind == "purchaseRefused" then
+			local message = PACK_REFUSALS[info.reason]
+			if message and player:GetAttribute("padKey") ~= nil then
+				show(message)
+			end
+		end
+	end)
 end
 
 return PadHint

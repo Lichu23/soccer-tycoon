@@ -120,6 +120,7 @@ local function refuse(player: Player, reason: string)
 	Remotes.fireClient("Notice", player, { kind = "purchaseRefused", reason = reason })
 end
 
+-- Asks for a purchase for this player (the shop button and the Robux pads both come here).
 local function request(player: Player, key: string)
 	local session = Session.get(player)
 	local product = Config.Products[key]
@@ -143,6 +144,10 @@ local function request(player: Player, key: string)
 	else
 		refuse(player, "unavailable")
 	end
+end
+
+function Purchases.request(player: Player, key: string)
+	request(player, key)
 end
 
 -- Registers the receipt handler and the request remote. Call once, after Remotes.init.

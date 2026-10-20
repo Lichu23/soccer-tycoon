@@ -1,11 +1,10 @@
--- Builds the two props outside the building door in ServerStorage.PlotTemplate.Entrance: the Robux
--- booth on the left of the door (ShopBooth) and the trophy case on the right (TrophyCase with five
--- empty TrophySlot_k pedestals and a name plaque each). Run through the Studio MCP (execute_luau,
+-- Builds what stands outside the building door in ServerStorage.PlotTemplate: the trophy case on the
+-- right (Entrance folder: five empty TrophySlot_k pedestals and a name plaque each) and the six
+-- Robux pack pads on the left (RobuxPad_* in Markers). Run through the Studio MCP (execute_luau,
 -- Edit mode). Safe to run again: it rebuilds the folder. Plot space, like the rest of the template:
--- the building door is at x 50, z 90 and the path is x -20 to 20, so both props stand at x 40 facing
--- the path (-x). Seen from the door (looking +x) the left is -z and the right is +z.
--- The server fills the case (src/server/TrophyCase.luau); the client opens the shop from the booth
--- (src/client/ShopBooth.luau).
+-- the building door is at x 50, z 90 and the path is x -20 to 20. The case faces the path (-x). Seen
+-- from the door (looking +x) the left is -z and the right is +z.
+-- The server fills the case (src/server/TrophyCase.luau) and runs the pads (PadActions, "robux").
 
 local ServerStorage = game:GetService("ServerStorage")
 
@@ -20,7 +19,7 @@ folder.Parent = template
 
 local GROUND = 0.5
 local X = 40
-local BOOTH_Z, CASE_Z = 66, 114
+local CASE_Z = 114
 local COLORS = {
 	wood = Color3.fromRGB(200, 140, 70),
 	dark = Color3.fromRGB(70, 74, 92),
@@ -64,18 +63,40 @@ local function sign(part: BasePart, text: string, textColor: Color3, pixelsPerSt
 	label.Parent = gui
 end
 
--- The Robux booth: a counter with two posts and a roof, a sign on the roof edge.
-local boothTop = GROUND + 4
-local counter = box("ShopBooth", Vector3.new(4, 4, 12), Vector3.new(X, GROUND + 2, BOOTH_Z), COLORS.wood)
-counter:SetAttribute("BoothKind", "robux")
-box("BoothPostA", Vector3.new(0.8, 9, 0.8), Vector3.new(X + 1.4, GROUND + 4.5, BOOTH_Z - 5.6), COLORS.dark)
-box("BoothPostB", Vector3.new(0.8, 9, 0.8), Vector3.new(X + 1.4, GROUND + 4.5, BOOTH_Z + 5.6), COLORS.dark)
-box("BoothRoof", Vector3.new(6, 0.6, 14), Vector3.new(X, GROUND + 9.3, BOOTH_Z), COLORS.gold)
-local boothSign = box("BoothSign", Vector3.new(0.4, 2.6, 11), Vector3.new(X - 2.9, GROUND + 7.6, BOOTH_Z), COLORS.plaque)
-sign(boothSign, "ROBUX SHOP", COLORS.white, 40)
--- A small price board on the counter front.
-local board = box("BoothBoard", Vector3.new(0.2, 2, 8), Vector3.new(X - 2.1, boothTop - 2, BOOTH_Z), COLORS.plaque)
-sign(board, "Cases · Boosts", COLORS.gold, 40)
+-- The Robux packs: six pads on the ground left of the door, cash in the front row and TP behind. The
+-- server turns each into a pad (Kind "robux", PadId = the product key in Config.Products); the
+-- client draws the disc, the picture above it and the text.
+local PADS = {
+	{ "cash_small", 28, 44 },
+	{ "cash_medium", 28, 56 },
+	{ "cash_large", 28, 68 },
+	{ "tp_small", 42, 44 },
+	{ "tp_medium", 42, 56 },
+	{ "tp_large", 42, 68 },
+}
+local markers = template:FindFirstChild("Markers")
+assert(markers, "the template has no Markers folder")
+for _, child in markers:GetChildren() do
+	if child.Name:match("^RobuxPad_") then
+		child:Destroy()
+	end
+end
+for _, entry in PADS do
+	local pad = Instance.new("Part")
+	pad.Name = "RobuxPad_" .. entry[1]
+	pad.Size = Vector3.new(7, 0.2, 7)
+	pad.CFrame = CFrame.new(entry[2], GROUND + 0.3, entry[3])
+	pad.Anchored = true
+	pad.Color = Color3.fromRGB(226, 184, 84)
+	pad.Material = Enum.Material.Neon
+	pad.Transparency = 0.4
+	pad.CanCollide = false
+	pad.CanTouch = false
+	pad.CanQuery = false
+	pad:SetAttribute("PadId", entry[1])
+	pad:SetAttribute("Kind", "robux")
+	pad.Parent = markers
+end
 
 -- The trophy case: a low base, five pedestals in a row inside a glass box, a name plaque in front of
 -- each, a title board above.

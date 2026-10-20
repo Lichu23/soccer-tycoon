@@ -58,7 +58,7 @@ There is no separate expensive cash route: everyone pays the cash price and comp
 ### Training ground
 - One training ground where standing earns **training points (TP)**, spent on levelling any owned player (more income) (*provisional*: no position stations, since rosters are fixed).
 - **Spending TP on a specific player:** every owned player's capsule has a **level-up pad** in front of it (the same spot as the purchase pad, which becomes the training pad once the player is owned). The pad shows the player's level ("Level 3/10"), the TP cost of the next level, and the income bonus it gives. Standing on it for 1 second (the circular ring fills, like a purchase) spends TP and raises that player's level. At the level cap it reads "MAX". If the player is **on the bench** (not among the top N earning on the field), the pad also shows "On the bench: not earning yet" so TP are not wasted by accident. No menu. The HUD shows the TP balance once the training ground is unlocked.
-- A **stamina bar** is the cap: it drains while training and refills while away. TP are earned only while present, never offline, never sold for Robux.
+- A **stamina bar** is the cap: it drains while training and refills while away. TP are earned only while present, never offline. **Owner decision (2026-10-20): TP can be bought in fixed packs with Robux** on the Robux pads (see Robux packs below); the stamina bar still caps training, bought TP is simply added.
 - Level caps by rarity (Common 5, Rare 10, Very Rare 15, Epic 20, Legend 25, placeholders).
 
 ### Daily penalties
@@ -67,6 +67,7 @@ There is no separate expensive cash route: everyone pays the cash price and comp
 
 ### Store
 - **Cash upgrades:** cash per match (from the start), match speed (after stadium tier 2), hat-trick chance and offline earnings (after floor 1 is complete). No daily limit: rising prices are the gate. Every upgrade is reachable with cash. Levels and prices are in Step 3.
+- **Robux packs (owner decision, 2026-10-20):** six pads on the ground left of the building door, with the cash or TP icon above each. Cash: $10K, $100K, $1M. TP: 500, 2,500, 10,000. Fixed amounts, the same for everyone; Robux prices are placeholders in `Config.Products` (25 / 99 / 349). Standing on a pad for the usual hold asks the server, which shows the Robux prompt; like every paid offer nothing is offered in the first 30 minutes after the first purchase. No bundles, timers or popups. There is no shop booth: the SHOP button in the dock still holds the cases, the boost and the Legends.
 - **Robux match boost:** "next 30 matches x2" (developer product, price about 25 to 49 Robux, size and price on the button). Boosted matches are banked up to a **maximum of 60**, shown by a counter ("Boosted matches left: 27"). It can be bought again once the bank has room. Stacking with other boosts is capped (total boost never above x4).
 - Purchases are granted by the server and must be safe if the purchase message arrives twice (`roblox-monetization`).
 - The offer lives in the Store only: no purchase popups after matches, nothing in the first 5 minutes.

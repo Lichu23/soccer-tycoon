@@ -14,6 +14,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local DailyInfo = require(ReplicatedStorage.Shared.DailyInfo)
+local Icons = require(script.Parent.Icons)
 local PadInfo = require(ReplicatedStorage.Shared.PadInfo)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
@@ -28,9 +29,10 @@ local SHOWN_KINDS = {
 	stadium = true,
 	penalty = true,
 	training = true,
+	robux = true,
 }
 -- These kinds are drawn as a round disc; the others keep the glowing square of the template.
-local DISC_KINDS = { player = true, legend = true, store = true, stadium = true }
+local DISC_KINDS = { player = true, legend = true, store = true, stadium = true, robux = true }
 local MAX_DISTANCE = 30
 local STADIUM_MAX_DISTANCE = 45
 local LABEL_WIDTH = 240
@@ -45,6 +47,8 @@ local COLORS = {
 -- Soft text colours (no neon); the thick black outline keeps them readable on any floor or sky.
 local TITLE_COLOR = Color3.fromRGB(255, 255, 255)
 local NOTE_COLOR = Color3.fromRGB(235, 238, 245)
+local ROBUX_COLOR = Color3.fromRGB(226, 184, 84) -- the disc of a Robux pack
+local ICON_SIZE = 64
 local PRICE_COLOR = Color3.fromRGB(150, 214, 160)
 local BAD_COLOR = Color3.fromRGB(232, 142, 138)
 local GOAL_DONE_COLOR = Color3.fromRGB(150, 214, 160)
@@ -135,6 +139,16 @@ local function buildBillboard(part: BasePart): (
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	layout.Padding = UDim.new(0, 3)
 	layout.Parent = frame
+
+	-- The picture of a Robux pack, above the text (hidden for every other pad).
+	local icon = Instance.new("ImageLabel")
+	icon.Name = "Icon"
+	icon.LayoutOrder = 0
+	icon.BackgroundTransparency = 1
+	icon.Size = UDim2.fromOffset(ICON_SIZE, ICON_SIZE)
+	icon.ScaleType = Enum.ScaleType.Fit
+	icon.Visible = false
+	icon.Parent = frame
 
 	local title = label(frame, "Title", 24, TITLE_COLOR)
 	title.LayoutOrder = 1
@@ -227,8 +241,15 @@ local function refresh(entry: Entry)
 			line.TextColor3 = if goal.done then GOAL_DONE_COLOR else NOTE_COLOR
 		end
 	end
+	local labelFrame = entry.billboard:FindFirstChild("Label")
+	local icon = if labelFrame then labelFrame:FindFirstChild("Icon") else nil
+	if icon and icon:IsA("ImageLabel") then
+		local image = if info.icon then Icons.id(info.icon) else ""
+		icon.Image = image
+		icon.Visible = image ~= ""
+	end
 	if entry.disc then
-		entry.disc.Color = padColor(info.state)
+		entry.disc.Color = if entry.kind == "robux" then ROBUX_COLOR else padColor(info.state)
 	end
 	-- The claim rings of free plots only matter to a player who has no plot yet.
 	-- Locked Store pads stay hidden until they unlock, so the middle of the room is not cluttered.

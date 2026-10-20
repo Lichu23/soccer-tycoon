@@ -47,6 +47,12 @@ function ShopRules.canOffer(data: Profile, key: string, now: number): (boolean, 
 		if data.boosts.bankedMatches + Config.Boost.matchPackSize > Config.Boost.matchBankMax then
 			return false, "full"
 		end
+	elseif product.kind == "cash" or product.kind == "tp" then
+		-- Packs wait like everything paid: never in the first 30 minutes after the first purchase.
+		local first = data.flags.milestones["first_purchase"]
+		if first == nil or now - first < Config.CaseRules.noOfferSeconds then
+			return false, "early"
+		end
 	elseif product.kind == "cosmetic" then
 		-- Direct purchase of a visible style, only for tiers reached and never in the first 30 minutes.
 		local first = data.flags.milestones["first_purchase"]

@@ -20,6 +20,7 @@ export type Info = {
 	note: string, -- under the price, may be empty
 	lines: { Line }?, -- extra rows under the price (the goals of a Legend)
 	state: string, -- "ready", "cannotAfford", "locked", "owned", "maxed" or "info"
+	icon: string?, -- the name of a picture shown above the text (client/Icons), for the Robux packs
 }
 
 local STORE_NAMES: { [string]: string } = {
@@ -154,6 +155,23 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 			}
 		end
 		return { title = title, price = NumberFormat.money(price), note = "", state = status }
+	elseif kind == "robux" then
+		-- A cash or TP pack bought with Robux: the amount in the ring, the price under it. Whether it
+		-- can be bought yet is the server's call (the first 30 minutes), it says so when stepped on.
+		local product = Config.Products[padId]
+		if product == nil or product.amount == nil then
+			return { title = padId, price = "", note = "", state = "locked" }
+		end
+		local isCash = product.kind == "cash"
+		return {
+			title = if isCash then "Cash pack" else "Training points",
+			price = if isCash
+				then "+" .. NumberFormat.money(product.amount)
+				else "+" .. NumberFormat.short(product.amount) .. " TP",
+			note = product.robux .. " Robux",
+			state = "ready",
+			icon = if isCash then "cash" else "tp",
+		}
 	elseif kind == "training" then
 		local active = padId == "trainingActive"
 		local title = if active then "Active farm" else "AFK farm"
