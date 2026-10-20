@@ -55,6 +55,9 @@ local function poseArm(model: Model, base: CFrame, side: number, angle: number)
 	end
 end
 
+-- Shared with the penalty screen: puts one arm up (see poseArm).
+TrophyScene.poseArm = poseArm
+
 -- A gold cup standing on `origin`: foot, stem, bowl and two handles.
 local function buildCup(origin: Vector3): Model
 	local cup = Instance.new("Model")
