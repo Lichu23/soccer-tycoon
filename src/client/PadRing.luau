@@ -38,16 +38,16 @@ local DISC_THICKNESS = 0.5
 local MAX_LINES = 3
 
 local COLORS = {
-	ready = Color3.fromRGB(70, 200, 105),
-	cannotAfford = Color3.fromRGB(225, 70, 70),
-	idle = Color3.fromRGB(125, 130, 145),
+	ready = Color3.fromRGB(88, 160, 112),
+	cannotAfford = Color3.fromRGB(184, 92, 88),
+	idle = Color3.fromRGB(132, 134, 142),
 }
--- Bright text colours; the thick black outline keeps them readable on any floor or sky.
+-- Soft text colours (no neon); the thick black outline keeps them readable on any floor or sky.
 local TITLE_COLOR = Color3.fromRGB(255, 255, 255)
 local NOTE_COLOR = Color3.fromRGB(235, 238, 245)
-local PRICE_COLOR = Color3.fromRGB(95, 235, 120)
-local BAD_COLOR = Color3.fromRGB(255, 110, 110)
-local GOAL_DONE_COLOR = Color3.fromRGB(95, 235, 120)
+local PRICE_COLOR = Color3.fromRGB(150, 214, 160)
+local BAD_COLOR = Color3.fromRGB(232, 142, 138)
+local GOAL_DONE_COLOR = Color3.fromRGB(150, 214, 160)
 local OUTLINE_COLOR = Color3.fromRGB(0, 0, 0)
 
 type Entry = {
@@ -171,7 +171,7 @@ local function buildDisc(part: BasePart): BasePart
 	local disc = Instance.new("Part")
 	disc.Name = "PadDisc"
 	disc.Shape = Enum.PartType.Cylinder
-	disc.Material = Enum.Material.Neon
+	disc.Material = Enum.Material.SmoothPlastic
 	disc.Anchored = true
 	disc.CanCollide = false
 	disc.CanQuery = false

@@ -45,7 +45,7 @@ function PadHint.init()
 	text.BackgroundTransparency = 1
 	text.Font = Style.font
 	text.TextSize = 26
-	text.TextColor3 = Color3.fromRGB(255, 110, 110)
+	text.TextColor3 = Color3.fromRGB(232, 142, 138)
 	text.TextTransparency = 1
 	text.Parent = gui
 	local outline = Instance.new("UIStroke")
