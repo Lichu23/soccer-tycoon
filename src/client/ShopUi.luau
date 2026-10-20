@@ -74,6 +74,15 @@ local function attribute(name: string): number
 	return if type(value) == "number" then value else 0
 end
 
+-- Set by init: how the booth outside the building opens the same screen as the SHOP button.
+local openFromWorld: (() -> ())? = nil
+
+function ShopUi.openFromWorld()
+	if openFromWorld then
+		openFromWorld()
+	end
+end
+
 function ShopUi.init()
 	local gui = new("ScreenGui", {
 		Name = "Shop",
@@ -495,6 +504,11 @@ function ShopUi.init()
 			open()
 		end
 	end)
+	openFromWorld = function()
+		if not locked then
+			open()
+		end
+	end
 
 	local function refresh()
 		-- The shop opens with the plot. The cards still follow the server rules: the cases wait their

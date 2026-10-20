@@ -23,6 +23,7 @@ local Session = require(script.Parent.Session)
 local Style = require(ReplicatedStorage.Shared.Style)
 local Stadium = require(script.Parent.Stadium)
 local Sync = require(script.Parent.Sync)
+local TrophyCase = require(script.Parent.TrophyCase)
 
 local SLOT_COUNT = 8
 local RING_COLOR = Color3.fromRGB(255, 220, 60)
@@ -276,6 +277,7 @@ function Plots.refresh(session: Session.Session)
 		then Cosmetics.chosen(session.data, "kit")
 		else nil
 	plot:SetAttribute("KitId", if kit then kit.id else "")
+	TrophyCase.update(plot, session.data.season.number)
 
 	-- The stairs are always walkable (the owner wants to see every floor). The gate marker at the
 	-- bottom of each flight only carries the label; Open says whether buying there is unlocked.
