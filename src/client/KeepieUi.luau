@@ -28,15 +28,16 @@ local Style = require(ReplicatedStorage.Shared.Style)
 local player = Players.LocalPlayer
 
 local PANEL_HEIGHT = 0.94 -- the share of the screen height the panel takes, like the penalty screen
-local CARD_CHROME = 64 + 4 + 20 + 24 -- the panel header, the card padding and the three gaps
-local SCENE_RATIO = 1.8 -- width over height of the picture
-local MIN_SCENE_HEIGHT = 90
-local CHIPS_HEIGHT = 46
+local PANEL_TOP = 10 -- the panel has no title, so the content starts near its top edge
+local CARD_CHROME = 4 + 20 + 8 -- the card padding and the gap above the hint
+local MIN_SCENE_HEIGHT = 120
+local CHIPS_HEIGHT = 44
+local CHIPS_WIDTH = 240
 local HINT_HEIGHT = 18
 local RING_START = 2.1 -- the ring starts this many times the size of the button
 local BALL_RADIUS = 0.55
 local BALL_REST = Vector3.new(0.25, 0.7, -1.2) -- on the foot of the player, in front of him
-local BALL_PEAK = 6 -- studs above the foot at the top of the flight
+local BALL_PEAK = 5 -- studs above the foot at the top of the flight
 local KICK_SECONDS = 0.28
 local KICK_ANGLE = 55 -- degrees the kicking leg swings forward
 local FEEDBACK_HOLD_SECONDS = 0.55
@@ -113,6 +114,15 @@ function KeepieUi.init()
 	if closeX and closeX:IsA("GuiObject") then
 		closeX.Visible = false
 	end
+	-- No title: the picture takes the room of the header.
+	local panel = backdrop:FindFirstChild("Panel") :: Frame
+	local panelTitle = panel:FindFirstChild("Title")
+	if panelTitle and panelTitle:IsA("GuiObject") then
+		panelTitle.Visible = false
+	end
+	local scroll = panel:FindFirstChild("Scroll") :: ScrollingFrame
+	scroll.Position = UDim2.fromOffset(0, PANEL_TOP)
+	scroll.Size = UDim2.new(1, 0, 1, -PANEL_TOP)
 	local cardLayout = card:FindFirstChildOfClass("UIListLayout")
 	if cardLayout then
 		cardLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
@@ -138,7 +148,7 @@ function KeepieUi.init()
 	}, sceneBox)
 	local camera = new("Camera", {
 		FieldOfView = 42,
-		CFrame = CFrame.lookAt(Vector3.new(0, 4.6, -15), Vector3.new(0, 3.9, 0)),
+		CFrame = CFrame.lookAt(Vector3.new(0, 2.2, -14), Vector3.new(0, 2.0, 0)),
 	}, view)
 	view.CurrentCamera = camera
 	new("Part", {
@@ -222,19 +232,18 @@ function KeepieUi.init()
 	-- The combo and the medal bar ---------------------------------------------------------------------
 	local comboText = outlined({
 		Name = "Combo",
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -10, 0, 6),
+		Position = UDim2.fromOffset(12, 40),
 		Size = UDim2.fromOffset(110, 40),
 		Text = "",
 		TextSize = 34,
-		TextXAlignment = Enum.TextXAlignment.Right,
+		TextXAlignment = Enum.TextXAlignment.Left,
 		ZIndex = 9,
 	}, sceneBox)
 	local comboScale = new("UIScale", {}, comboText)
 	local medalBar = new("Frame", {
 		Name = "Medals",
-		Position = UDim2.fromOffset(12, 20),
-		Size = UDim2.new(0.34, 0, 0, 10),
+		Position = UDim2.fromOffset(12, 22),
+		Size = UDim2.new(0.3, 0, 0, 10),
 		BackgroundColor3 = Style.ui.dark,
 		BackgroundTransparency = 0.25,
 		ZIndex = 9,
@@ -307,7 +316,7 @@ function KeepieUi.init()
 		TextColor3 = Style.ui.gold,
 		ZIndex = 13,
 	}, intro)
-	fitted(introTitle, 26)
+	fitted(introTitle, 34)
 	for index, line in HOW_TO_PLAY do
 		local label = outlined({
 			Position = UDim2.fromScale(0.04, 0.27 + (index - 1) * 0.2),
@@ -315,7 +324,7 @@ function KeepieUi.init()
 			Text = line,
 			ZIndex = 13,
 		}, intro)
-		fitted(label, 20)
+		fitted(label, 26)
 	end
 	local introCount = outlined({
 		Position = UDim2.fromScale(0.04, 0.87),
@@ -380,50 +389,42 @@ function KeepieUi.init()
 	-- The numbers: time left, touches in this round and the best round -------------------------------
 	local chipRow = new("Frame", {
 		Name = "Chips",
-		LayoutOrder = 2,
-		Size = UDim2.new(1, 0, 0, CHIPS_HEIGHT),
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -10, 0, 8),
+		Size = UDim2.fromOffset(CHIPS_WIDTH, CHIPS_HEIGHT),
 		BackgroundTransparency = 1,
-		ZIndex = 7,
-	}, card)
+		ZIndex = 9,
+	}, sceneBox)
 	new("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal,
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,
 		SortOrder = Enum.SortOrder.LayoutOrder,
-		Padding = UDim.new(0, 8),
+		Padding = UDim.new(0, 4),
 	}, chipRow)
+	-- A small name over a big value, as plain text on the picture (no card).
 	local function chip(order: number, name: string): TextLabel
 		local box = new("Frame", {
 			Name = name,
 			LayoutOrder = order,
-			Size = UDim2.new(1 / 3, -6, 1, 0),
-			BackgroundColor3 = Style.ui.panel,
-			ZIndex = 8,
-		}, chipRow)
-		rounded(box, 12)
-		new("UIStroke", {
-			Color = Color3.fromRGB(110, 115, 132),
-			Thickness = 3,
-			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-		}, box)
-		new("TextLabel", {
-			Position = UDim2.fromOffset(0, 3),
-			Size = UDim2.new(1, 0, 0, 14),
+			Size = UDim2.new(1 / 3, -4, 1, 0),
 			BackgroundTransparency = 1,
+			ZIndex = 9,
+		}, chipRow)
+		outlined({
+			Position = UDim2.fromOffset(0, 0),
+			Size = UDim2.new(1, 0, 0, 16),
 			Text = string.upper(name),
-			Font = Style.font,
-			TextSize = 13,
-			TextColor3 = Style.ui.idle,
+			TextSize = 14,
+			TextColor3 = WHITE,
 			ZIndex = 9,
 		}, box)
-		return new("TextLabel", {
+		return outlined({
 			Name = "Value",
 			Position = UDim2.fromOffset(0, 16),
-			Size = UDim2.new(1, 0, 1, -18),
-			BackgroundTransparency = 1,
+			Size = UDim2.new(1, 0, 1, -16),
 			Text = "-",
-			Font = Style.font,
-			TextSize = 24,
-			TextColor3 = Style.ui.text,
+			TextSize = 26,
+			TextColor3 = WHITE,
 			ZIndex = 9,
 		}, box)
 	end
@@ -434,11 +435,12 @@ function KeepieUi.init()
 	-- The TAP button with the closing ring ---------------------------------------------------------------
 	local buttonHolder = new("Frame", {
 		Name = "ButtonHolder",
-		LayoutOrder = 3,
-		Size = UDim2.new(1, 0, 0, 120),
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -4),
+		Size = UDim2.fromOffset(120, 120),
 		BackgroundTransparency = 1,
-		ZIndex = 7,
-	}, card)
+		ZIndex = 9,
+	}, sceneBox)
 	local ring = new("Frame", {
 		Name = "Ring",
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -492,22 +494,21 @@ function KeepieUi.init()
 	-- The picture and the button take what the screen allows, so nothing needs scrolling on a normal
 	-- window and the button is never cut off.
 	local function fit()
-		local area = gui.AbsoluteSize
-		if area.Y < 1 then
-			local current = Workspace.CurrentCamera
-			area = if current then current.ViewportSize else Vector2.new(640, 360)
+		local size = panel.AbsoluteSize
+		if size.Y < 1 then
+			return
 		end
-		local width = math.min(Panel.MAX_WIDTH, area.X * 0.92) - 40
-		local spare = area.Y * PANEL_HEIGHT - CARD_CHROME - CHIPS_HEIGHT - HINT_HEIGHT
-		local buttonArea = math.clamp(spare * 0.4, 84, 150)
-		local height = math.clamp(spare - buttonArea, MIN_SCENE_HEIGHT, width / SCENE_RATIO)
-		sceneBox.Size = UDim2.fromOffset(height * SCENE_RATIO, height)
-		buttonHolder.Size = UDim2.new(1, 0, 0, buttonArea)
-		buttonSize = math.clamp(buttonArea / (RING_START + 0.1), 36, 76)
+		local width = size.X - 40
+		local height =
+			math.max(size.Y - PANEL_TOP - CARD_CHROME - HINT_HEIGHT - 4, MIN_SCENE_HEIGHT)
+		sceneBox.Size = UDim2.fromOffset(width, height)
+		buttonSize = math.clamp(height * 0.16, 36, 64)
+		local holder = buttonSize * (RING_START + 0.1)
+		buttonHolder.Size = UDim2.fromOffset(holder, holder)
 		button.Size = UDim2.fromOffset(buttonSize, buttonSize)
 		button.TextSize = math.floor(buttonSize * 0.42)
 	end
-	gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+	panel:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
 	fit()
 
 	local function pulse(scale: UIScale, from: number)
