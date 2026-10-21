@@ -32,7 +32,7 @@ local STORE_NAMES: { [string]: string } = {
 -- The stations of the Training Gym (the marker's PadId -> its name).
 local TRAINING_NAMES: { [string]: string } = {
 	trainingKeepie = "Keepie-uppies",
-	trainingFreekick = "Free kicks",
+	trainingFreekick = "1v1 Breakaway",
 	trainingTreadmill = "Treadmill",
 	trainingBench = "Bench press",
 }
@@ -206,7 +206,7 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 			}
 		end
 		local note = if padId == "trainingFreekick"
-			then "Score in a row for TP"
+			then "Dribble and score for TP"
 			elseif skill then "Tap in time for TP"
 			elseif padId == "trainingBench" then "Lie here: 10 TP per minute"
 			else "Stand here: 10 TP per minute"

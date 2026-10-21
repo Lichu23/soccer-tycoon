@@ -4,8 +4,9 @@
 -- with Training, and publishes what the HUD shows. A conditioning station (treadmill, bench press)
 -- pays 10 TP a minute by itself. A skill station pays for the game, an endless streak: at the
 -- keepie-uppies the ball beats on the server clock, the client draws it from `juggleStart`, the
--- server judges each tap on the same clock and pays each clean touch; at the free kicks the bars move
--- on the server clock, the server judges each tap and the shot and pays each goal. The longest streak
+-- server judges each tap on the same clock and pays each clean touch; at the free-kick spot (the 1v1
+-- breakaway) the move, the reticle and the meter run on the server clock, the server judges each input
+-- and the shot and pays each goal. The longest streak
 -- of each game is kept in the profile as it grows, so walking off the mat never loses a record.
 
 local Players = game:GetService("Players")
@@ -28,7 +29,7 @@ local BEST_MAX = 100_000 -- the profile check allows streaks up to this
 
 local carries: { [Player]: Training.Carry } = {}
 local games: { [Player]: Juggle.State } = {}
-local kicks: { [Player]: Freekick.State } = {} -- the free kicks of a player
+local kicks: { [Player]: Freekick.State } = {} -- the breakaway of a player
 local training: { [Player]: boolean } = {} -- on a station with stamina left, as of the last tick
 -- Whether the streak running now has beaten the record it started with, for the "new best" line.
 local keepieNewBest: { [Player]: boolean } = {}
@@ -108,16 +109,18 @@ local function publishGame(player: Player, game_: Juggle.State?)
 	player:SetAttribute("juggleOverAt", if game_ then game_.overAt else 0)
 end
 
--- The free kicks as player attributes, so the client draws the bars and the shot the server judges.
+-- The breakaway as player attributes, so the client draws the reticle, the meter and the shot the
+-- server judges.
 local function publishKick(player: Player, state: Freekick.State?)
 	player:SetAttribute("freekickState", if state then state.phase else "off")
 	player:SetAttribute("freekickSeed", if state then state.seed else 0)
 	player:SetAttribute("freekickKick", if state then state.kick else 1)
 	player:SetAttribute("freekickStageAt", if state then state.stageAt else 0)
+	player:SetAttribute("freekickMove", if state then state.move else 1)
+	player:SetAttribute("freekickAimX", if state then state.aimX else 0)
+	player:SetAttribute("freekickAimY", if state then state.aimY else 0)
+	player:SetAttribute("freekickHoldAt", if state then state.holdAt else 0)
 	player:SetAttribute("freekickPower", if state then state.power else 0)
-	player:SetAttribute("freekickContactX", if state then state.contactX else 0)
-	player:SetAttribute("freekickContactY", if state then state.contactY else 0)
-	player:SetAttribute("freekickAim", if state then state.aim else 0)
 	player:SetAttribute("freekickOutcome", if state then state.outcome else "")
 	player:SetAttribute("freekickStreak", if state then state.streak else 0)
 	player:SetAttribute("freekickOverAt", if state then state.overAt else 0)
@@ -156,7 +159,7 @@ local function handleEvents(session: Session.Session, events: { Juggle.Event })
 	end
 end
 
--- Says that a free kick streak ended (the shot that missed has landed).
+-- Says that a breakaway streak ended (the film of the attack that failed has played).
 local function handleKickEvents(session: Session.Session, events: { Freekick.Event })
 	local player = session.player
 	for _, event in events do
@@ -264,55 +267,71 @@ local function tap(player: Player)
 	end
 end
 
--- A tap on the bar of the free kicks: the power, or the aim and the shot. The server never trusts the
--- time the client sends by more than the grace window (Freekick.tap clamps it).
-local function kickTap(player: Player, ...: any)
-	local stamp = select(1, ...)
+-- The breakaway's state for an input of `player`, caught up to now, or nil when it does not count.
+-- The server never trusts the time the client sends by more than the grace window (Freekick clamps it).
+local function kickInput(player: Player, stamp: any): (Session.Session?, Freekick.State?, number)
 	local session = Session.get(player)
 	local state = kicks[player]
 	if session == nil or state == nil or not training[player] or type(stamp) ~= "number" then
-		return
+		return nil, nil, 0
 	end
 	local now = Workspace:GetServerTimeNow()
 	handleKickEvents(session, Freekick.normalize(state, now))
-	local result = Freekick.tap(state, now, stamp)
-	if result == "kick" then
-		local paid = 0
-		if state.outcome == "goal" then
-			recordFreekick(session, state.streak)
-			local carry = carries[player]
-			if carry then
-				paid = Training.gamePay(session.data, carry, Freekick.tpFor(state.streak), now)
-				if paid > 0 then
-					Economy.publish(player, session.data)
-				end
-			end
-		end
-		Remotes.fireClient("Notice", player, {
-			kind = "freekickShot",
-			outcome = state.outcome,
-			streak = state.streak,
-			paid = paid,
-			capped = state.outcome == "goal" and paid <= 0,
-		})
+	return session, state, now
+end
+
+-- A skill move against the defender.
+local function kickMove(player: Player, ...: any)
+	local move, stamp = select(1, ...), select(2, ...)
+	local session, state, now = kickInput(player, stamp)
+	if session == nil or state == nil or type(move) ~= "number" then
+		return
+	end
+	Freekick.move(state, now, move, stamp)
+	publishKick(player, state)
+end
+
+-- A tap: locks the reticle, or begins the power hold.
+local function kickTap(player: Player, ...: any)
+	local stamp = select(1, ...)
+	local session, state, now = kickInput(player, stamp)
+	if session == nil or state == nil then
+		return
+	end
+	if not Freekick.lock(state, now, stamp) then
+		Freekick.hold(state, now, stamp)
 	end
 	publishKick(player, state)
 end
 
--- A tap on the ball of the free kicks: the contact point (each axis checked by the remote spec).
-local function kickContact(player: Player, ...: any)
-	local x, y = select(1, ...), select(2, ...)
-	local state = kicks[player]
-	if state == nil or not training[player] or type(x) ~= "number" or type(y) ~= "number" then
+-- The release of the power hold: the shot, judged and paid at once (the film shows it afterwards).
+local function kickRelease(player: Player, ...: any)
+	local stamp = select(1, ...)
+	local session, state, now = kickInput(player, stamp)
+	if session == nil or state == nil or not Freekick.release(state, now, stamp) then
+		if state then
+			publishKick(player, state)
+		end
 		return
 	end
-	local session = Session.get(player)
-	if session == nil then
-		return
+	local paid = 0
+	if state.outcome == "goal" then
+		recordFreekick(session, state.streak)
+		local carry = carries[player]
+		if carry then
+			paid = Training.gamePay(session.data, carry, Freekick.tpFor(state.streak), now)
+			if paid > 0 then
+				Economy.publish(player, session.data)
+			end
+		end
 	end
-	local now = Workspace:GetServerTimeNow()
-	handleKickEvents(session, Freekick.normalize(state, now))
-	Freekick.contact(state, now, x, y)
+	Remotes.fireClient("Notice", player, {
+		kind = "freekickShot",
+		outcome = state.outcome,
+		streak = state.streak,
+		paid = paid,
+		capped = state.outcome == "goal" and paid <= 0,
+	})
 	publishKick(player, state)
 end
 
@@ -322,7 +341,8 @@ function TrainingActions.start()
 	started = true
 	Remotes.on("TrainingTap", tap)
 	Remotes.on("FreekickTap", kickTap)
-	Remotes.on("FreekickContact", kickContact)
+	Remotes.on("FreekickRelease", kickRelease)
+	Remotes.on("FreekickMove", kickMove)
 	Players.PlayerRemoving:Connect(function(player)
 		carries[player] = nil
 		games[player] = nil

@@ -390,171 +390,217 @@ T.test("before floor 1 is complete an owned player's pad still says OWNED", func
 	T.eq(PadInfo.describe("player", "rashford", data).price, "OWNED")
 end)
 
--- Free kicks -------------------------------------------------------------------------------------------
+-- The 1v1 breakaway (the free-kick spot) ----------------------------------------------------------------
 
 local Freekick = T.load("shared/Freekick")
 
 local FK = Config.Training
--- The wall on the right, the keeper leaning left.
-local SETUP = { wallX = 0.3, keeperX = -0.2 }
+local KEEPER = -0.2 -- the keeper leaning left
 
-local function judge(power, contactX, contactY, aim, kick)
-	return Freekick.judge(SETUP, kick or 1, power, contactX, contactY, aim)
+local function judge(aimX, aimY, power, kick)
+	return Freekick.judge(KEEPER, kick or 1, aimX, aimY, power)
 end
 
-T.test("a free kick: the power bar starts after the lead time and goes up and down", function()
-	local state = Freekick.new(100)
-	T.eq(state.phase, "power")
-	T.near(state.stageAt, 100 + FK.freekickLeadSeconds, 1e-9)
-	local start = state.stageAt
-	T.near(Freekick.powerAt(state, start), 0, 1e-9)
-	T.near(Freekick.powerAt(state, start + FK.freekickPowerSeconds), 1, 1e-9)
-	T.near(Freekick.powerAt(state, start + FK.freekickPowerSeconds * 1.5), 0.5, 1e-9)
-	T.near(Freekick.powerAt(state, start + FK.freekickPowerSeconds * 2), 0, 1e-9)
-	-- The aim marker starts in the middle and sweeps to each side.
-	T.near(Freekick.aimAt(state, start), 0, 1e-9)
-	T.near(Freekick.aimAt(state, start + FK.freekickAimSeconds / 2), FK.freekickAimRange, 1e-9)
-	T.near(Freekick.aimAt(state, start + FK.freekickAimSeconds * 1.5), -FK.freekickAimRange, 1e-9)
-end)
-
-T.test("a free kick goes power, contact, aim, then flies", function()
-	local state = Freekick.new(100)
-	local start = state.stageAt
-	T.eq(Freekick.tap(state, start - 0.2, start - 0.2), "ignored") -- the bar has not started yet
-	T.eq(Freekick.contact(state, start, 0, 0), false) -- not the contact step yet
-	local powerTap = start + FK.freekickPowerSeconds * 0.8
-	T.eq(Freekick.tap(state, powerTap, powerTap), "power")
-	T.near(state.power, 0.8, 1e-9)
-	T.eq(state.phase, "contact")
-	T.eq(Freekick.tap(state, powerTap + 0.1, powerTap + 0.1), "ignored") -- the ball needs a tap first
-	T.eq(Freekick.contact(state, powerTap + 0.5, 0.72, 0.96), true) -- outside the ball: pulled onto its edge
-	T.near(state.contactX, 0.6, 1e-9)
-	T.near(state.contactY, 0.8, 1e-9)
-	T.eq(state.phase, "aim")
-	local aimTap = powerTap + 1
-	T.eq(Freekick.tap(state, aimTap, aimTap), "kick")
-	T.eq(state.phase, "flight")
-	T.truthy(state.outcome ~= "")
-end)
-
-T.test("a free kick tap stamped in the past counts only inside the grace time", function()
-	local state = Freekick.new(100)
-	local start = state.stageAt
-	local now = start + 0.7
-	Freekick.tap(state, now, now - 5) -- far in the past: clamped to the grace window
-	T.near(state.power, Freekick.powerAt({ stageAt = start }, now - FK.freekickGraceSeconds), 1e-9)
-	local other = Freekick.new(100)
-	Freekick.tap(other, now, now + 5) -- in the future: clamped to now
-	T.near(other.power, Freekick.powerAt({ stageAt = start }, now), 1e-9)
-	local bad = Freekick.new(100)
-	T.eq(Freekick.tap(bad, now, 0 / 0), "power") -- a NaN stamp counts as now
-	T.near(bad.power, Freekick.powerAt({ stageAt = start }, now), 1e-9)
-end)
-
-T.test("a NaN contact point is refused", function()
-	local state = Freekick.new(100)
-	Freekick.tap(state, state.stageAt + 0.5, state.stageAt + 0.5)
-	T.eq(Freekick.contact(state, state.stageAt + 0.6, 0 / 0, 0), false)
-	T.eq(state.phase, "contact")
-end)
-
-T.test("a shot through the wall at the middle of the ball is blocked", function()
-	T.eq(judge(0.75, 0, 0, 0.85), "wall")
-end)
+-- The time after the aim step starts when the reticle is at `x` going right from the middle.
+local function aimTime(x)
+	local t = (x / FK.freekickAimRange) * FK.freekickAimSeconds / 2
+	return if t < 0 then t + FK.freekickAimSeconds * 2 else t
+end
 
 T.test(
-	"a hit below the middle lifts the ball over the wall, too low sends it over the bar",
+	"a breakaway: the move shows after the through-ball, the reticle and the meter sweep",
 	function()
-		T.eq(judge(0.75, 0, -0.3, 0.85), "goal")
-		T.eq(judge(0.75, 0, -1, 0.85), "over")
-		T.eq(judge(1, 0, -0.6, 0.85), "over") -- full power on top of it
+		local state = Freekick.new(100)
+		T.eq(state.phase, "dribble")
+		T.near(state.stageAt, 100 + FK.freekickLeadSeconds, 1e-9)
+		T.eq(state.move, Freekick.setup(100, 1).move)
+		-- The reticle starts in the middle of the goal at half height and glides to each side.
+		local x, y = Freekick.aimAt(state, state.stageAt)
+		T.near(x, 0, 1e-9)
+		T.near(y, (FK.freekickAimLow + FK.freekickAimHigh) / 2, 1e-9)
+		x = Freekick.aimAt(state, state.stageAt + FK.freekickAimSeconds / 2)
+		T.near(x, FK.freekickAimRange, 1e-9)
+		x = Freekick.aimAt(state, state.stageAt + FK.freekickAimSeconds * 1.5)
+		T.near(x, -FK.freekickAimRange, 1e-9)
+		-- The meter fills from the hold, then empties.
+		state.holdAt = 50
+		T.near(Freekick.powerAt(state, 50), 0, 1e-9)
+		T.near(Freekick.powerAt(state, 50 + FK.freekickPowerSeconds), 1, 1e-9)
+		T.near(Freekick.powerAt(state, 50 + FK.freekickPowerSeconds * 1.5), 0.5, 1e-9)
 	end
 )
 
-T.test("a hit on the side of the ball curls it round the wall", function()
-	T.eq(judge(0.75, 0.8, 0, 0.9), "goal")
+T.test("a breakaway goes move, aim, hold and release, then the film plays", function()
+	local state = Freekick.new(100)
+	local start = state.stageAt
+	T.eq(Freekick.move(state, start - 0.3, state.move, start - 0.3), "ignored") -- not shown yet
+	T.eq(Freekick.lock(state, start, start), false) -- not the aim step yet
+	T.eq(Freekick.move(state, start + 0.4, state.move, start + 0.4), "beat")
+	T.eq(state.phase, "aim")
+	T.eq(Freekick.release(state, start + 0.5, start + 0.5), false) -- nothing to release
+	local lockAt = state.stageAt + aimTime(-0.8)
+	T.eq(Freekick.lock(state, lockAt, lockAt), true)
+	T.near(state.aimX, -0.8, 1e-9)
+	T.eq(state.phase, "power")
+	T.eq(Freekick.release(state, lockAt + 0.1, lockAt + 0.1), false) -- the tap's own release: no hold yet
+	T.eq(Freekick.hold(state, lockAt + 0.3, lockAt + 0.3), true)
+	T.eq(Freekick.hold(state, lockAt + 0.4, lockAt + 0.4), false) -- already holding
+	local releaseAt = lockAt + 0.3 + FK.freekickPowerSeconds * 0.7
+	T.eq(Freekick.release(state, releaseAt, releaseAt), true)
+	T.near(state.power, 0.7, 1e-9)
+	T.eq(state.phase, "shot")
+	T.truthy(state.outcome ~= "")
 end)
 
-T.test("a shot away from the wall beats the keeper in the corner, not near him", function()
-	T.eq(judge(0.75, 0, 0, -0.85), "goal")
-	T.eq(judge(0.75, 0, 0, -0.3), "saved")
-	T.eq(judge(0.2, 0, 0, -0.85), "saved") -- too weak: it rolls to the keeper
+T.test("the wrong move, or the right one too late, loses the ball", function()
+	local state = Freekick.new(100)
+	local wrong = state.move % 3 + 1
+	T.eq(Freekick.move(state, state.stageAt + 0.2, wrong, state.stageAt + 0.2), "tackled")
+	T.eq(state.phase, "shot")
+	T.eq(state.outcome, "tackled")
+	T.eq(state.streak, 0)
+
+	local late = Freekick.new(100)
+	local deadline = late.stageAt + Freekick.moveWindow(1)
+	T.eq(Freekick.move(late, deadline + 0.1, late.move, deadline + 0.1), "tackled")
+
+	-- Pressed just in time on a slow connection: the stamp counts inside the grace time.
+	local slow = Freekick.new(100)
+	local slowDeadline = slow.stageAt + Freekick.moveWindow(1)
+	T.eq(Freekick.move(slow, slowDeadline + 0.15, slow.move, slowDeadline - 0.01), "beat")
+
+	-- Never pressed: the defender wins it once the window and the grace time are gone.
+	local idle = Freekick.new(100)
+	local idleDeadline = idle.stageAt + Freekick.moveWindow(1)
+	Freekick.normalize(idle, idleDeadline + FK.freekickGraceSeconds - 0.01)
+	T.eq(idle.phase, "dribble")
+	Freekick.normalize(idle, idleDeadline + FK.freekickGraceSeconds + 0.01)
+	T.eq(idle.phase, "shot")
+	T.eq(idle.outcome, "tackled")
+	T.near(idle.stageAt, idleDeadline, 1e-9)
+end)
+
+T.test("the move window shrinks with the streak, never below the minimum", function()
+	T.near(Freekick.moveWindow(1), FK.freekickMoveSeconds, 1e-9)
+	T.truthy(Freekick.moveWindow(5) < Freekick.moveWindow(1))
+	T.near(Freekick.moveWindow(500), FK.freekickMoveMin, 1e-9)
+end)
+
+T.test("an input stamped in the past counts only inside the grace time", function()
+	local state = Freekick.new(100)
+	Freekick.move(state, state.stageAt + 0.2, state.move, state.stageAt + 0.2)
+	local start = state.stageAt
+	local now = start + 0.9
+	Freekick.lock(state, now, now - 5) -- far in the past: clamped to the grace window
+	local x = Freekick.aimAt({ stageAt = start }, now - FK.freekickGraceSeconds)
+	T.near(state.aimX, x, 1e-9)
+	local bad = Freekick.new(100)
+	Freekick.move(bad, bad.stageAt + 0.2, bad.move, bad.stageAt + 0.2)
+	local badStart = bad.stageAt
+	T.eq(Freekick.lock(bad, badStart + 0.5, 0 / 0), true) -- a NaN stamp counts as now
+	T.near(bad.aimX, (Freekick.aimAt({ stageAt = badStart }, badStart + 0.5)), 1e-9)
+end)
+
+T.test(
+	"a shot away from the keeper scores, one near him is saved, a soft one rolls to him",
+	function()
+		T.eq(judge(0.8, 0.4, 0.7), "goal")
+		T.eq(judge(-0.25, 0.4, 0.7), "saved")
+		T.eq(judge(0.8, 0.4, 0.2), "saved")
+	end
+)
+
+T.test("too much power lifts the shot over the bar", function()
+	T.eq(judge(0.8, 0.5, 0.7), "goal")
+	T.eq(judge(0.8, 0.5, 1), "goal") -- 0.5 + 0.3 * 1.2 = 0.86: still under the bar
+	T.eq(judge(0.8, 0.9, 1), "over")
+	T.eq(judge(0.8, 0.75, 0.9), "bar")
 end)
 
 T.test("a shot past the post is wide, one on the post misses too", function()
-	T.eq(judge(0.75, 0, 0, -1.2), "wide")
-	T.eq(judge(0.75, 0, 0, -0.98), "post")
+	T.eq(judge(1.2, 0.4, 0.7), "wide")
+	T.eq(judge(-0.98, 0.4, 0.7), "post")
 end)
 
 T.test("the keeper reaches further with every goal of the streak", function()
-	T.eq(judge(0.75, 0, 0, -0.7, 1), "goal")
-	T.eq(judge(0.75, 0, 0, -0.7, 11), "saved")
+	T.eq(judge(0.3, 0.3, 0.7, 1), "goal")
+	T.eq(judge(0.3, 0.3, 0.7, 11), "saved")
 end)
 
-T.test("the wall and the keeper stand on opposite sides, both sides come up", function()
+T.test("the keeper stands on both sides and every move comes up", function()
 	local left, right = 0, 0
-	for kick = 1, 200 do
+	local moves = { 0, 0, 0 }
+	for kick = 1, 300 do
 		local setup = Freekick.setup(1234.5, kick)
-		T.truthy(setup.wallX * setup.keeperX < 0, "kick " .. kick)
-		T.truthy(math.abs(setup.wallX) <= 0.4 and math.abs(setup.keeperX) <= 0.27)
-		if setup.wallX < 0 then
+		T.truthy(math.abs(setup.keeperX) <= FK.freekickKeeperSpread)
+		if setup.keeperX < 0 then
 			left += 1
 		else
 			right += 1
 		end
+		moves[setup.move] += 1
 	end
-	T.truthy(left > 50 and right > 50, "left " .. left .. ", right " .. right)
-	T.eq(Freekick.setup(77, 3).wallX, Freekick.setup(77, 3).wallX)
+	T.truthy(left > 80 and right > 80, "left " .. left .. ", right " .. right)
+	for move = 1, 3 do
+		T.truthy(moves[move] > 60, "move " .. move .. ": " .. moves[move])
+	end
+	T.eq(Freekick.setup(77, 3).keeperX, Freekick.setup(77, 3).keeperX)
 end)
 
--- Plays one kick of `state` with these values (the taps land on the exact bar values asked for).
-local function kick(state, power, contactX, contactY, aim)
+-- Plays one attack of `state`: the right move, the reticle locked at `aimX` and a release at `power`.
+local function attack(state, aimX, power)
 	local start = state.stageAt
-	local powerTap = start + FK.freekickPowerSeconds * power
-	Freekick.tap(state, powerTap, powerTap)
-	Freekick.contact(state, powerTap + 0.3, contactX, contactY)
-	-- The aim marker is at `aim` this long after the aim step starts (going right from the middle).
-	local stage = state.stageAt
-	local toAim = (aim / FK.freekickAimRange) * FK.freekickAimSeconds / 2
-	if toAim < 0 then
-		toAim += FK.freekickAimSeconds * 2
-	end
-	Freekick.tap(state, stage + toAim, stage + toAim)
+	Freekick.move(state, start + 0.2, state.move, start + 0.2)
+	local lockAt = state.stageAt + aimTime(aimX)
+	Freekick.lock(state, lockAt, lockAt)
+	Freekick.hold(state, lockAt + 0.2, lockAt + 0.2)
+	local releaseAt = lockAt + 0.2 + FK.freekickPowerSeconds * power
+	Freekick.release(state, releaseAt, releaseAt)
 	return state.outcome
 end
 
-T.test("a goal brings the next kick, a miss ends the streak and a new one starts", function()
+T.test("a goal brings the next attack, a miss ends the streak and a new one starts", function()
 	local state = Freekick.new(100)
-	-- Shoot into the corner away from the wall every time.
+	-- Shoot into the corner away from the keeper every time.
 	local function openCorner()
-		local setup = Freekick.setup(state.seed, state.kick)
-		return if setup.wallX > 0 then -0.85 else 0.85
+		return if Freekick.setup(state.seed, state.kick).keeperX > 0 then -0.85 else 0.85
 	end
-	T.eq(kick(state, 0.75, 0, 0, openCorner()), "goal")
+	T.eq(attack(state, openCorner(), 0.7), "goal")
 	T.eq(state.streak, 1)
-	local landed = state.stageAt + FK.freekickFlightSeconds
-	Freekick.normalize(state, landed + 0.01)
-	T.eq(state.phase, "power")
+	local ended = state.stageAt + FK.freekickFilmSeconds
+	Freekick.normalize(state, ended + 0.01)
+	T.eq(state.phase, "dribble")
 	T.eq(state.kick, 2)
-	T.near(state.stageAt, landed + FK.freekickLeadSeconds, 1e-9)
-	T.eq(kick(state, 0.75, 0, 0, openCorner()), "goal")
+	T.near(state.stageAt, ended + FK.freekickLeadSeconds, 1e-9)
+	T.eq(state.move, Freekick.setup(state.seed, 2).move)
+	T.eq(attack(state, openCorner(), 0.7), "goal")
 	T.eq(state.streak, 2)
-	Freekick.normalize(state, state.stageAt + FK.freekickFlightSeconds + 0.01)
-	T.eq(kick(state, 0.75, 0, 0, openCorner() * 1.45), "wide")
-	local missLanded = state.stageAt + FK.freekickFlightSeconds
-	local events = Freekick.normalize(state, missLanded + 0.01)
+	Freekick.normalize(state, state.stageAt + FK.freekickFilmSeconds + 0.01)
+	T.eq(attack(state, 1.2, 0.7), "wide")
+	local missEnded = state.stageAt + FK.freekickFilmSeconds
+	local events = Freekick.normalize(state, missEnded + 0.01)
 	T.eq(#events, 1)
 	T.eq(events[1].kind, "over")
 	T.eq(events[1].streak, 2)
 	T.eq(state.phase, "over")
-	Freekick.normalize(state, missLanded + FK.freekickOverSeconds + 0.01)
-	T.eq(state.phase, "power")
+	Freekick.normalize(state, missEnded + FK.freekickOverSeconds + 0.01)
+	T.eq(state.phase, "dribble")
 	T.eq(state.streak, 0)
 	T.eq(state.kick, 1)
-	T.near(state.seed, missLanded + FK.freekickOverSeconds, 1e-9)
+	T.near(state.seed, missEnded + FK.freekickOverSeconds, 1e-9)
 end)
 
-T.test("free kick medals and pay grow with the streak", function()
+T.test("a lost dribble plays the short film", function()
+	local state = Freekick.new(100)
+	Freekick.move(state, state.stageAt + 0.2, state.move % 3 + 1, state.stageAt + 0.2)
+	local ended = state.stageAt + FK.freekickTackleSeconds
+	Freekick.normalize(state, ended - 0.01)
+	T.eq(state.phase, "shot")
+	Freekick.normalize(state, ended + 0.01)
+	T.eq(state.phase, "over")
+end)
+
+T.test("breakaway medals and pay grow with the streak", function()
 	local medals = FK.freekickMedals
 	T.eq(Freekick.medal(medals.bronze - 1), 0)
 	T.eq(Freekick.medal(medals.bronze), 1)
@@ -564,10 +610,8 @@ T.test("free kick medals and pay grow with the streak", function()
 	T.near(Freekick.tpFor(99), FK.freekickBaseTp + FK.freekickStreakTp * FK.freekickStreakMax, 1e-9)
 end)
 
-T.test("a long gap in the free kicks is caught up without looping for ever", function()
+T.test("a long gap in the breakaway is caught up without looping for ever", function()
 	local state = Freekick.new(100)
-	state.phase = "flight"
-	state.outcome = "wall"
 	local events = Freekick.normalize(state, 100 + 100000)
 	T.truthy(#events >= 1 and #events <= 16)
 end)

@@ -374,39 +374,41 @@ Config.Training = {
 	juggleComboMax = 10,
 	juggleTpPerMinuteMax = 40,
 	juggleMedals = { bronze = 10, silver = 25, gold = 50 },
-	-- Free kicks (the other skill station), an endless streak of goals. Each kick has three steps: a
-	-- power bar that goes up and down (`freekickPowerSeconds` from empty to full), a tap on the ball
-	-- for the contact point (the side curls it, below the middle lifts it), and an aim marker that
-	-- sweeps across the goal (`freekickAimSeconds` from one side to the other). A tap may be stamped up
-	-- to `freekickGraceSeconds` in the past (a slow connection). The shot then flies for
-	-- `freekickFlightSeconds`: a goal adds one to the streak and the next kick comes, anything else
-	-- ends the streak and the result shows for `freekickOverSeconds`.
-	-- The shot, in goal units: the posts are at x -1 and 1, the bar at height 1. The wall stands
-	-- `freekickWallAt` of the way to the goal; `freekickWallHalf` wide either side of its middle and
-	-- `freekickWallTop` high. The height of the ball at the wall and at the goal grows with the lift
-	-- (0 for a hit at the top of the ball, 1 at the bottom) and the power (`freekickPowerSweet` is the
-	-- power for a normal flight). The keeper reaches `freekickKeeperReach` from where he stands, less
-	-- for a hard shot and more with every goal of the streak (`freekickKeeperReachStep`, up to
+	-- The 1v1 breakaway (the free-kick spot, the other skill station), an endless streak of goals. Each
+	-- attack: the through-ball arrives (`freekickLeadSeconds`), then a skill move shows and waits
+	-- `freekickMoveSeconds` for its key (less `freekickMoveStep` with every goal, down to
+	-- `freekickMoveMin`), or the defender wins the ball. Then the aim reticle glides over the goal
+	-- mouth (across in `freekickAimSeconds`, up in `freekickAimUpSeconds`) until a tap locks it, and a
+	-- hold fills the power meter (empty to full in `freekickPowerSeconds`, then back) until the
+	-- release shoots. An input may be stamped up to `freekickGraceSeconds` in the past (a slow
+	-- connection). The film of the attack then plays for `freekickFilmSeconds`
+	-- (`freekickTackleSeconds` when the dribble was lost): a goal adds one to the streak and the next
+	-- attack comes, anything else ends the streak and the result shows for `freekickOverSeconds`.
+	-- The shot, in goal units: the posts are at x -1 and 1, the bar at height 1. The height at the goal
+	-- is the reticle's, plus `freekickPowerLift` per unit of power above `freekickPowerSweet`. The
+	-- keeper stands up to `freekickKeeperSpread` from the middle and reaches `freekickKeeperReach`,
+	-- less for a hard shot and more with every goal of the streak (`freekickKeeperReachStep`, up to
 	-- `freekickKeeperReachMax` more).
-	freekickPowerSeconds = 0.75,
-	freekickAimSeconds = 1.4,
+	freekickLeadSeconds = 1.2,
+	freekickIntroSeconds = 1.5, -- extra time before the first attack after stepping on the spot, to get ready
+	freekickMoveSeconds = 1.4,
+	freekickMoveStep = 0.06,
+	freekickMoveMin = 0.6,
+	freekickAimSeconds = 1.5,
+	freekickAimUpSeconds = 1.05,
+	freekickAimRange = 1.25, -- the reticle glides from -this to +this (a little past the posts)
+	freekickAimLow = 0.1, -- the reticle's lowest and highest height
+	freekickAimHigh = 0.92,
+	freekickPowerSeconds = 0.9,
+	freekickPowerSweet = 0.7,
+	freekickPowerLift = 1.2,
+	freekickWeakPower = 0.3, -- below this the shot rolls to the keeper
 	freekickGraceSeconds = 0.2,
-	freekickFlightSeconds = 1.6,
-	freekickLeadSeconds = 1, -- the power bar starts this long after a kick begins
-	freekickIntroSeconds = 1.5, -- extra time before the first kick after stepping on the spot, to get ready
+	freekickFilmSeconds = 6,
+	freekickTackleSeconds = 3,
 	freekickOverSeconds = 2.5,
-	freekickAimRange = 1.3, -- the aim marker sweeps from -this to +this (a little past the posts)
 	freekickBallRadius = 0.05,
-	freekickWallAt = 0.4,
-	freekickWallHalf = 0.3,
-	freekickWallTop = 0.6,
-	freekickWallLift = 1.1, -- height at the wall per unit of lift
-	freekickGoalLift = 1.3, -- height at the goal per unit of lift
-	freekickWallPower = 0.3, -- extra height at the wall per unit of power above the sweet power
-	freekickGoalPower = 1.2, -- extra height at the goal per unit of power above the sweet power
-	freekickPowerSweet = 0.75,
-	freekickWeakPower = 0.35, -- below this the shot rolls to the keeper
-	freekickCurl = 0.7, -- how far a hit at the very side of the ball bends the flight at its middle
+	freekickKeeperSpread = 0.3,
 	freekickKeeperReach = 0.42,
 	freekickKeeperReachStep = 0.015,
 	freekickKeeperReachMax = 0.15,

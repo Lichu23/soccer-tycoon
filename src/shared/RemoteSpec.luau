@@ -111,21 +111,27 @@ RemoteSpec.remotes = {
 		ratePerSecond = 6,
 		burst = 6,
 	},
-	-- A tap on the bar of the free kicks (it sets the power, or the aim and kicks) and the server time
-	-- the player's screen showed when he tapped (the server never trusts it more than a fraction of a
-	-- second into the past).
+	-- The 1v1 breakaway at the free-kick spot. Each input carries the server time the player's screen
+	-- showed when it was made (the server never trusts it more than a fraction of a second into the
+	-- past). A tap locks the aim reticle, or begins the power hold; a release ends the hold and shoots.
 	FreekickTap = {
 		direction = "toServer",
 		args = { { kind = "number", min = 0, max = 4_000_000_000 } },
 		ratePerSecond = 6,
 		burst = 6,
 	},
-	-- A tap on the ball of the free kicks: the contact point, each axis -1 to 1.
-	FreekickContact = {
+	FreekickRelease = {
+		direction = "toServer",
+		args = { { kind = "number", min = 0, max = 4_000_000_000 } },
+		ratePerSecond = 6,
+		burst = 6,
+	},
+	-- A skill move against the defender: 1 cuts left, 2 is a step-over, 3 cuts right.
+	FreekickMove = {
 		direction = "toServer",
 		args = {
-			{ kind = "number", min = -1, max = 1 },
-			{ kind = "number", min = -1, max = 1 },
+			{ kind = "number", min = 1, max = 3, integer = true },
+			{ kind = "number", min = 0, max = 4_000_000_000 },
 		},
 		ratePerSecond = 6,
 		burst = 6,
