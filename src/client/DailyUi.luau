@@ -16,6 +16,7 @@ local DailyInfo = require(ReplicatedStorage.Shared.DailyInfo)
 local NumberFormat = require(ReplicatedStorage.Shared.NumberFormat)
 local PenaltyUi = require(script.Parent.PenaltyUi)
 local Net = require(script.Parent.Net)
+local RewardCard = require(script.Parent.RewardCard)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
 
@@ -24,7 +25,7 @@ local player = Players.LocalPlayer
 local GLOW_SECONDS = 4 -- how long a newly ready icon pulses
 local TOAST_SECONDS = 2.5
 local PRIZE_SECONDS = 4
-local AUTO_OPEN_SECONDS = 1.6 -- after the first match, the VICTORY text has faded by then
+local AUTO_OPEN_SECONDS = 1 -- after the level-up that ends the tutorial
 
 local DailyUi = {}
 
@@ -239,10 +240,14 @@ function DailyUi.init()
 		end
 	end)
 
-	-- After the very first match the kick screen opens by itself, once: the VICTORY text fades first.
-	-- Sending SeenTile marks the Kick button as seen for good, so it never opens by itself again.
+	-- When the level-up tutorial ends (the first level any player gets), the kick screen opens by
+	-- itself a second later, once, in place of the level-up card. Sending SeenTile marks the Kick
+	-- button as seen for good, so it never opens by itself again.
 	local autoOpened = false
-	Net.on("MatchResult", function()
+	Net.on("Notice", function(info: any)
+		if type(info) ~= "table" or info.kind ~= "levelUp" or info.tutorialDone ~= true then
+			return
+		end
 		if autoOpened or kickIcon.status ~= "ready" or player:GetAttribute("tile_kick") ~= 0 then
 			return
 		end
@@ -250,6 +255,7 @@ function DailyUi.init()
 		task.delay(AUTO_OPEN_SECONDS, function()
 			if kickIcon.status == "ready" then
 				Net.fire("SeenTile", "kick")
+				RewardCard.hide()
 				openKick()
 			end
 		end)

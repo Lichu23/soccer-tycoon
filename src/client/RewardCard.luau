@@ -198,6 +198,14 @@ function RewardCard.show(content: Content)
 	task.delay(SHOW_SECONDS, hide)
 end
 
+-- Takes the card off the screen now (a screen that opens in its place).
+function RewardCard.hide()
+	token += 1
+	if gui then
+		gui.Enabled = false
+	end
+end
+
 -- What the free case gave, as the card's text.
 function RewardCard.freeCase(prize: any)
 	if type(prize) ~= "table" then

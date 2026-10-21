@@ -336,6 +336,11 @@ Config.Stars = {
 Config.Training = {
 	bonusPerLevel = 0.03,
 	levelCostBase = 40, -- cost of level L = base x L x rarity cost factor
+	-- Players whose levels cost something else, level by level. The first player bought is the
+	-- level-up tutorial (Arrow): his first level is quick to earn in the Training Gym.
+	levelCostOverrides = {
+		rashford = { 5, 10, 20, 40, 50 },
+	} :: { [string]: { number } },
 	idleTpPerMinute = 10,
 	staminaSeconds = 300,
 	staminaRefillSeconds = 300, -- time away to refill from empty

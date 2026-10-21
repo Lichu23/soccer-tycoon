@@ -305,28 +305,42 @@ T.test("levelling up spends the exact TP and adds one level", function()
 	local session = { data = ProfileSchema.newProfile() }
 	ownFloor(session.data, 1)
 	session.data.tp = 100
-	local ok = Actions.levelUp(session, "rashford", 0)
+	local ok = Actions.levelUp(session, "grealish", 0)
 	T.eq(ok, true)
-	T.eq(session.data.players.rashford.level, 1)
+	T.eq(session.data.players.grealish.level, 1)
 	T.eq(session.data.tp, 60)
-	local ok2, why = Actions.levelUp(session, "rashford", 1)
+	local ok2, why = Actions.levelUp(session, "grealish", 1)
 	T.eq(ok2, false) -- level 2 costs 80 TP but only 60 are left
 	T.eq(why, "cannotAfford")
+end)
+
+T.test("the first player's levels are cheap: the level-up tutorial", function()
+	local data = ProfileSchema.newProfile()
+	ownFloor(data, 1)
+	local costs = {}
+	for level = 0, 4 do
+		data.players.rashford.level = level
+		table.insert(costs, Progress.levelCost(data, "rashford"))
+	end
+	T.deepEq(costs, { 5, 10, 20, 40, 50 })
+	data.players.rashford.level = 0
+	data.tp = 5
+	T.eq(Progress.levelStatus(data, "rashford"), "ready")
 end)
 
 T.test("a level-up that cannot be afforded or is stale changes nothing", function()
 	local session = { data = ProfileSchema.newProfile() }
 	ownFloor(session.data, 1)
 	session.data.tp = 39
-	local ok, why = Actions.levelUp(session, "rashford", 0)
+	local ok, why = Actions.levelUp(session, "grealish", 0)
 	T.eq(ok, false)
 	T.eq(why, "cannotAfford")
 	session.data.tp = 500
-	local stale, reason = Actions.levelUp(session, "rashford", 3)
+	local stale, reason = Actions.levelUp(session, "grealish", 3)
 	T.eq(stale, false)
 	T.eq(reason, "stale")
 	T.eq(session.data.tp, 500)
-	T.eq(session.data.players.rashford.level, 0)
+	T.eq(session.data.players.grealish.level, 0)
 	local notOwned, why3 = Actions.levelUp(session, "pele", 0)
 	T.eq(notOwned, false)
 	T.eq(why3, "notOwned")
@@ -347,7 +361,7 @@ T.test("the level-up pad shows the TP cost, the level and the bench", function()
 	local def = Config.PlayersById.rashford
 	local info = PadInfo.describe("player", "rashford", data)
 	T.eq(info.state, "ready")
-	T.eq(info.price, "40 TP")
+	T.eq(info.price, "5 TP") -- the tutorial player (Config.Training.levelCostOverrides)
 	T.truthy(string.find(info.note, "Lv 0/", 1, true) ~= nil)
 	-- Rashford earns least, so with 10 owned players he is on the bench at tier 1.
 	T.eq(table.find(Roster.field(data), "rashford"), nil)
@@ -355,7 +369,7 @@ T.test("the level-up pad shows the TP cost, the level and the bench", function()
 	local starter = Roster.field(data)[1]
 	local starterInfo = PadInfo.describe("player", starter, data)
 	T.truthy(string.find(starterInfo.note, "+3%", 1, true) ~= nil)
-	data.tp = 5
+	data.tp = 4
 	T.eq(PadInfo.describe("player", "rashford", data).state, "cannotAfford")
 	data.players.rashford.level = Formulas.levelCap(def.rarity)
 	T.eq(PadInfo.describe("player", "rashford", data).price, "MAX")

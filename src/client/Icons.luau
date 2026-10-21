@@ -16,7 +16,7 @@ Icons.ids = {
 	locker = "rbxassetid://98567241028930",
 	alerts = "rbxassetid://80620190525696",
 	cash = "rbxassetid://119841301152540",
-	tp = "rbxassetid://118070040795011",
+	tp = "rbxassetid://123384829300834", -- "TP" lettering, drawn by tools/kits/make (icon_tp)
 	trophy = "rbxassetid://78532583067328",
 	-- Priority 2 tiles: the Shop and Locker rows and the boost badge. The four store tiles
 	-- (cash per match, match speed, hat-trick, offline) wait for a screen that lists the upgrades.

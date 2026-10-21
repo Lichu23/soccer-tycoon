@@ -102,6 +102,10 @@ function Progress.levelCost(data: ProgressData, id: string): number?
 	if def == nil or owned == nil or owned.level >= Formulas.levelCap(def.rarity) then
 		return nil
 	end
+	local override = Config.Training.levelCostOverrides[id]
+	if override and override[owned.level + 1] then
+		return override[owned.level + 1]
+	end
 	return Formulas.levelCost(def.rarity, owned.level + 1)
 end
 
