@@ -87,10 +87,10 @@ local function soft(part: Part): Part
 	return part
 end
 
-local function marker(name: string, padId: string, cx: number, cz: number)
+local function marker(name: string, padId: string, cx: number, cz: number, sx: number?, sz: number?)
 	local pad = Instance.new("Part")
 	pad.Name = name
-	pad.Size = Vector3.new(14, 0.2, 14)
+	pad.Size = Vector3.new(sx or 14, 0.2, sz or 14)
 	pad.CFrame = CFrame.new(cx, 0.8, cz)
 	pad.Anchored = true
 	pad.Color = Color3.fromRGB(60, 220, 220)
@@ -348,7 +348,8 @@ end
 -- The name of each station is written by the pad label (client/PadRing), so there are no boards here.
 marker("TrainingKeepie", "trainingKeepie", -110, 80)
 marker("TrainingFreekick", "trainingFreekick", -110, 120)
-marker("TrainingTreadmill", "trainingTreadmill", -70, 80)
-marker("TrainingBench", "trainingBench", -70, 120)
+-- The conditioning pads only cover their machine: training needs the belt or the bench seat anyway.
+marker("TrainingTreadmill", "trainingTreadmill", -70, 80, 15, 7.2)
+marker("TrainingBench", "trainingBench", -70, 120, 8, 10)
 
 return "Gym built: " .. #gym:GetChildren() .. " parts, " .. #markers:GetChildren() .. " markers in total"

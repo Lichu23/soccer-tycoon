@@ -45,8 +45,37 @@ local STATIONS: { [string]: { field: string, station: string } } = {
 	TrainingFreekick = { field = "skill", station = "freekick" },
 }
 
+local BELT_HEIGHT = 6 -- studs over the treadmill's belt that still count as on it (a jump)
+
+-- Whether the player is on the machine itself, not just on its pad: on the treadmill's belt (its
+-- invisible Stand), or lying on the bench (its BenchSeat). A jump off lands beside the machine, so it
+-- never starts the training again.
+local function onMachine(plot: Instance, player: Player, station: string): boolean
+	local gym = plot:FindFirstChild("Gym")
+	local character = player.Character
+	local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
+	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+	if gym == nil or humanoid == nil or root == nil or not root:IsA("BasePart") then
+		return false
+	end
+	if station == "bench" then
+		local seat = humanoid.SeatPart
+		return seat ~= nil and seat.Name == "BenchSeat" and seat:IsDescendantOf(gym)
+	end
+	local treadmill = gym:FindFirstChild("Treadmill")
+	local stand = if treadmill then treadmill:FindFirstChild("Stand") else nil
+	if stand == nil or not stand:IsA("BasePart") then
+		return false
+	end
+	local at = stand.CFrame:PointToObjectSpace(root.Position)
+	return math.abs(at.X) <= stand.Size.X / 2
+		and math.abs(at.Z) <= stand.Size.Z / 2
+		and at.Y >= 0
+		and at.Y <= BELT_HEIGHT
+end
+
 -- Which station the player stands on, or nil. The pad system publishes each player's padKey, which
--- ends with the marker's name.
+-- ends with the marker's name. A conditioning station also needs the player on the machine.
 local function stationOf(session: Session.Session): { field: string, station: string }?
 	local plot = session.runtime.plot
 	if plot == nil or not Progress.trainingUnlocked(session.data) then
@@ -58,6 +87,9 @@ local function stationOf(session: Session.Session): { field: string, station: st
 	end
 	for marker, info in STATIONS do
 		if key == plot.Name .. ":" .. marker then
+			if info.field == "conditioning" and not onMachine(plot, session.player, info.station) then
+				return nil
+			end
 			return info
 		end
 	end

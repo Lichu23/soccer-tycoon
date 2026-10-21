@@ -14,6 +14,7 @@ local player = Players.LocalPlayer
 local TREADMILL_SPEED = 1.25 -- the run animation plays a little faster than normal
 local HOLD_TOLERANCE = 0.3 -- studs the runner may drift from the middle of the belt
 local HOP_DISTANCE = 12 -- a jump walks the runner this far back from the middle: down the ramp, off the pad
+local BENCH_STEP_OFF = 6 -- getting up walks this far from the bench's centre, past its foot end
 
 local GymRunner = {}
 
@@ -151,9 +152,33 @@ function GymRunner.init()
 		end
 	end
 
+	-- Getting up from the bench (the Seat's jump) walks the character off its foot end, away from the
+	-- rack, so it does not land on the seat again and lie straight back down.
+	local function watchBench(character: Model)
+		local humanoid = character:WaitForChild("Humanoid", 10)
+		if humanoid == nil or not humanoid:IsA("Humanoid") then
+			return
+		end
+		local bench: Model? = nil
+		humanoid.Seated:Connect(function(active, seat)
+			if active then
+				local parent = if seat and seat.Name == "BenchSeat" then seat.Parent else nil
+				bench = if parent and parent:IsA("Model") then parent else nil
+			elseif bench then
+				local pivot = bench:GetPivot()
+				bench = nil
+				humanoid:MoveTo(pivot.Position + pivot.RightVector * BENCH_STEP_OFF)
+			end
+		end)
+	end
+
 	player:GetAttributeChangedSignal("trainingStation"):Connect(refresh)
 	player:GetAttributeChangedSignal("training"):Connect(refresh)
 	player.CharacterRemoving:Connect(stopCurrent)
+	player.CharacterAdded:Connect(watchBench)
+	if player.Character then
+		task.spawn(watchBench, player.Character)
+	end
 end
 
 return GymRunner
