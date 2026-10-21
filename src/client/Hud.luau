@@ -12,6 +12,7 @@ local TextService = game:GetService("TextService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
+local Config = require(ReplicatedStorage.Shared.Config)
 local Icons = require(script.Parent.Icons)
 local Net = require(script.Parent.Net)
 local Sounds = require(script.Parent.Sounds)
@@ -220,9 +221,24 @@ function Hud.build(parent: Instance): any
 	money.Text = "$0"
 
 	-- Training points: same design as the money, always shown (the points are farmed from the start).
-	local _, tpValue =
+	local tpBox, tpValue =
 		statBox(top, "Tp", MONEY_Y + BOX_HEIGHT + 6, Style.ui.bar, "TP", "tp", "Value")
 	tpValue.Text = "0"
+	-- A bought x2 TP boost shows inside the TP box, left of the number, so it needs no row of its own.
+	local tpBoost = new("TextLabel", {
+		Name = "TpBoost",
+		Position = UDim2.fromOffset(BOX_HEIGHT + 6, 0),
+		Size = UDim2.new(0, 96, 1, 0),
+		BackgroundTransparency = 1,
+		Text = "x2 · 10:00",
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Font = Style.font,
+		TextSize = 15,
+		TextColor3 = Style.ui.gold,
+		Visible = false,
+		ZIndex = 2,
+	}, tpBox)
+	stroke(tpBoost, Style.ui.dark, 2)
 
 	-- The boost badge sits under the TP box, at the right edge of the column.
 	local boost = new("TextLabel", {
@@ -332,7 +348,7 @@ function Hud.init()
 	local matchClock = matchTimer.Box.Clock
 	local boost, banner = top.BoostBadge, gui.Banner
 	local payout = banner.Payout
-	local tpValue = top.Tp.Value
+	local tpValue, tpBoost = top.Tp.Value, top.Tp.TpBoost
 
 	-- The match timer shows from the first player on (the team plays from then).
 	local function showMatchTimer()
@@ -489,6 +505,18 @@ function Hud.init()
 			boost.Text = string.format("x%g · %s", shown, clockText(boostEnds - now))
 		else
 			boost.Visible = false
+		end
+
+		local tpBoostEnds = player:GetAttribute("tpBoostEndsAt")
+		if type(tpBoostEnds) == "number" and tpBoostEnds > now then
+			tpBoost.Visible = true
+			tpBoost.Text = string.format(
+				"x%g · %s",
+				Config.Boost.paidMultiplier,
+				clockText(tpBoostEnds - now)
+			)
+		else
+			tpBoost.Visible = false
 		end
 	end)
 end

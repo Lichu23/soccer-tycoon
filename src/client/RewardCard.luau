@@ -247,6 +247,17 @@ local function purchaseCard(result: any): Content?
 			detail = `Your next {result.matches or Config.Boost.matchPackSize} matches pay x{Config.Boost.matchMultiplier}`,
 			icon = "boost",
 		}
+	elseif result.kind == "timedBoost" then
+		local minutes = math.floor((tonumber(result.seconds) or Config.Boost.paidSeconds) / 60)
+		return {
+			title = "PURCHASE",
+			big = if result.cash and result.tp
+				then "x2 Cash + TP"
+				elseif result.tp then "x2 TP"
+				else "x2 Cash",
+			detail = `For the next {minutes} minutes you play`,
+			icon = if result.cash and result.tp then "boost" elseif result.tp then "tp" else "cash",
+		}
 	elseif result.kind == "cash" and type(result.amount) == "number" then
 		return {
 			title = "PURCHASE",

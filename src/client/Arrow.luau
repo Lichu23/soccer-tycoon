@@ -3,8 +3,7 @@
 -- next thing to do, marching towards it. There is no
 -- caption or marker above the pad (the pads and the goal row already say what to do). It only guides
 -- the first steps: to a free plot, then to the first player's pad.
--- After the first purchase it disappears. Then it shows once, for a short time, towards the Store
--- pad, only so the player knows the Store exists, and never again. When the first match ends the
+-- After the first purchase it disappears. When the first match ends the
 -- training ground opens, and until the first player is levelled up an objective at the top of the
 -- screen says what to do: get the TP for the first level in the Training Gym (the trail leads there),
 -- then level up the first player bought (the trail leads to his pad).
@@ -27,8 +26,6 @@ local player = Players.LocalPlayer
 
 local ARRIVED_DISTANCE = 7
 local UPDATE_SECONDS = 0.25
-local STORE_HINT_SECONDS = 20 -- how long the Store hint can show at most
-local STORE_HINT_NEAR = 14 -- the hint ends when the player gets this close to the Store pad
 local TRAINING_HINT_NEAR = 14 -- at the gym the trail stops; the objective stays until the TP is in
 local GOLD = Color3.fromRGB(255, 205, 20)
 local CHEVRONS = 12 -- the most chevrons on the ground at once
@@ -39,9 +36,6 @@ local MARCH_SPEED = 3 -- studs per second the trail moves towards the target
 local GROUND_OFFSET = 0.12
 
 local guide: { kind: string, endsAt: number }? = nil -- asked for by a HUD icon
-local lastOwned: number? = nil -- players owned at the last state change (nil before the first)
-local storeHintStartedAt: number? = nil
-local storeHintDone = false
 
 local Arrow = {}
 
@@ -120,21 +114,7 @@ local function target(root: BasePart): BasePart?
 		return nearestPad(root, "player", goal.id)
 	end
 
-	-- After it: the Store hint, once and for a short time.
-	local startedAt = storeHintStartedAt
-	if startedAt ~= nil and not storeHintDone then
-		local store = nearestPad(root, "store", "cashPerMatch")
-		local expired = os.clock() - startedAt > STORE_HINT_SECONDS
-		local bought = State.data.storeLevels.cashPerMatch > 0
-		local near = store ~= nil and (store.Position - root.Position).Magnitude < STORE_HINT_NEAR
-		if expired or bought or near or store == nil then
-			storeHintDone = true
-			return nil
-		end
-		return store
-	end
-
-	-- Then the first level-up: to the Training Gym for the TP, then to the first player's pad.
+	-- After it, the first level-up: to the Training Gym for the TP, then to the first player's pad.
 	local phase, id = levelGuide()
 	if phase == "train" then
 		local spot = nearestPad(root, "training", "trainingTreadmill")
@@ -153,19 +133,6 @@ function Arrow.guide(kind: string, seconds: number)
 end
 
 function Arrow.init()
-	-- The Store hint starts when the first player is bought during this session. A returning
-	-- player who already owns players never sees it.
-	State.onChange(function()
-		if not State.loaded then
-			return
-		end
-		local owned = Roster.ownedCount(State.data)
-		if lastOwned == 0 and owned >= 1 and not storeHintDone and storeHintStartedAt == nil then
-			storeHintStartedAt = os.clock()
-		end
-		lastOwned = owned
-	end)
-
 	-- The objective at the top of the screen, for the first level-up.
 	local objectiveGui = Instance.new("ScreenGui")
 	objectiveGui.Name = "Objective"

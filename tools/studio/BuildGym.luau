@@ -9,10 +9,10 @@
 --
 --   outdoor yard (open sky)             gym hall (roof)
 --   x -110: keepie-uppies (z 80)        x -70: treadmill (z 80)
---           free kicks (z 120)                  agility ladder (z 120)
+--           free kicks (z 120)                  bench press (z 120)
 --
 -- Each station has a 14 x 14 marker (Kind "training", PadId trainingKeepie, trainingFreekick,
--- trainingTreadmill, trainingLadder); the server reads the pad key (TrainingActions) and PadInfo names
+-- trainingTreadmill, trainingBench); the server reads the pad key (TrainingActions) and PadInfo names
 -- the stations.
 
 local ServerStorage = game:GetService("ServerStorage")
@@ -28,7 +28,7 @@ for _, name in { "TrainingFloorAfk", "TrainingFloorActive", "TrainingDivider", "
 		old:Destroy()
 	end
 end
-for _, name in { "TrainingAfk", "TrainingActive", "TrainingTreadmill", "TrainingLadder", "TrainingKeepie", "TrainingDribble", "TrainingFreekick" } do
+for _, name in { "TrainingAfk", "TrainingActive", "TrainingTreadmill", "TrainingLadder", "TrainingBench", "TrainingKeepie", "TrainingDribble", "TrainingFreekick" } do
 	local old = markers:FindFirstChild(name)
 	if old then
 		old:Destroy()
@@ -297,12 +297,14 @@ local treadmill = ServerStorage:WaitForChild("GymModels"):WaitForChild("Treadmil
 treadmill:PivotTo(CFrame.new(-71.5, TOP, 80))
 treadmill.Parent = gym
 
--- Agility ladder (conditioning, x -70, z 120): two rails and nine rungs lying along x.
-soft(box("LadderRail", -78, -62, TOP, TOP + 0.25, 117.2, 117.8, COLORS.line))
-soft(box("LadderRail", -78, -62, TOP, TOP + 0.25, 122.2, 122.8, COLORS.line))
-for i = 0, 8 do
-	soft(box("LadderRung", -77 + i * 1.9, -76.6 + i * 1.9, TOP, TOP + 0.2, 117.2, 122.8, COLORS.yellow))
-end
+-- Bench press (conditioning, x -70, z 120): the cartoon bench model (ServerStorage.GymModels.Bench,
+-- saved in the place): generated meshes in white with a blue pad, the rack's uprights at the -x end
+-- with the barbell (a white bar, one navy disc a side) on the hooks, and an invisible Seat tagged
+-- "BenchSeat" on the pad (server/BenchSeats lays the owner down, client/BenchPress animates the
+-- press). Its pivot is the bottom centre. The old agility ladder is kept in ServerStorage.LadderOld.
+local bench = ServerStorage:WaitForChild("GymModels"):WaitForChild("Bench"):Clone()
+bench:PivotTo(CFrame.new(-70, TOP, 120))
+bench.Parent = gym
 
 -- Keepie-uppies (skill, x -110, z 80): a dark turf mat with a painted circle and a ball.
 box("KeepieMat", -116, -104, TOP, TOP + 0.1, 74, 86, COLORS.mat)
@@ -347,6 +349,6 @@ end
 marker("TrainingKeepie", "trainingKeepie", -110, 80)
 marker("TrainingFreekick", "trainingFreekick", -110, 120)
 marker("TrainingTreadmill", "trainingTreadmill", -70, 80)
-marker("TrainingLadder", "trainingLadder", -70, 120)
+marker("TrainingBench", "trainingBench", -70, 120)
 
 return "Gym built: " .. #gym:GetChildren() .. " parts, " .. #markers:GetChildren() .. " markers in total"

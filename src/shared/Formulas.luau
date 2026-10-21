@@ -94,6 +94,11 @@ function Formulas.fieldCapacity(tier: number): number
 	return def.field
 end
 
+-- The match cash multiplier of a stadium tier.
+function Formulas.tierCashMultiplier(tier: number): number
+	return Config.StadiumTiers[clamp(tier, 1, #Config.StadiumTiers)].cashMultiplier
+end
+
 -- Level 0 is the base value; levels beyond the last upgrade return the last value.
 function Formulas.storeValue(id: StoreUpgradeId, level: number): number
 	local def = Config.Store[id]
@@ -110,14 +115,14 @@ end
 
 export type PayoutInput = {
 	fieldIncomes: { number }, -- income of each player on the field, already with levels and stars
-	cashUpgradeLevel: number,
+	stadiumTier: number,
 	season: number,
 	momentumMatches: number?,
 	boosts: { number }?,
 	hatTrick: boolean?,
 }
 
--- Normal income per match, with upgrades and season, without momentum, boosts or hat-trick.
+-- Normal income per match, with the stadium tier and season, without momentum, boosts or hat-trick.
 -- This is also the base for offline earnings.
 function Formulas.basePayout(input: PayoutInput): number
 	local sum = 0
@@ -125,12 +130,12 @@ function Formulas.basePayout(input: PayoutInput): number
 		sum += income
 	end
 	local value = sum
-		* Formulas.storeValue("cashPerMatch", input.cashUpgradeLevel)
+		* Formulas.tierCashMultiplier(input.stadiumTier)
 		* Formulas.seasonMultiplier(input.season)
 	return value
 end
 
--- Cash a finished match pays: base x field income x upgrades x season x momentum x boosts
+-- Cash a finished match pays: base x field income x stadium tier x season x momentum x boosts
 -- x hat-trick.
 function Formulas.payout(input: PayoutInput): number
 	local value = Formulas.basePayout(input)

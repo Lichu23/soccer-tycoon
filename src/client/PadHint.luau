@@ -15,9 +15,10 @@ local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
 
--- Why a pack on a Robux pad was not offered (the server's answer to the pad).
+-- Why a pack or a boost on a Robux pad was not offered (the server's answer to the pad).
 local PACK_REFUSALS: { [string]: string } = {
 	early = "Packs open a little later.",
+	full = "This boost already has an hour left.",
 	unavailable = "Not available right now.",
 }
 

@@ -23,7 +23,7 @@ export type RarityDef = {
 	costFactor: number, -- training level cost multiplier
 }
 
-export type StoreUpgradeId = "cashPerMatch" | "matchSpeed" | "hatTrick" | "offline"
+export type StoreUpgradeId = "matchSpeed" | "hatTrick" | "offline"
 
 export type StoreUpgradeDef = {
 	id: StoreUpgradeId,
@@ -40,6 +40,7 @@ export type StadiumTierDef = {
 	field: number, -- players on the field
 	courtLength: number, -- the pitch of this tier, in studs
 	courtWidth: number,
+	cashMultiplier: number, -- every match pays this times the field income (it replaced the cash upgrade)
 }
 
 export type CaseDef = {
@@ -53,13 +54,16 @@ export type CaseDef = {
 
 export type ProductDef = {
 	key: string,
-	kind: "case" | "boost" | "legend" | "cosmetic" | "cash" | "tp",
+	kind: "case" | "boost" | "legend" | "cosmetic" | "cash" | "tp" | "timedBoost",
 	robux: number, -- the price shown on the button (the real price is set on the dashboard)
 	productId: number, -- the Developer Product id, 0 until it is created on the dashboard
 	caseId: string?,
 	playerId: string?,
 	cosmeticId: string?,
 	amount: number?, -- the cash or the training points a pack gives (fixed amounts)
+	-- A timed boost: what it doubles. It runs for Config.Boost.paidSeconds of online time.
+	boostsCash: boolean?,
+	boostsTp: boolean?,
 }
 
 export type CosmeticSlotDef = { id: string, name: string, tier: number }
@@ -235,6 +239,11 @@ Config.Boost = {
 	matchPackSize = 30,
 	matchBankMax = 60,
 	matchMultiplier = 2,
+	-- The x2 boosts bought on the Robux pads in the middle of floor 1: cash, TP, or both. Each
+	-- purchase adds paidSeconds of online time to its timer, up to paidMaxSeconds.
+	paidMultiplier = 2,
+	paidSeconds = 10 * 60,
+	paidMaxSeconds = 60 * 60,
 }
 
 export type CaseReward = {
@@ -501,6 +510,23 @@ Config.Products = {
 	tp_small = { key = "tp_small", kind = "tp", robux = 25, productId = 0, amount = 500 },
 	tp_medium = { key = "tp_medium", kind = "tp", robux = 99, productId = 0, amount = 2_500 },
 	tp_large = { key = "tp_large", kind = "tp", robux = 349, productId = 0, amount = 10_000 },
+	-- The x2 boosts on the pads in the middle of floor 1 (10 minutes of online time each).
+	boost_cash = {
+		key = "boost_cash",
+		kind = "timedBoost",
+		robux = 39,
+		productId = 0,
+		boostsCash = true,
+	},
+	boost_tp = { key = "boost_tp", kind = "timedBoost", robux = 39, productId = 0, boostsTp = true },
+	boost_both = {
+		key = "boost_both",
+		kind = "timedBoost",
+		robux = 69,
+		productId = 0,
+		boostsCash = true,
+		boostsTp = true,
+	},
 } :: { [string]: ProductDef }
 
 -- Team customization (docs/PLAN.md, Step 3): each stadium tier opens one slot with free styles and a
@@ -600,12 +626,6 @@ Config.LegendTrials = {
 } :: { [string]: { TrialGoal } }
 
 Config.Store = {
-	cashPerMatch = {
-		id = "cashPerMatch",
-		baseValue = 1,
-		prices = { 15, 60, 240, 960, 3_800, 15_000, 61_000, 246_000 },
-		values = { 1.5, 2.1, 2.7, 3.5, 4.3, 5.1, 5.9, 6.7 },
-	},
 	matchSpeed = {
 		id = "matchSpeed",
 		baseValue = 10, -- seconds
@@ -645,12 +665,36 @@ Config.Cinematic = {
 	buildDelaySeconds = 1.8,
 }
 
+-- Each tier also multiplies the match cash, in place of the removed "More cash per match" upgrade:
+-- from tier 2 on, the values that upgrade had reached by about that point of the climb. Tier 1 is
+-- x1.25, so the first stadium upgrade still comes at about 4:15 (tests/pacing).
 Config.StadiumTiers = {
-	{ tier = 1, price = 0, field = 4, courtLength = 60, courtWidth = 36 },
-	{ tier = 2, price = 250, field = 5, courtLength = 70, courtWidth = 42 },
-	{ tier = 3, price = 25_000, field = 6, courtLength = 84, courtWidth = 50 },
-	{ tier = 4, price = 750_000, field = 8, courtLength = 100, courtWidth = 60 },
-	{ tier = 5, price = 45_000_000, field = 11, courtLength = 120, courtWidth = 72 },
+	{ tier = 1, price = 0, field = 4, courtLength = 60, courtWidth = 36, cashMultiplier = 1.25 },
+	{ tier = 2, price = 250, field = 5, courtLength = 70, courtWidth = 42, cashMultiplier = 2.7 },
+	{
+		tier = 3,
+		price = 25_000,
+		field = 6,
+		courtLength = 84,
+		courtWidth = 50,
+		cashMultiplier = 5.1,
+	},
+	{
+		tier = 4,
+		price = 750_000,
+		field = 8,
+		courtLength = 100,
+		courtWidth = 60,
+		cashMultiplier = 6.7,
+	},
+	{
+		tier = 5,
+		price = 45_000_000,
+		field = 11,
+		courtLength = 120,
+		courtWidth = 72,
+		cashMultiplier = 6.7,
+	},
 } :: { StadiumTierDef }
 
 -- Saving (Step 6). Studio uses ProfileStore's Mock store (memory only) unless useRealStoreInStudio

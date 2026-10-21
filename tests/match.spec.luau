@@ -68,9 +68,9 @@ T.test("nobody on the field means no match", function()
 	T.eq(play(data, FRESH, NO_LUCK), nil)
 end)
 
-T.test("one Common player pays his income", function()
+T.test("one Common player pays his income at tier 1 (x1.25)", function()
 	local result = play(newData(), FRESH, NO_LUCK)
-	T.eq(result.payout, 3)
+	T.eq(result.payout, 4) -- 3 x 1.25 = 3.75
 	T.eq(result.hatTrick, false)
 	T.deepEq(result.fieldIds, { "rashford" })
 	T.truthy(result.goalsFor > result.goalsAgainst)
@@ -80,7 +80,7 @@ T.test("a lucky roll is a hat-trick: double payout and the flag is set", functio
 	local data = newData()
 	local result = play(data, FRESH, LUCK)
 	T.eq(result.hatTrick, true)
-	T.eq(result.payout, 6)
+	T.eq(result.payout, 8) -- 7.5
 	T.truthy(result.goalsFor >= 3)
 	T.eq(data.flags.firstHatTrickDone, true)
 end)
@@ -121,7 +121,7 @@ end)
 T.test("an active stadium boost doubles the payout", function()
 	local data = newData()
 	Boosts.startStadium(data)
-	T.eq(play(data, FRESH, NO_LUCK).payout, 6)
+	T.eq(play(data, FRESH, NO_LUCK).payout, 8) -- 7.5
 end)
 
 T.test("momentum adds 1% per match in a row", function()
@@ -130,21 +130,27 @@ T.test("momentum adds 1% per match in a row", function()
 	Roster.add(data, "grealish")
 	Roster.add(data, "sterling")
 	data.stadiumTier = 1
-	-- field: sterling 9 + grealish 5 + rashford 3 = 17, momentum 10 -> x1.1
+	-- field: sterling 9 + grealish 5 + rashford 3 = 17, x1.25 for tier 1, momentum 10 -> x1.1
 	local result = play(data, { matchesInRow = 10, matchesPlayed = 10 }, NO_LUCK)
-	T.eq(result.payout, 19) -- 18.7 rounds to 19
+	T.eq(result.payout, 23) -- 23.375
 end)
 
-T.test("the cash upgrade multiplies the payout", function()
+T.test("the stadium tier multiplies the payout", function()
 	local data = newData()
-	data.storeLevels.cashPerMatch = 1 -- x1.5: 3 -> 4.5 -> 5
-	T.eq(play(data, FRESH, NO_LUCK).payout, 5)
+	data.stadiumTier = 2 -- x2.7: 3 -> 8.1
+	T.eq(play(data, FRESH, NO_LUCK).payout, 8)
+end)
+
+T.test("a bought x2 cash boost doubles the payout", function()
+	local data = newData()
+	Boosts.addPaid(data, true, false)
+	T.eq(play(data, FRESH, NO_LUCK).payout, 8) -- 7.5
 end)
 
 T.test("a later season multiplies the payout", function()
 	local data = newData()
 	data.season.number = 3 -- x2
-	T.eq(play(data, FRESH, NO_LUCK).payout, 6)
+	T.eq(play(data, FRESH, NO_LUCK).payout, 8) -- 7.5
 end)
 
 T.suite("boosts")
@@ -160,6 +166,27 @@ T.test("the stadium boost lasts 300 connected seconds", function()
 	T.eq(data.boosts.stadiumBoostLeft, 0)
 	T.deepEq(Boosts.active(data), {})
 	T.eq(Config.Boost.stadiumSeconds, 300)
+end)
+
+T.test("bought boosts add 10 minutes each, run only online and stop at an hour", function()
+	local data = ProfileSchema.newProfile()
+	T.eq(Boosts.tpMultiplier(data), 1)
+	Boosts.addPaid(data, false, true)
+	T.eq(data.boosts.tpBoostLeft, 600)
+	T.eq(data.boosts.cashBoostLeft, 0)
+	T.eq(Boosts.tpMultiplier(data), 2)
+	T.deepEq(Boosts.active(data), {}) -- the TP boost does not touch the match cash
+	Boosts.addPaid(data, true, true)
+	T.eq(data.boosts.tpBoostLeft, 1200)
+	T.eq(data.boosts.cashBoostLeft, 600)
+	T.deepEq(Boosts.active(data), { 2 })
+	T.eq(Boosts.nextEnd(data), 600)
+	T.eq(Boosts.tick(data, 600), true) -- the cash boost ended
+	T.eq(data.boosts.tpBoostLeft, 600)
+	T.eq(Boosts.canAddPaid(data, false, true), true)
+	data.boosts.tpBoostLeft = 3001
+	T.eq(Boosts.canAddPaid(data, false, true), false)
+	T.eq(Boosts.canAddPaid(data, true, false), true)
 end)
 
 T.suite("match plan")
@@ -181,7 +208,7 @@ T.test("a player bought during the match is paid at the whistle", function()
 	local plan = MatchLogic.plan(data, FRESH, NO_LUCK)
 	Roster.add(data, "grealish")
 	data.stadiumTier = 1
-	T.eq(MatchLogic.resolve(data, FRESH, plan).payout, 8) -- 3 + 5
+	T.eq(MatchLogic.resolve(data, FRESH, plan).payout, 10) -- (3 + 5) x 1.25
 end)
 
 T.test("a banked boosted match is used up once, at the whistle", function()
@@ -189,6 +216,6 @@ T.test("a banked boosted match is used up once, at the whistle", function()
 	data.boosts.bankedMatches = 1
 	local plan = MatchLogic.plan(data, FRESH, NO_LUCK)
 	T.eq(data.boosts.bankedMatches, 1)
-	T.eq(MatchLogic.resolve(data, FRESH, plan).payout, 6)
+	T.eq(MatchLogic.resolve(data, FRESH, plan).payout, 8) -- 7.5
 	T.eq(data.boosts.bankedMatches, 0)
 end)

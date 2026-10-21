@@ -93,71 +93,68 @@ T.test("field capacity follows the stadium tier", function()
 end)
 
 T.test("store values and prices", function()
-	T.eq(Formulas.storeValue("cashPerMatch", 0), 1)
-	T.eq(Formulas.storeValue("cashPerMatch", 1), 1.5)
-	T.eq(Formulas.storeValue("cashPerMatch", 8), 6.7)
-	T.eq(Formulas.storeValue("cashPerMatch", 20), 6.7)
 	T.eq(Formulas.storeValue("matchSpeed", 0), 10)
 	T.eq(Formulas.storeValue("matchSpeed", 5), 5)
-	T.eq(Formulas.storePrice("cashPerMatch", 0), 15)
-	T.eq(Formulas.storePrice("cashPerMatch", 7), 246_000)
-	T.eq(Formulas.storePrice("cashPerMatch", 8), nil)
+	T.eq(Formulas.storeValue("matchSpeed", 20), 5)
+	T.eq(Formulas.storePrice("matchSpeed", 0), 120)
+	T.eq(Formulas.storePrice("matchSpeed", 4), 8_000_000)
+	T.eq(Formulas.storePrice("matchSpeed", 5), nil)
+	T.eq(Formulas.tierCashMultiplier(1), 1.25)
+	T.eq(Formulas.tierCashMultiplier(4), 6.7)
+	T.eq(Formulas.tierCashMultiplier(99), 6.7)
 end)
 
 T.suite("formulas payout")
 
-T.test("the very first match pays the first player's income", function()
-	T.eq(Formulas.payout({ fieldIncomes = { 3 }, cashUpgradeLevel = 0, season = 1 }), 3)
+T.test("the very first match pays the first player's income x1.25 (stadium tier 1)", function()
+	T.eq(Formulas.payout({ fieldIncomes = { 4 }, stadiumTier = 1, season = 1 }), 5)
 end)
 
-T.test("the first cash upgrade makes the first payout visibly bigger", function()
-	T.eq(Formulas.payout({ fieldIncomes = { 3 }, cashUpgradeLevel = 1, season = 1 }), 5)
+T.test("the stadium upgrade makes the payout visibly bigger", function()
+	T.eq(Formulas.payout({ fieldIncomes = { 10 }, stadiumTier = 2, season = 1 }), 27)
 end)
 
 T.test("hat-trick doubles the payout and a x2 boost doubles it again", function()
 	T.eq(
-		Formulas.payout({ fieldIncomes = { 3 }, cashUpgradeLevel = 0, season = 1, hatTrick = true }),
-		6
+		Formulas.payout({ fieldIncomes = { 4 }, stadiumTier = 1, season = 1, hatTrick = true }),
+		10
 	)
-	T.eq(
-		Formulas.payout({ fieldIncomes = { 3 }, cashUpgradeLevel = 0, season = 1, boosts = { 2 } }),
-		6
-	)
+	T.eq(Formulas.payout({ fieldIncomes = { 4 }, stadiumTier = 1, season = 1, boosts = { 2 } }), 10)
 end)
 
 T.test("the payout multiplies every part", function()
 	local payout = Formulas.payout({
 		fieldIncomes = { 10, 20 },
-		cashUpgradeLevel = 2,
+		stadiumTier = 2,
 		season = 2,
 		momentumMatches = 10,
 		boosts = { 2 },
 		hatTrick = true,
 	})
-	T.eq(payout, 416) -- 30 x 2.1 x 1.5 x 1.1 x 2 x 2 = 415.8
+	T.eq(payout, 535) -- 30 x 2.7 x 1.5 x 1.1 x 2 x 2 = 534.6
 end)
 
 T.test("boosts inside the payout respect the x4 cap", function()
 	local capped = Formulas.payout({
 		fieldIncomes = { 100 },
-		cashUpgradeLevel = 0,
+		stadiumTier = 1,
 		season = 1,
 		boosts = { 2, 2, 2 },
 	})
-	T.eq(capped, 400)
+	T.eq(capped, 500) -- 100 x 1.25 x 4
 end)
 
 T.test("base payout leaves out momentum, boosts and hat-trick", function()
 	T.near(
 		Formulas.basePayout({
 			fieldIncomes = { 10, 20 },
-			cashUpgradeLevel = 2,
+			stadiumTier = 2,
 			season = 2,
 			momentumMatches = 25,
 			boosts = { 4 },
 			hatTrick = true,
 		}),
-		30 * 2.1 * 1.5
+		30 * 2.7 * 1.5
 	)
 end)
 

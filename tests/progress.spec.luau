@@ -43,14 +43,6 @@ end)
 
 T.suite("progress store")
 
-T.test("cash per match is available from the start", function()
-	local data = newData()
-	T.eq(Progress.storeStatus(data, "cashPerMatch"), "ready") -- $15
-	data.cash = 14
-	T.eq(Progress.storeStatus(data, "cashPerMatch"), "cannotAfford")
-	T.eq(Progress.storePrice(data, "cashPerMatch"), 15)
-end)
-
 T.test("match speed unlocks at stadium tier 2", function()
 	local data = newData()
 	data.cash = 1000
@@ -71,9 +63,10 @@ end)
 
 T.test("an upgrade at its last level is maxed", function()
 	local data = newData()
-	data.storeLevels.cashPerMatch = 8
-	T.eq(Progress.storeStatus(data, "cashPerMatch"), "maxed")
-	T.eq(Progress.storePrice(data, "cashPerMatch"), nil)
+	data.stadiumTier = 2
+	data.storeLevels.matchSpeed = 5
+	T.eq(Progress.storeStatus(data, "matchSpeed"), "maxed")
+	T.eq(Progress.storePrice(data, "matchSpeed"), nil)
 end)
 
 T.test("match speed, hat-trick chance and offline rate follow the levels", function()
@@ -122,13 +115,7 @@ T.test("the goal path of the first five minutes", function()
 	-- buying the first player also starts the matches
 	Roster.add(data, "rashford")
 	data.fieldStarted = true
-	goal = Goals.next(data, true)
-	T.eq(goal.kind, "store")
-	T.eq(goal.id, "cashPerMatch")
-	T.eq(goal.cost, 15)
-
-	data.storeLevels.cashPerMatch = 1
-	goal = Goals.next(data, true)
+	goal = Goals.next(data, true) -- no Store step any more: straight to the next player
 	T.eq(goal.kind, "player")
 	T.eq(goal.id, "grealish")
 	T.eq(goal.cost, 30)
@@ -149,7 +136,6 @@ end)
 T.test("with everything bought there is nothing to chase", function()
 	local data = newData()
 	data.fieldStarted = true
-	data.storeLevels.cashPerMatch = 1
 	data.stadiumTier = 5
 	ownFloor(data, 1)
 	ownFloor(data, 2)
@@ -203,13 +189,16 @@ end)
 
 T.test("store and stadium pads", function()
 	local data = newData()
-	local store = PadInfo.describe("store", "cashPerMatch", data)
-	T.eq(store.title, "More cash per match")
-	T.eq(store.price, "$15")
-	T.eq(store.state, "ready")
 	T.eq(PadInfo.describe("store", "matchSpeed", data).state, "locked")
-	data.storeLevels.cashPerMatch = 8
-	T.eq(PadInfo.describe("store", "cashPerMatch", data).price, "MAX")
+	data.stadiumTier = 2
+	data.cash = 120
+	local store = PadInfo.describe("store", "matchSpeed", data)
+	T.eq(store.title, "Faster matches")
+	T.eq(store.price, "$120")
+	T.eq(store.state, "ready")
+	data.storeLevels.matchSpeed = 5
+	T.eq(PadInfo.describe("store", "matchSpeed", data).price, "MAX")
+	data.stadiumTier = 1
 
 	data.cash = 100
 	local stadium = PadInfo.describe("stadium", "stadium", data)

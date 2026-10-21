@@ -3,6 +3,7 @@
 -- server sends and never decides cash, purchases or progress.
 
 local Arrow = require(script.Parent.Arrow)
+local BenchPress = require(script.Parent.BenchPress)
 local DailyUi = require(script.Parent.DailyUi)
 local DevPanel = require(script.Parent.DevPanel)
 local FloorSwitcher = require(script.Parent.FloorSwitcher)
@@ -34,6 +35,7 @@ Arrow.init()
 FloorSwitcher.init()
 GymRunner.init()
 TreadmillBelt.init()
+BenchPress.init()
 StadiumCinematic.init()
 IntroCinematics.init()
 RewardCard.init()

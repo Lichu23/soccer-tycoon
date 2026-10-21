@@ -24,7 +24,6 @@ export type Info = {
 }
 
 local STORE_NAMES: { [string]: string } = {
-	cashPerMatch = "More cash per match",
 	matchSpeed = "Faster matches",
 	hatTrick = "Hat-trick chance",
 	offline = "Offline earnings",
@@ -35,7 +34,7 @@ local TRAINING_NAMES: { [string]: string } = {
 	trainingKeepie = "Keepie-uppies",
 	trainingFreekick = "Free kicks",
 	trainingTreadmill = "Treadmill",
-	trainingLadder = "Agility ladder",
+	trainingBench = "Bench press",
 }
 
 local PadInfo = {}
@@ -167,6 +166,21 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 		-- A cash or TP pack bought with Robux: the amount in the ring, the price under it. Whether it
 		-- can be bought yet is the server's call (the first 30 minutes), it says so when stepped on.
 		local product = Config.Products[padId]
+		if product ~= nil and product.kind == "timedBoost" then
+			-- An x2 boost: what it doubles and for how long in the ring, the price under it.
+			local both = product.boostsCash and product.boostsTp
+			local minutes = math.floor(Config.Boost.paidSeconds / 60)
+			return {
+				title = if both
+					then "x2 Cash + TP"
+					elseif product.boostsTp then "x2 TP"
+					else "x2 Cash",
+				price = minutes .. " MIN",
+				note = product.robux .. " Robux",
+				state = "ready",
+				icon = if both then "boost" elseif product.boostsTp then "tp" else "cash",
+			}
+		end
 		if product == nil or product.amount == nil then
 			return { title = padId, price = "", note = "", state = "locked" }
 		end
@@ -194,6 +208,7 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 		local note = if padId == "trainingFreekick"
 			then "Score in a row for TP"
 			elseif skill then "Tap in time for TP"
+			elseif padId == "trainingBench" then "Lie here: 10 TP per minute"
 			else "Stand here: 10 TP per minute"
 		return { title = title, price = "", note = note, state = "info" }
 	elseif kind == "penalty" then

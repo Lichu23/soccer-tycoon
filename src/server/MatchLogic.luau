@@ -62,7 +62,7 @@ local function payoutNow(data: ProfileSchema.Profile, state: State, hatTrick: bo
 	end
 	return Formulas.payout({
 		fieldIncomes = Roster.fieldIncomes(data),
-		cashUpgradeLevel = data.storeLevels.cashPerMatch,
+		stadiumTier = data.stadiumTier,
 		season = data.season.number,
 		momentumMatches = state.matchesInRow,
 		boosts = boosts,

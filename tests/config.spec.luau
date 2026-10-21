@@ -135,10 +135,23 @@ T.test("penalty boost minutes are 0 / 3 / 5 / 10", function()
 	T.deepEq(Config.Daily.penaltyBoostSeconds, { [0] = 0, [1] = 180, [2] = 300, [3] = 600 })
 end)
 
-T.test("cash per match gives x1.5 to x6.7 over 8 levels", function()
-	local def = Config.Store.cashPerMatch
-	T.deepEq(def.values, { 1.5, 2.1, 2.7, 3.5, 4.3, 5.1, 5.9, 6.7 })
-	T.deepEq(def.prices, { 15, 60, 240, 960, 3_800, 15_000, 61_000, 246_000 })
+T.test(
+	"the stadium tiers multiply the match cash x1.25 to x6.7 (the old cash upgrade is gone)",
+	function()
+		local multipliers = {}
+		for _, tier in Config.StadiumTiers do
+			table.insert(multipliers, tier.cashMultiplier)
+		end
+		T.deepEq(multipliers, { 1.25, 2.7, 5.1, 6.7, 6.7 })
+		T.eq(Config.Store.cashPerMatch, nil)
+	end
+)
+
+T.test("the three x2 boost pads cost 39, 39 and 69 Robux for 10 minutes", function()
+	T.eq(Config.Products.boost_cash.robux, 39)
+	T.eq(Config.Products.boost_tp.robux, 39)
+	T.eq(Config.Products.boost_both.robux, 69)
+	T.eq(Config.Boost.paidSeconds, 600)
 end)
 
 T.test("match speed never goes below 5 seconds and unlocks at tier 2", function()

@@ -71,7 +71,7 @@ function Daily.caseCash(data: Profile, minutes: number): number
 	end
 	local base = Formulas.basePayout({
 		fieldIncomes = fieldIncomes,
-		cashUpgradeLevel = data.storeLevels.cashPerMatch,
+		stadiumTier = data.stadiumTier,
 		season = data.season.number,
 	})
 	local matches = minutes * 60 / Progress.matchSeconds(data)

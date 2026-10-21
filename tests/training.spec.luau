@@ -42,6 +42,15 @@ T.test("standing on the pad pays 10 TP per minute", function()
 	T.eq(data.tp, 10)
 end)
 
+T.test("a bought x2 TP boost doubles the pad and the skill games", function()
+	local data, carry = fresh()
+	data.boosts.tpBoostLeft = 600
+	T.eq(train(data, carry, 60, true), 20)
+	local gameData, gameCarry = fresh()
+	gameData.boosts.tpBoostLeft = 600
+	T.eq(Training.gamePay(gameData, gameCarry, 1, 0), 2)
+end)
+
 T.test("one full stamina session is 50 TP and then it stops", function()
 	local data, carry = fresh()
 	T.eq(train(data, carry, MAX, true), 50)

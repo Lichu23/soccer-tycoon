@@ -22,7 +22,7 @@ end
 local function expected(data, seconds)
 	local base = Formulas.basePayout({
 		fieldIncomes = Roster.fieldIncomes(data),
-		cashUpgradeLevel = data.storeLevels.cashPerMatch,
+		stadiumTier = data.stadiumTier,
 		season = data.season.number,
 	})
 	return Formulas.offlineEarnings(

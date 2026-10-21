@@ -79,7 +79,7 @@ end
 
 type Option = { kind: string, id: string?, cost: number }
 
--- What a player can buy next in the climb: the next player, the cash and match speed upgrades and
+-- What a player can buy next in the climb: the next player, the match speed upgrade and
 -- the next stadium tier.
 local function options(view: ProgressData): { Option }
 	local list: { Option } = {}
@@ -88,7 +88,7 @@ local function options(view: ProgressData): { Option }
 		table.insert(list, { kind = "player", id = def.id, cost = def.price })
 	end
 	for id in Config.Store do
-		if id ~= "cashPerMatch" and id ~= "matchSpeed" then
+		if id ~= "matchSpeed" then
 			continue
 		end
 		local status = Progress.storeStatus(view, id)
@@ -106,7 +106,7 @@ local function options(view: ProgressData): { Option }
 end
 
 -- About how long floor 3 takes again: a player who always buys the cheapest of the next player, the
--- cash and match speed upgrades and the next stadium tier the moment it is affordable, earning the
+-- match speed upgrade and the next stadium tier the moment it is affordable, earning the
 -- plain match payout (no boosts, momentum, hat-tricks, levels or stars). Seconds, an estimate.
 function Season.estimateSeconds(finished: number): number
 	local nextSeason = finished + 1
@@ -118,7 +118,7 @@ function Season.estimateSeconds(finished: number): number
 		cash = Config.StartingCash,
 		tp = 0,
 		stadiumTier = 1,
-		storeLevels = { cashPerMatch = 0, matchSpeed = 0, hatTrick = 0, offline = 0 },
+		storeLevels = { matchSpeed = 0, hatTrick = 0, offline = 0 },
 		fieldStarted = true,
 		players = players,
 		cosmetics = { owned = {}, chosen = {} },
@@ -140,7 +140,7 @@ function Season.estimateSeconds(finished: number): number
 		if view.cash < pick.cost then
 			local perMatch = Formulas.basePayout({
 				fieldIncomes = Roster.fieldIncomes(view),
-				cashUpgradeLevel = view.storeLevels.cashPerMatch,
+				stadiumTier = view.stadiumTier,
 				season = nextSeason,
 			})
 			if perMatch <= 0 then

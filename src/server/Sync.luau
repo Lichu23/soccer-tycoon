@@ -34,6 +34,12 @@ function Sync.scalars(session: Session.Session)
 	local left = Boosts.nextEnd(data)
 	player:SetAttribute("boostEndsAt", if left > 0 then Workspace:GetServerTimeNow() + left else 0)
 	player:SetAttribute("boostMultiplier", Formulas.boostMultiplier(Boosts.active(data)))
+	-- The x2 TP boost has its own badge.
+	local tpLeft = data.boosts.tpBoostLeft
+	player:SetAttribute(
+		"tpBoostEndsAt",
+		if tpLeft > 0 then Workspace:GetServerTimeNow() + tpLeft else 0
+	)
 	player:SetAttribute("trainingUnlocked", Progress.trainingUnlocked(data))
 	player:SetAttribute("staminaMax", Config.Training.staminaSeconds)
 	player:SetAttribute("keepieBestStreak", data.gym.keepieBestStreak)
@@ -71,7 +77,6 @@ function Sync.snapshot(session: Session.Session)
 		tp = data.tp,
 		stadiumTier = data.stadiumTier,
 		storeLevels = {
-			cashPerMatch = data.storeLevels.cashPerMatch,
 			matchSpeed = data.storeLevels.matchSpeed,
 			hatTrick = data.storeLevels.hatTrick,
 			offline = data.storeLevels.offline,

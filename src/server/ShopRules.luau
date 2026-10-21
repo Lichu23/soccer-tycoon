@@ -5,6 +5,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Boosts = require(script.Parent.Boosts)
 local Cases = require(ReplicatedStorage.Shared.Cases)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
@@ -47,11 +48,19 @@ function ShopRules.canOffer(data: Profile, key: string, now: number): (boolean, 
 		if data.boosts.bankedMatches + Config.Boost.matchPackSize > Config.Boost.matchBankMax then
 			return false, "full"
 		end
-	elseif product.kind == "cash" or product.kind == "tp" then
-		-- Packs wait like everything paid: never in the first 30 minutes after the first purchase.
+	elseif product.kind == "cash" or product.kind == "tp" or product.kind == "timedBoost" then
+		-- Packs and bought boosts wait like everything paid: never in the first 30 minutes after the
+		-- first purchase.
 		local first = data.flags.milestones["first_purchase"]
 		if first == nil or now - first < Config.CaseRules.noOfferSeconds then
 			return false, "early"
+		end
+		-- A boost timer holds at most an hour.
+		if
+			product.kind == "timedBoost"
+			and not Boosts.canAddPaid(data, product.boostsCash == true, product.boostsTp == true)
+		then
+			return false, "full"
 		end
 	elseif product.kind == "cosmetic" then
 		-- Direct purchase of a visible style, only for tiers reached and never in the first 30 minutes.

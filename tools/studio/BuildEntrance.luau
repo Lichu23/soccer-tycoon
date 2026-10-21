@@ -94,9 +94,10 @@ local PADS = {
 }
 local markers = template:FindFirstChild("Markers")
 assert(markers, "the template has no Markers folder")
-for _, child in markers:GetChildren() do
-	if child.Name:match("^RobuxPad_") then
-		child:Destroy()
+for _, entry in PADS do
+	local old = markers:FindFirstChild("RobuxPad_" .. entry[1])
+	if old then
+		old:Destroy() -- only the packs: the boost pads of floor 1 are BuildPlotTemplate's
 	end
 end
 for _, entry in PADS do

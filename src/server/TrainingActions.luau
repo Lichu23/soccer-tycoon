@@ -1,7 +1,7 @@
 --!strict
 -- Connects the Training Gym to the world (docs/PLAN.md, Steps 4 and 7). A loop checks who stands on
 -- which station (the pad system already publishes each player's padKey), runs the stamina and the TP
--- with Training, and publishes what the HUD shows. A conditioning station (treadmill, agility ladder)
+-- with Training, and publishes what the HUD shows. A conditioning station (treadmill, bench press)
 -- pays 10 TP a minute by itself. A skill station pays for the game, an endless streak: at the
 -- keepie-uppies the ball beats on the server clock, the client draws it from `juggleStart`, the
 -- server judges each tap on the same clock and pays each clean touch; at the free kicks the bars move
@@ -40,7 +40,7 @@ local TrainingActions = {}
 -- on it and earn), a "skill" station is played. The station names are what the HUD shows.
 local STATIONS: { [string]: { field: string, station: string } } = {
 	TrainingTreadmill = { field = "conditioning", station = "treadmill" },
-	TrainingLadder = { field = "conditioning", station = "ladder" },
+	TrainingBench = { field = "conditioning", station = "bench" },
 	TrainingKeepie = { field = "skill", station = "keepie" },
 	TrainingFreekick = { field = "skill", station = "freekick" },
 }

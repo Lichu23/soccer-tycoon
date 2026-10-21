@@ -54,31 +54,34 @@ T.test("locked, Legend and unknown players cannot be bought", function()
 	T.eq(session.data.cash, 1e15)
 end)
 
-T.test("the first Store upgrade costs $15 and adds a level", function()
-	local session = newSession(15)
-	local ok = Actions.buyStore(session, "cashPerMatch", 0)
+T.test("the first match speed upgrade costs $120 and adds a level", function()
+	local session = newSession(120)
+	session.data.stadiumTier = 2
+	local ok = Actions.buyStore(session, "matchSpeed", 0)
 	T.eq(ok, true)
 	T.eq(session.data.cash, 0)
-	T.eq(session.data.storeLevels.cashPerMatch, 1)
-	T.deepEq(changes, { "store:cashPerMatch" })
+	T.eq(session.data.storeLevels.matchSpeed, 1)
+	T.deepEq(changes, { "store:matchSpeed" })
 end)
 
 T.test("a double tap on a Store upgrade cannot buy two levels", function()
-	local session = newSession(1000)
-	local first = Actions.buyStore(session, "cashPerMatch", 0)
-	local second, reason = Actions.buyStore(session, "cashPerMatch", 0) -- the client still saw level 0
+	local session = newSession(10_000) -- enough for the second level too, so only the level stops it
+	session.data.stadiumTier = 2
+	local first = Actions.buyStore(session, "matchSpeed", 0)
+	local second, reason = Actions.buyStore(session, "matchSpeed", 0) -- the client still saw level 0
 	T.eq(first, true)
 	T.eq(second, false)
 	T.eq(reason, "stale")
-	T.eq(session.data.storeLevels.cashPerMatch, 1)
-	T.eq(session.data.cash, 985)
+	T.eq(session.data.storeLevels.matchSpeed, 1)
+	T.eq(session.data.cash, 9_880)
 end)
 
 T.test("a Store upgrade that is locked or maxed is refused", function()
 	local session = newSession(1e9)
 	T.eq(select(2, Actions.buyStore(session, "matchSpeed", 0)), "locked")
-	session.data.storeLevels.cashPerMatch = 8
-	T.eq(select(2, Actions.buyStore(session, "cashPerMatch", 8)), "maxed")
+	session.data.stadiumTier = 2
+	session.data.storeLevels.matchSpeed = 5
+	T.eq(select(2, Actions.buyStore(session, "matchSpeed", 5)), "maxed")
 end)
 
 T.test("the stadium upgrade costs $250, adds a tier and starts a x2 boost", function()

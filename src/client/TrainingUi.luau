@@ -1,6 +1,6 @@
 --!strict
 -- The screen of a conditioning station of the Training Gym (docs/PLAN.md, Step 4): while the player
--- stands on the treadmill or the agility ladder with stamina left, a title says which one it is, a
+-- is on the treadmill or the bench press with stamina left, a title says which one it is, a
 -- calm bar fills towards the next whole TP and a short "+N TP" shows each time one arrives. The
 -- keepie-uppies have their own screen (KeepieUi). Display only: the server pays.
 
@@ -21,7 +21,13 @@ local FEEDBACK_FADE_SECONDS = 0.35
 -- What the screen is called at each conditioning station.
 local STATION_TITLES: { [any]: string } = {
 	treadmill = "TREADMILL",
-	ladder = "AGILITY LADDER",
+	bench = "BENCH PRESS",
+}
+
+-- The one line over the bar: how to get off the machine (a jump at both).
+local STATION_HINTS: { [any]: string } = {
+	treadmill = "Jump to get off the treadmill",
+	bench = "Jump to get off the bench",
 }
 
 local TrainingUi = {}
@@ -56,7 +62,7 @@ function TrainingUi.init()
 		Position = UDim2.new(0.5, 0, 1, -86),
 		Size = UDim2.fromOffset(BAR_WIDTH + 80, 24),
 		BackgroundTransparency = 1,
-		Text = "Keep going: 10 TP per minute. Want more? Try the keepie-uppies!",
+		Text = "",
 		Font = Style.font,
 		TextSize = 16,
 		TextColor3 = Style.ui.text,
@@ -166,9 +172,7 @@ function TrainingUi.init()
 		end
 		local station = player:GetAttribute("trainingStation")
 		title.Text = STATION_TITLES[station] or "TRAINING"
-		hint.Text = if station == "treadmill"
-			then "Keep going: 10 TP per minute. Jump to get off the treadmill!"
-			else "Keep going: 10 TP per minute. Want more? Try the keepie-uppies!"
+		hint.Text = STATION_HINTS[station] or ""
 		local fraction = player:GetAttribute("tpFraction")
 		fill.Size =
 			UDim2.fromScale(math.clamp(if type(fraction) == "number" then fraction else 0, 0, 1), 1)

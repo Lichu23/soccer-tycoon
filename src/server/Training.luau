@@ -9,6 +9,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Boosts = require(script.Parent.Boosts)
 local Economy = require(script.Parent.Economy)
 local ProfileSchema = require(script.Parent.ProfileSchema)
 
@@ -73,7 +74,7 @@ function Training.step(
 	if paysIdle == false then
 		return 0
 	end
-	carry.fraction += Config.Training.idleTpPerMinute / 60 * used
+	carry.fraction += Config.Training.idleTpPerMinute / 60 * used * Boosts.tpMultiplier(data)
 	return payWhole(data, carry)
 end
 
@@ -107,7 +108,8 @@ end
 
 -- Pays `wanted` TP for a clean touch of the keepie-uppies or a goal of the free kicks (the game's
 -- `tpFor` of the streak). Only while the player is training with stamina left and under the rate
--- cap. Returns the TP paid (a fraction), which can be less than asked when the cap is reached.
+-- cap (counted before the x2 TP boost, which doubles what is paid). Returns the TP paid (a
+-- fraction), which can be less than asked when the cap is reached.
 function Training.gamePay(data: Profile, carry: Carry, wanted: number, now: number): number
 	if data.staminaLeft <= 0 or not (wanted > 0) then
 		return 0
@@ -117,6 +119,7 @@ function Training.gamePay(data: Profile, carry: Carry, wanted: number, now: numb
 		return 0
 	end
 	table.insert(carry.payLog, { at = now, amount = paid })
+	paid *= Boosts.tpMultiplier(data)
 	carry.fraction += paid
 	payWhole(data, carry)
 	return paid

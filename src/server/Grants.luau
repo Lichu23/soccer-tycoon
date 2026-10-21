@@ -5,6 +5,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Boosts = require(script.Parent.Boosts)
 local Cases = require(ReplicatedStorage.Shared.Cases)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
@@ -56,6 +57,11 @@ function Grants.apply(
 		-- Granted in full even when the bank has filled up since the prompt.
 		data.boosts.bankedMatches += Config.Boost.matchPackSize
 		result = { kind = "boost", matches = Config.Boost.matchPackSize }
+	elseif product.kind == "timedBoost" then
+		-- Granted in full even when the timer has filled up since the prompt (ShopRules checks before).
+		local cash, tp = product.boostsCash == true, product.boostsTp == true
+		Boosts.addPaid(data, cash, tp)
+		result = { kind = "timedBoost", cash = cash, tp = tp, seconds = Config.Boost.paidSeconds }
 	elseif product.kind == "cash" then
 		result = { kind = "cash", amount = Economy.grant(data, product.amount or 0) }
 	elseif product.kind == "tp" then

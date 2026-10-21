@@ -31,7 +31,7 @@ function Offline.preview(data: ProfileSchema.Profile, now: number): (number, num
 	end
 	local base = Formulas.basePayout({
 		fieldIncomes = fieldIncomes,
-		cashUpgradeLevel = data.storeLevels.cashPerMatch,
+		stadiumTier = data.stadiumTier,
 		season = data.season.number,
 	})
 	local earned = Formulas.offlineEarnings(
