@@ -356,15 +356,16 @@ function KeepieScene.new(): Scene
 		-- The legs follow the beats while the ball is up; after a drop the player stands.
 		actor.pose(if running then legJoints(legLifts(round, now)) else nil)
 
-		-- The camera, low and three-quarters on, so a leg swinging forward shows in profile; it creeps
-		-- in as the streak grows and follows the ball's height a little.
+		-- The camera, low and three-quarters on, so a leg swinging forward shows in profile, far enough
+		-- back that the whole player sits in the middle of the screen over the TAP button; it creeps in
+		-- as the streak grows and follows the ball's height a little.
 		local push = math.clamp(round.combo / 40, 0, 1)
 		local sway = if GuiService.ReducedMotionEnabled then 0 else math.sin(now * 0.35) * 0.8
 		local eye = ORIGIN
-			+ Vector3.new(11.5 + sway, 4.4, 10.5)
-				* Vector3.new(lerp(1, 0.85, push), 1, lerp(1, 0.85, push))
+			+ Vector3.new(15 + sway, 5.2, 13.5)
+				* Vector3.new(lerp(1, 0.9, push), 1, lerp(1, 0.9, push))
 		local ballLift = math.clamp(position.Y - ORIGIN.Y, 0, 8)
-		local target = ORIGIN + Vector3.new(0, 3.6 + ballLift * 0.12, 0)
+		local target = ORIGIN + Vector3.new(0, 2.4 + ballLift * 0.12, 0)
 		camera.CFrame = CFrame.lookAt(eye, target)
 		camera.FieldOfView = 50
 	end

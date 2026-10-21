@@ -119,38 +119,40 @@ function KeepieUi.init()
 		ZIndex = 1,
 	}, gui)
 
-	-- The streak and the best, top centre, over the medal bar ----------------------------------------
+	-- The streak, the TP it earned and the best, top centre, over the medal bar -------------------------
 	local top = new("Frame", {
 		Name = "Top",
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 6),
-		Size = UDim2.fromOffset(220, 62),
+		Size = UDim2.fromOffset(300, 62),
 		BackgroundTransparency = 1,
 		ZIndex = 5,
 	}, gui)
 	local function chip(x: number, name: string): TextLabel
 		outlined({
 			Position = UDim2.fromScale(x, 0),
-			Size = UDim2.new(0.5, 0, 0, 16),
+			Size = UDim2.new(1 / 3, 0, 0, 16),
 			Text = name,
 			TextSize = 14,
 			ZIndex = 5,
 		}, top)
 		return outlined({
 			Position = UDim2.new(x, 0, 0, 16),
-			Size = UDim2.new(0.5, 0, 0, 28),
+			Size = UDim2.new(1 / 3, 0, 0, 28),
 			Text = "0",
 			TextSize = 28,
 			ZIndex = 5,
 		}, top)
 	end
 	local streakValue = chip(0, "STREAK")
-	local bestValue = chip(0.5, "BEST")
+	local earnedValue = chip(1 / 3, "TP EARNED")
+	earnedValue.TextColor3 = Style.ui.good
+	local bestValue = chip(2 / 3, "BEST")
 	local medalBar = new("Frame", {
 		Name = "Medals",
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 50),
-		Size = UDim2.new(0.8, 0, 0, 10),
+		Size = UDim2.new(0.6, 0, 0, 10),
 		BackgroundColor3 = Style.ui.dark,
 		BackgroundTransparency = 0.25,
 		ZIndex = 5,
@@ -300,7 +302,7 @@ function KeepieUi.init()
 		Name = "Result",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.45),
-		Size = UDim2.fromOffset(340, 190),
+		Size = UDim2.fromOffset(340, 220),
 		BackgroundColor3 = Style.ui.dark,
 		BackgroundTransparency = 0.12,
 		Visible = false,
@@ -310,35 +312,43 @@ function KeepieUi.init()
 	local resultStroke = new("UIStroke", { Color = Style.ui.gold, Thickness = 3 }, resultCard)
 	local resultScale = new("UIScale", {}, resultCard)
 	local medalText = outlined({
-		Position = UDim2.fromScale(0.04, 0.05),
-		Size = UDim2.fromScale(0.92, 0.4),
+		Position = UDim2.fromScale(0.04, 0.04),
+		Size = UDim2.fromScale(0.92, 0.34),
 		Text = "",
 		TextColor3 = Style.ui.gold,
 		ZIndex = 15,
 	}, resultCard)
 	fitted(medalText, 46)
 	local resultLine = outlined({
-		Position = UDim2.fromScale(0.04, 0.48),
-		Size = UDim2.fromScale(0.92, 0.22),
+		Position = UDim2.fromScale(0.04, 0.4),
+		Size = UDim2.fromScale(0.92, 0.18),
 		Text = "",
 		ZIndex = 15,
 	}, resultCard)
 	fitted(resultLine, 22)
+	local earnedLine = outlined({
+		Position = UDim2.fromScale(0.04, 0.6),
+		Size = UDim2.fromScale(0.92, 0.18),
+		Text = "",
+		TextColor3 = Style.ui.good,
+		ZIndex = 15,
+	}, resultCard)
+	fitted(earnedLine, 22)
 	local bestLine = outlined({
-		Position = UDim2.fromScale(0.04, 0.73),
-		Size = UDim2.fromScale(0.92, 0.2),
+		Position = UDim2.fromScale(0.04, 0.8),
+		Size = UDim2.fromScale(0.92, 0.16),
 		Text = "",
 		TextColor3 = Style.ui.idle,
 		ZIndex = 15,
 	}, resultCard)
 	fitted(bestLine, 18)
 
-	-- The TAP button with the closing ring, bottom right under the thumb, clear of the player ----------
+	-- The TAP button with the closing ring, bottom centre under the player's feet -----------------------
 	local holderSize = BUTTON_SIZE * (RING_START + 0.1)
 	local buttonHolder = new("Frame", {
 		Name = "ButtonHolder",
-		AnchorPoint = Vector2.new(1, 1),
-		Position = UDim2.new(1, -12, 1, -4),
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, 4),
 		Size = UDim2.fromOffset(holderSize, holderSize),
 		BackgroundTransparency = 1,
 		ZIndex = 5,
@@ -383,7 +393,7 @@ function KeepieUi.init()
 
 	-- On a short screen (a phone held sideways) the button and its ring shrink so the ball stays clear.
 	local function fit()
-		holderFit.Scale = math.clamp(gui.AbsoluteSize.Y * 0.32 / holderSize, 0.6, 1)
+		holderFit.Scale = math.clamp(gui.AbsoluteSize.Y * 0.26 / holderSize, 0.55, 1)
 	end
 	gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
 	fit()
@@ -418,6 +428,12 @@ function KeepieUi.init()
 		round.overAt = number("juggleOverAt")
 	end
 	readServerState()
+	-- The TP the current streak has earned: the sum of what the server paid for its touches (display
+	-- only), cleared when a new streak starts.
+	local earned = 0
+	player:GetAttributeChangedSignal("juggleStart"):Connect(function()
+		earned = 0
+	end)
 	for _, name in
 		{
 			"juggleState",
@@ -495,6 +511,7 @@ function KeepieUi.init()
 			local paid = if type(info.paid) == "number" then info.paid else 0
 			local combo = if type(info.combo) == "number" then info.combo else 0
 			if info.outcome == "hit" then
+				earned += paid
 				Sounds.play("kick")
 				pulse(comboScale, 1.35)
 				if info.capped == true then
@@ -520,6 +537,7 @@ function KeepieUi.init()
 			medalText.TextColor3 = MEDAL_COLORS[medal] or MEDAL_COLORS[0]
 			resultStroke.Color = MEDAL_COLORS[medal] or MEDAL_COLORS[0]
 			resultLine.Text = string.format("Streak: %d touches", streak)
+			earnedLine.Text = string.format("TP earned: +%.2f", earned)
 			local record = player:GetAttribute("keepieBestStreak")
 			bestLine.Text = if info.newBest == true
 				then "NEW PERSONAL BEST!"
@@ -581,6 +599,7 @@ function KeepieUi.init()
 		bigText.Text = if leadIn then tostring(math.ceil(untilStart)) else "GO!"
 
 		streakValue.Text = tostring(round.combo)
+		earnedValue.Text = string.format("+%.2f", earned)
 		local record = player:GetAttribute("keepieBestStreak")
 		bestValue.Text = tostring(math.max(if type(record) == "number" then record else 0, 0))
 		bestValue.TextColor3 = if round.combo > 0
