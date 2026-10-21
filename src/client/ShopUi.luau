@@ -34,13 +34,13 @@ local CARD_GAP = 0.035
 
 -- The short line on a closed card (the full sentences are for the answers of the server).
 local CARD_REASONS: { [string]: string } = {
-	early = "Opens later",
+	early = "After floor 1",
 	locked = "Locked",
 	owned = "Yours",
 }
 
 local REFUSALS: { [string]: string } = {
-	early = "Cases open a little later.",
+	early = "Cases open once floor 1 is done.",
 	locked = "Not unlocked yet.",
 	full = "Your boost bank is full.",
 	owned = "You already have him.",

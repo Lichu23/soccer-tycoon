@@ -23,7 +23,6 @@ local NOTE_SECONDS = 8
 local TEXT_COLOR = Color3.fromRGB(215, 220, 232)
 
 local REFUSALS: { [string]: string } = {
-	early = "Premium styles open a little later.",
 	tier = "Reach that stadium tier first.",
 	owned = "You already have it.",
 	unavailable = "Not available right now.",

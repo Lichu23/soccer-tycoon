@@ -19,7 +19,6 @@ DevCommands.commands = {
 	"stadiumUp",
 	"resetDaily",
 	"grantTp",
-	"offerWait",
 	"quickStart",
 }
 
@@ -28,7 +27,6 @@ DevCommands.commands = {
 --   setCash n:    sets the cash (clamped to the maximum)
 --   grantTp n:    adds n training points
 --   resetDaily:   the free case and the penalty kicks are ready again
---   offerWait:    the 30-minute wait before cases are offered has passed
 --   quickStart:   the opening is done: floor 1 owned, its cheapest player at level 1 (the level-up
 --                 tutorial is over), the plot counts as claimed before (no tour) and the Kick button
 --                 as seen (the penalty screen never opens by itself). DevTools claims the plot.
@@ -51,9 +49,6 @@ function DevCommands.apply(data: ProfileSchema.Profile, command: string, amount:
 	elseif command == "resetDaily" then
 		data.daily = { caseClaimedAt = 0, penaltyBatchAt = 0, kicksUsed = 0, goals = 0 }
 		data.boosts.penaltyBoostLeft = 0
-		return true
-	elseif command == "offerWait" then
-		data.flags.milestones["first_purchase"] = os.time() - Config.CaseRules.noOfferSeconds - 1
 		return true
 	elseif command == "quickStart" then
 		DevCommands.apply(data, "grantFloor", 1)

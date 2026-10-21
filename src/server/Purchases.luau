@@ -130,7 +130,7 @@ local function request(player: Player, key: string)
 	if session == nil or product == nil then
 		return
 	end
-	local ok, reason = ShopRules.canOffer(session.data, key, os.time())
+	local ok, reason = ShopRules.canOffer(session.data, key)
 	if not ok then
 		refuse(player, reason or "unavailable")
 		return

@@ -446,7 +446,6 @@ Config.Cases = {
 
 Config.CaseRules = {
 	slotDecay = 0.7,
-	noOfferSeconds = 30 * 60, -- no case offer until this long after the first purchase
 	duplicateCashMinutes = 5, -- a duplicate past the star cap pays this much income instead
 }
 

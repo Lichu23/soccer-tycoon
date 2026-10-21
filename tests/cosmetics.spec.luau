@@ -100,15 +100,12 @@ T.test("granting a free style does nothing", function()
 	T.eq(next(data.cosmetics.owned), nil)
 end)
 
-T.test("a cosmetic offer waits 30 minutes after the first purchase", function()
+T.test("a cosmetic offer has no waiting time, only its tier", function()
 	local data = profile(1)
 	local key = "cosmetic_" .. firstPremium("kit").id
-	T.eq(select(2, ShopRules.canOffer(data, key, 5000)), "early")
-	data.flags.milestones.first_purchase = 1000
-	T.eq(select(2, ShopRules.canOffer(data, key, 1000 + 1799)), "early")
-	T.eq(ShopRules.canOffer(data, key, 1000 + 1800), true)
+	T.eq(ShopRules.canOffer(data, key), true) -- never bought anything
 	local crest = "cosmetic_" .. firstPremium("crest").id
-	T.eq(select(2, ShopRules.canOffer(data, crest, 1000 + 1800)), "tier")
+	T.eq(select(2, ShopRules.canOffer(data, crest)), "tier")
 end)
 
 T.test("a bought style is owned, put on, and a resent receipt grants nothing again", function()

@@ -31,7 +31,6 @@ local BUTTONS: { DevButton } = {
 	{ label = "Reveal Very Rare", command = "revealRarity", amount = 3 },
 	{ label = "Reveal Epic", command = "revealRarity", amount = 4 },
 	{ label = "Reveal Legend", command = "revealRarity", amount = 5 },
-	{ label = "Cases open", command = "offerWait", amount = 0 },
 	{ label = "Play plot tour", command = "playIntro", amount = 1 },
 	{ label = "Play first match", command = "playIntro", amount = 2 },
 	{ label = "Reset profile", command = "resetProfile", amount = 0 },

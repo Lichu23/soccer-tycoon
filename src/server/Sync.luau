@@ -45,7 +45,7 @@ function Sync.scalars(session: Session.Session)
 	player:SetAttribute("keepieBestStreak", data.gym.keepieBestStreak)
 	player:SetAttribute("freekickBestStreak", data.gym.freekickBestStreak)
 	-- The shop: whether cases are on offer yet, the banked boost matches and this visit's total.
-	player:SetAttribute("casesOpen", ShopRules.casesOpen(data, os.time()))
+	player:SetAttribute("casesOpen", ShopRules.casesOpen(data))
 	player:SetAttribute("bankedMatches", data.boosts.bankedMatches)
 	player:SetAttribute("sessionCases", session.runtime.sessionCases)
 	player:SetAttribute("sessionRobux", session.runtime.sessionRobux)

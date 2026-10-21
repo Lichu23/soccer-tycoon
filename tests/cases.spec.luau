@@ -160,43 +160,34 @@ end)
 
 -- Offers --------------------------------------------------------------------------------------
 
-local function open(data)
-	data.flags.milestones.first_purchase = 1000
-	return 1000 + Config.CaseRules.noOfferSeconds
-end
-
-T.test("no case offer in the first 30 minutes after the first purchase", function()
-	local data = profile(1)
-	T.eq(select(2, ShopRules.canOffer(data, "caseStandard", 5000)), "early") -- never bought
-	data.flags.milestones.first_purchase = 1000
-	T.eq(select(2, ShopRules.canOffer(data, "caseStandard", 1000 + 1799)), "early")
-	T.eq(ShopRules.canOffer(data, "caseStandard", 1000 + 1800), true)
+T.test("cases are offered once floor 1 is done, with no waiting time", function()
+	T.eq(select(2, ShopRules.canOffer(profile(0), "caseStandard")), "early")
+	T.eq(ShopRules.canOffer(profile(1), "caseStandard"), true) -- never bought anything
 end)
 
 T.test("Elite needs floor 2 done, and an unknown product is refused", function()
 	local data = profile(1)
-	local now = open(data)
-	T.eq(select(2, ShopRules.canOffer(data, "caseElite", now)), "locked")
-	T.eq(select(2, ShopRules.canOffer(data, "nothing", now)), "unknown")
+	T.eq(select(2, ShopRules.canOffer(data, "caseElite")), "locked")
+	T.eq(select(2, ShopRules.canOffer(data, "nothing")), "unknown")
 	local more = profile(2)
-	T.eq(ShopRules.canOffer(more, "caseElite", open(more)), true)
+	T.eq(ShopRules.canOffer(more, "caseElite"), true)
 end)
 
 T.test("the boost can be bought again only while the bank has room for a pack", function()
 	local data = profile(0)
 	data.boosts.bankedMatches = 30
-	T.eq(ShopRules.canOffer(data, "matchBoost", 0), true) -- 30 + 30 = 60
+	T.eq(ShopRules.canOffer(data, "matchBoost"), true) -- 30 + 30 = 60
 	data.boosts.bankedMatches = 31
-	T.eq(select(2, ShopRules.canOffer(data, "matchBoost", 0)), "full")
+	T.eq(select(2, ShopRules.canOffer(data, "matchBoost")), "full")
 end)
 
 T.test("a Legend is offered for Robux only once floor 4 is reached, and not when owned", function()
 	local data = profile(2)
-	T.eq(select(2, ShopRules.canOffer(data, "legend_pele", 0)), "locked")
+	T.eq(select(2, ShopRules.canOffer(data, "legend_pele")), "locked")
 	local reached = profile(3)
-	T.eq(ShopRules.canOffer(reached, "legend_pele", 0), true)
+	T.eq(ShopRules.canOffer(reached, "legend_pele"), true)
 	Roster.add(reached, "pele")
-	T.eq(select(2, ShopRules.canOffer(reached, "legend_pele", 0)), "owned")
+	T.eq(select(2, ShopRules.canOffer(reached, "legend_pele")), "owned")
 end)
 
 -- Granting ------------------------------------------------------------------------------------
@@ -352,13 +343,11 @@ T.test("a TP pack adds its fixed amount to TP and leaves cash alone", function()
 	T.eq(data.cash, cash)
 end)
 
-T.test("packs wait for the first 30 minutes after the first purchase like other offers", function()
-	local data = profile(1)
-	T.eq(select(2, ShopRules.canOffer(data, "cash_small", 5000)), "early") -- never bought
-	data.flags.milestones["first_purchase"] = 1000
-	T.eq(select(2, ShopRules.canOffer(data, "tp_small", 1000 + 1799)), "early")
-	T.eq(ShopRules.canOffer(data, "tp_small", 1000 + 1800), true)
-	T.eq(ShopRules.canOffer(data, "cash_large", 1000 + 1800), true)
+T.test("packs can be bought at any time, even before any other purchase", function()
+	local data = profile(0)
+	T.eq(ShopRules.canOffer(data, "cash_small"), true)
+	T.eq(ShopRules.canOffer(data, "tp_small"), true)
+	T.eq(ShopRules.canOffer(data, "cash_large"), true)
 end)
 
 T.test("every pack has a fixed amount and a price", function()

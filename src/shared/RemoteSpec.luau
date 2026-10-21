@@ -165,7 +165,6 @@ RemoteSpec.remotes = {
 					"resetDaily",
 					"grantTp",
 					"revealRarity",
-					"offerWait",
 					"playIntro",
 					"quickStart",
 				},
