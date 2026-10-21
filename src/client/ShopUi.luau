@@ -1,6 +1,7 @@
 --!strict
--- The Robux shop (docs/PLAN.md, Step 3 and the case rules): the Standard and Elite Case with their odds
--- before the purchase, the match boost and, from floor 4, the Legends. One icon under the daily icons
+-- The Robux shop (docs/PLAN.md, Step 3 and the case rules): the Free, Standard and Elite Case in one
+-- Chests box, with the odds before a purchase, and from floor 4 the Legends. The boosts are sold on the
+-- pads of the building, not here. One icon under the daily icons
 -- opens it. Every purchase takes two taps (open an item, then Buy), shows what it costs and what this
 -- visit has spent, and never pushes: no timers, no badges, no popups. The server decides everything;
 -- this only asks (RequestPurchase) and shows the answer.
@@ -24,8 +25,9 @@ local Style = require(ReplicatedStorage.Shared.Style)
 local player = Players.LocalPlayer
 
 local WAIT_SECONDS = 4
-local CARD_HEIGHT = 186
-local RIBBON_HEIGHT = 36
+local CARD_HEIGHT = 150
+local CHIP_HEIGHT = 30
+local BOX_PADDING = 12
 local CARDS_PER_ROW = 3
 local CARD_WIDTH = 0.31
 local CARD_GAP = 0.035
@@ -34,7 +36,6 @@ local CARD_GAP = 0.035
 local CARD_REASONS: { [string]: string } = {
 	early = "Opens later",
 	locked = "Locked",
-	full = "Bank full",
 	owned = "Yours",
 }
 
@@ -179,55 +180,72 @@ function ShopUi.init()
 			elseif not Cases.unlocked(State.data, product.caseId or "") then
 				return false, "locked"
 			end
-		elseif product.kind == "boost" then
-			if
-				attribute("bankedMatches") + Config.Boost.matchPackSize > Config.Boost.matchBankMax
-			then
-				return false, "full"
-			end
 		elseif State.data.players[product.playerId or ""] ~= nil then
 			return false, "owned"
 		end
 		return true, nil
 	end
 
-	-- A coloured ribbon with the name of a group of cards.
-	local function ribbon(text: string)
+	-- A group of cards: a small red chip with its name, then one white box that holds the cards in rows
+	-- of three. Returns the box; `cardRow` adds the rows to it.
+	local function section(text: string): Frame
 		order += 1
-		local holder = new("Frame", {
-			Name = "Ribbon",
+		local chip = new("TextLabel", {
+			Name = "Chip",
 			LayoutOrder = order,
-			Size = UDim2.new(1, 0, 0, RIBBON_HEIGHT),
-			BackgroundTransparency = 1,
-		}, card)
-		local band = new("TextLabel", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromScale(0.8, 1),
+			Size = UDim2.fromOffset(0, CHIP_HEIGHT),
+			AutomaticSize = Enum.AutomaticSize.X,
 			BackgroundColor3 = Color3.fromRGB(232, 64, 96),
 			Text = text,
 			Font = Style.font,
-			TextSize = 20,
+			TextSize = 16,
 			TextColor3 = Color3.fromRGB(255, 255, 255),
 			ZIndex = 7,
-		}, holder)
-		rounded(band, 8)
+		}, card)
+		rounded(chip, 8)
 		new("UIStroke", {
 			Color = Style.ui.dark,
 			Thickness = 3,
 			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-		}, band)
+		}, chip)
+		new("UIPadding", { PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14) }, chip)
+
+		order += 1
+		local box = new("Frame", {
+			Name = "Box",
+			LayoutOrder = order,
+			Size = UDim2.fromScale(1, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundColor3 = Color3.fromRGB(250, 247, 255),
+			ZIndex = 7,
+		}, card)
+		rounded(box, 16)
+		new("UIStroke", {
+			Color = Style.ui.dark,
+			Thickness = 3,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		}, box)
+		new("UIPadding", {
+			PaddingTop = UDim.new(0, BOX_PADDING),
+			PaddingBottom = UDim.new(0, BOX_PADDING),
+			PaddingLeft = UDim.new(0, BOX_PADDING),
+			PaddingRight = UDim.new(0, BOX_PADDING),
+		}, box)
+		new("UIListLayout", {
+			Padding = UDim.new(0, BOX_PADDING),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}, box)
+		return box
 	end
 
-	-- A row that holds up to three cards side by side.
-	local function cardRow(): Frame
-		order += 1
+	-- A row of the box that holds up to three cards side by side.
+	local function cardRow(box: Frame): Frame
 		local row = new("Frame", {
 			Name = "Cards",
-			LayoutOrder = order,
+			LayoutOrder = #box:GetChildren(),
 			Size = UDim2.new(1, 0, 0, CARD_HEIGHT),
 			BackgroundTransparency = 1,
-		}, card)
+		}, box)
 		new("UIListLayout", {
 			FillDirection = Enum.FillDirection.Horizontal,
 			HorizontalAlignment = Enum.HorizontalAlignment.Center,
@@ -237,8 +255,8 @@ function ShopUi.init()
 		return row
 	end
 
-	-- One card: the name on top, the picture, and a button-like pill at the bottom. `open` cards are
-	-- tappable and white; closed ones are greyed. `good` makes the pill green (a price or "Free").
+	-- One card in a box: the name on top, the picture, and under it a green pill (a price or "Free")
+	-- when it can be bought, or a short muted reason when it can't (the picture is dimmed then).
 	local function card_(
 		parent: Frame,
 		key: string,
@@ -246,43 +264,33 @@ function ShopUi.init()
 		iconName: string?,
 		open: boolean,
 		pillText: string,
-		good: boolean,
 		onTap: (() -> ())?
 	)
 		local item = new("TextButton", {
 			Name = "Row_" .. key,
 			Size = UDim2.fromScale(CARD_WIDTH, 1),
-			BackgroundColor3 = if open
-				then Color3.fromRGB(250, 247, 255)
-				else Color3.fromRGB(196, 194, 214),
+			BackgroundTransparency = 1,
 			Text = "",
-			AutoButtonColor = onTap ~= nil,
-			ZIndex = 7,
+			AutoButtonColor = false,
+			ZIndex = 8,
 		}, parent)
-		rounded(item, 12)
-		new("UIStroke", {
-			Color = Style.ui.dark,
-			Thickness = 3,
-			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-		}, item)
-		new("TextLabel", {
+		local title = new("TextLabel", {
 			Name = "Name",
-			Position = UDim2.fromOffset(4, 4),
-			Size = UDim2.new(1, -8, 0, 34),
+			Size = UDim2.new(1, 0, 0, 22),
 			BackgroundTransparency = 1,
 			Text = name,
-			TextWrapped = true,
+			TextScaled = true,
 			Font = Style.font,
-			TextSize = 15,
 			TextColor3 = Panel.TEXT,
 			ZIndex = 8,
 		}, item)
+		new("UITextSizeConstraint", { MaxTextSize = 15 }, title)
 		local picture = if iconName then Icons.id(iconName) else ""
 		if picture ~= "" then
 			new("ImageLabel", {
 				Name = "Picture",
 				AnchorPoint = Vector2.new(0.5, 0),
-				Position = UDim2.new(0.5, 0, 0, 40),
+				Position = UDim2.new(0.5, 0, 0, 28),
 				Size = UDim2.fromOffset(88, 88),
 				BackgroundTransparency = 1,
 				Image = picture,
@@ -295,7 +303,7 @@ function ShopUi.init()
 			new("TextLabel", {
 				Name = "Picture",
 				AnchorPoint = Vector2.new(0.5, 0),
-				Position = UDim2.new(0.5, 0, 0, 52),
+				Position = UDim2.new(0.5, 0, 0, 40),
 				Size = UDim2.fromOffset(88, 64),
 				BackgroundTransparency = 1,
 				Text = "*",
@@ -308,21 +316,24 @@ function ShopUi.init()
 		local pill = new("TextLabel", {
 			Name = "Price",
 			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.new(0.5, 0, 1, -8),
-			Size = UDim2.new(1, -16, 0, 34),
-			BackgroundColor3 = if good then Style.ui.good else Color3.fromRGB(120, 122, 140),
+			Position = UDim2.fromScale(0.5, 1),
+			Size = UDim2.new(1, -8, 0, 30),
+			BackgroundColor3 = Style.ui.good,
+			BackgroundTransparency = if open then 0 else 1,
 			Text = pillText,
 			Font = Style.font,
-			TextSize = 16,
-			TextColor3 = if good then Style.ui.dark else Color3.fromRGB(235, 236, 244),
+			TextSize = if open then 16 else 14,
+			TextColor3 = if open then Style.ui.dark else Panel.MUTED,
 			ZIndex = 8,
 		}, item)
-		rounded(pill, 8)
-		new("UIStroke", {
-			Color = Style.ui.dark,
-			Thickness = 2,
-			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-		}, pill)
+		if open then
+			rounded(pill, 8)
+			new("UIStroke", {
+				Color = Style.ui.dark,
+				Thickness = 2,
+				ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+			}, pill)
+		end
 		if onTap then
 			item.Activated:Connect(onTap)
 		end
@@ -340,7 +351,6 @@ function ShopUi.init()
 			iconName,
 			ok,
 			if ok then `{product.robux} Robux` else CARD_REASONS[reason or "locked"],
-			ok,
 			if ok
 				then function()
 					view = key
@@ -369,7 +379,6 @@ function ShopUi.init()
 			"case",
 			status == "ready",
 			pill,
-			status == "ready",
 			if unlocked
 				then function()
 					close()
@@ -384,8 +393,7 @@ function ShopUi.init()
 		if message then
 			line(message, { TextColor3 = Panel.GOOD })
 		end
-		ribbon("Cases")
-		local row = cardRow()
+		local row = cardRow(section("Chests"))
 		freeCaseCard(row)
 		if player:GetAttribute("casesRestricted") == true then
 			line(REFUSALS.restricted, { TextColor3 = Panel.MUTED })
@@ -393,23 +401,21 @@ function ShopUi.init()
 			productCard(row, "caseStandard", Config.Cases.standard.name, "case_standard")
 			productCard(row, "caseElite", Config.Cases.elite.name, "case_elite")
 		end
-		ribbon("Boosts")
-		productCard(cardRow(), "matchBoost", "Boost x2", "boost")
 		if Legends.reached(State.data) then
-			ribbon("Legends")
-			line("Skips the trials and the cash price", { TextColor3 = Panel.MUTED })
+			local box = section("Legends")
 			local legendRow: Frame? = nil
 			local count = 0
 			for _, def in Config.Players do
 				local key = "legend_" .. def.id
 				if def.floor >= Config.LegendFloor and Config.Products[key] then
 					if legendRow == nil or count % CARDS_PER_ROW == 0 then
-						legendRow = cardRow()
+						legendRow = cardRow(box)
 					end
 					count += 1
 					productCard(legendRow :: Frame, key, def.name, nil)
 				end
 			end
+			line("Legends skip the trials and the cash price.", { TextColor3 = Panel.MUTED })
 		end
 		total()
 	end
@@ -438,15 +444,6 @@ function ShopUi.init()
 			})
 			line(
 				`A duplicate adds a star (+{math.floor(Config.Stars.bonusPerStar * 100)}% income, up to {Config.Stars.maxStars}). After that it gives cash.`,
-				{ TextColor3 = Panel.MUTED }
-			)
-		elseif product.kind == "boost" then
-			built.setTitle("Match boost")
-			line(
-				`Your next {Config.Boost.matchPackSize} matches pay x{Config.Boost.matchMultiplier}.`
-			)
-			line(
-				`It stays until used (you have {attribute("bankedMatches")}, up to {Config.Boost.matchBankMax}).`,
 				{ TextColor3 = Panel.MUTED }
 			)
 		else
@@ -498,7 +495,7 @@ function ShopUi.init()
 
 	local function refresh()
 		-- The shop opens with the plot. The cards still follow the server rules: the cases wait their
-		-- turn (with the reason shown), the match boost is there.
+		-- turn (with the reason shown).
 		locked = not State.hasPlot()
 		Dock.paint(tile, if locked then "locked" else "open")
 		if backdrop.Visible then
@@ -509,7 +506,6 @@ function ShopUi.init()
 	for _, name in
 		{
 			"casesOpen",
-			"bankedMatches",
 			"sessionRobux",
 			"casesRestricted",
 			"dailyUnlocked",
