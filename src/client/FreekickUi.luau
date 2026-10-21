@@ -34,8 +34,8 @@ local player = Players.LocalPlayer
 
 local FEEDBACK_HOLD_SECONDS = 1.1
 local FEEDBACK_FADE_SECONDS = 0.3
-local MOVE_BUTTON = 84
-local MOVE_GAP = 14
+local MOVE_BUTTON = 58
+local MOVE_GAP = 10
 local PROMPT_TOP = 108 -- the move prompt starts under the step name
 local PROMPT_HEIGHT = 170
 local COACH_BOTTOM = MOVE_BUTTON + 22 + 14 + 8 -- the hint sits just over the move buttons
@@ -213,38 +213,40 @@ function FreekickUi.init()
 		ZIndex = 1,
 	}, gui)
 
-	-- The streak and the best, top centre, over the medal bar.
+	-- The streak, the TP it earned and the best, top centre, over the medal bar.
 	local top = new("Frame", {
 		Name = "Top",
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 6),
-		Size = UDim2.fromOffset(220, 62),
+		Size = UDim2.fromOffset(300, 62),
 		BackgroundTransparency = 1,
 		ZIndex = 5,
 	}, gui)
 	local function chip(x: number, name: string): TextLabel
 		outlined({
 			Position = UDim2.fromScale(x, 0),
-			Size = UDim2.new(0.5, 0, 0, 16),
+			Size = UDim2.new(1 / 3, 0, 0, 16),
 			Text = name,
 			TextSize = 14,
 			ZIndex = 5,
 		}, top)
 		return outlined({
 			Position = UDim2.new(x, 0, 0, 16),
-			Size = UDim2.new(0.5, 0, 0, 28),
+			Size = UDim2.new(1 / 3, 0, 0, 28),
 			Text = "0",
 			TextSize = 28,
 			ZIndex = 5,
 		}, top)
 	end
 	local streakValue = chip(0, "STREAK")
-	local bestValue = chip(0.5, "BEST")
+	local earnedValue = chip(1 / 3, "TP EARNED")
+	earnedValue.TextColor3 = Style.ui.good
+	local bestValue = chip(2 / 3, "BEST")
 	local medalBar = new("Frame", {
 		Name = "Medals",
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 50),
-		Size = UDim2.new(0.8, 0, 0, 10),
+		Size = UDim2.new(0.6, 0, 0, 10),
 		BackgroundColor3 = Style.ui.dark,
 		BackgroundTransparency = 0.25,
 		ZIndex = 5,
@@ -377,7 +379,7 @@ function FreekickUi.init()
 			AutoButtonColor = false,
 			ZIndex = 6,
 		}, buttonRow)
-		rounded(button, 16)
+		rounded(button, 12)
 		moveStrokes[index] = new("UIStroke", {
 			Color = Style.ui.bar,
 			Thickness = 3,
@@ -386,7 +388,7 @@ function FreekickUi.init()
 		outlined({
 			Size = UDim2.fromScale(1, 0.7),
 			Text = info.glyph,
-			TextSize = 40,
+			TextSize = 28,
 			ZIndex = 7,
 		}, button)
 		local keyLabel = outlined({
@@ -394,7 +396,7 @@ function FreekickUi.init()
 			Position = UDim2.fromScale(0, 0.96),
 			Size = UDim2.fromScale(1, 0.3),
 			Text = info.keyHint,
-			TextSize = 14,
+			TextSize = 12,
 			TextColor3 = Style.ui.idle,
 			ZIndex = 7,
 		}, button)
@@ -404,7 +406,7 @@ function FreekickUi.init()
 			Position = UDim2.new(0.5, 0, 1, 4),
 			Size = UDim2.new(1, 16, 0, 16),
 			Text = info.name,
-			TextSize = 13,
+			TextSize = 12,
 			ZIndex = 6,
 		}, button)
 		moveButtons[index] = button
@@ -468,34 +470,42 @@ function FreekickUi.init()
 		Name = "Result",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(340, 190),
+		Size = UDim2.fromOffset(340, 220),
 		BackgroundColor3 = Style.ui.dark,
 		BackgroundTransparency = 0.12,
 		Visible = false,
 		ZIndex = 12,
 	}, gui)
 	rounded(resultCard, 14)
-	new("UISizeConstraint", { MaxSize = Vector2.new(340, 190) }, resultCard)
+	new("UISizeConstraint", { MaxSize = Vector2.new(340, 220) }, resultCard)
 	local resultStroke = new("UIStroke", { Color = Style.ui.gold, Thickness = 3 }, resultCard)
 	local resultScale = new("UIScale", {}, resultCard)
 	local medalText = outlined({
-		Position = UDim2.fromScale(0.04, 0.05),
-		Size = UDim2.fromScale(0.92, 0.4),
+		Position = UDim2.fromScale(0.04, 0.04),
+		Size = UDim2.fromScale(0.92, 0.34),
 		Text = "",
 		TextColor3 = Style.ui.gold,
 		ZIndex = 13,
 	}, resultCard)
 	fitted(medalText, 46)
 	local resultLine = outlined({
-		Position = UDim2.fromScale(0.04, 0.48),
-		Size = UDim2.fromScale(0.92, 0.22),
+		Position = UDim2.fromScale(0.04, 0.4),
+		Size = UDim2.fromScale(0.92, 0.18),
 		Text = "",
 		ZIndex = 13,
 	}, resultCard)
 	fitted(resultLine, 22)
+	local earnedLine = outlined({
+		Position = UDim2.fromScale(0.04, 0.6),
+		Size = UDim2.fromScale(0.92, 0.18),
+		Text = "",
+		TextColor3 = Style.ui.good,
+		ZIndex = 13,
+	}, resultCard)
+	fitted(earnedLine, 22)
 	local bestLine = outlined({
-		Position = UDim2.fromScale(0.04, 0.73),
-		Size = UDim2.fromScale(0.92, 0.2),
+		Position = UDim2.fromScale(0.04, 0.8),
+		Size = UDim2.fromScale(0.92, 0.16),
 		Text = "",
 		TextColor3 = Style.ui.idle,
 		ZIndex = 13,
@@ -720,12 +730,20 @@ function FreekickUi.init()
 
 	-- What the server tells us ---------------------------------------------------------------------
 	local shotPay = "" -- the "+N TP" of the goal in the film now, shown when the ball goes in
+	-- The TP this streak earned (summed from the goals the server paid, only to show it); the TP of
+	-- the goal in the film is added when the ball goes in, like the streak.
+	local earned = 0
+	local shotPaid = 0
+	player:GetAttributeChangedSignal("freekickSeed"):Connect(function()
+		earned, shotPaid = 0, 0
+	end)
 	Net.on("Notice", function(info: any)
 		if type(info) ~= "table" then
 			return
 		end
 		if info.kind == "freekickShot" then
 			local paid = if type(info.paid) == "number" then info.paid else 0
+			shotPaid = if info.outcome == "goal" then paid else 0
 			shotPay = if info.outcome ~= "goal"
 				then ""
 				elseif info.capped == true then "MAX RATE"
@@ -741,6 +759,7 @@ function FreekickUi.init()
 			resultStroke.Color = MEDAL_COLORS[medal] or MEDAL_COLORS[0]
 			resultLine.Text =
 				string.format("Streak: %d goal%s", streak, if streak == 1 then "" else "s")
+			earnedLine.Text = string.format("TP earned: +%.2f", earned)
 			local record = player:GetAttribute("freekickBestStreak")
 			bestLine.Text = if info.newBest == true
 				then "NEW PERSONAL BEST!"
@@ -776,6 +795,8 @@ function FreekickUi.init()
 				Sounds.play(sound)
 			end
 			if state.outcome == "goal" then
+				earned += shotPaid
+				shotPaid = 0
 				popFeedback(OUTCOME_TEXT.goal, Style.ui.good, shotPay)
 			else
 				popFeedback(OUTCOME_TEXT[state.outcome] or "MISSED", BAD, "")
@@ -894,6 +915,7 @@ function FreekickUi.init()
 			then state.streak - 1
 			else state.streak
 		streakValue.Text = tostring(math.max(shown, 0))
+		earnedValue.Text = string.format("+%.2f", earned)
 		local record = player:GetAttribute("freekickBestStreak")
 		bestValue.Text = tostring(if type(record) == "number" then record else 0)
 		bestValue.TextColor3 = if shown > 0

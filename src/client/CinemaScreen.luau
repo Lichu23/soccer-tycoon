@@ -67,6 +67,32 @@ local function setControls(enabled: boolean)
 	end)
 end
 
+-- The character stands still while a scene shows: the default control scripts may be missing (no
+-- PlayerModule), so the keys would still walk it off the spot and close the game. Returns a function
+-- that puts its speed back.
+local function freeze(humanoid: Humanoid): () -> ()
+	local walkSpeed, jumpPower, jumpHeight, autoRotate =
+		humanoid.WalkSpeed, humanoid.JumpPower, humanoid.JumpHeight, humanoid.AutoRotate
+	humanoid.WalkSpeed = 0
+	humanoid.JumpPower = 0
+	humanoid.JumpHeight = 0
+	humanoid.AutoRotate = false
+	humanoid:Move(Vector3.zero)
+	return function()
+		if humanoid.Parent then
+			humanoid.WalkSpeed = walkSpeed
+			humanoid.JumpPower = jumpPower
+			humanoid.JumpHeight = jumpHeight
+			humanoid.AutoRotate = autoRotate
+		end
+	end
+end
+
+local function ownHumanoid(): Humanoid?
+	local character = player.Character
+	return if character then character:FindFirstChildOfClass("Humanoid") else nil
+end
+
 export type Takeover = {
 	take: () -> (), -- the camera becomes ours, the controls go off, the other screens hide
 	keep: () -> (), -- every frame: the default camera scripts and other screens can switch back
@@ -77,6 +103,21 @@ function CinemaScreen.takeover(): Takeover
 	local playerGui = player:WaitForChild("PlayerGui")
 	local savedCamera: { [string]: any } = {}
 	local hiddenGuis: { [ScreenGui]: boolean } = {}
+	local frozen: Humanoid? = nil
+	local unfreeze: (() -> ())? = nil
+
+	-- A respawn brings a new humanoid; it stands still too.
+	local function holdStill()
+		local humanoid = ownHumanoid()
+		if humanoid == nil or humanoid == frozen then
+			return
+		end
+		if unfreeze then
+			unfreeze()
+		end
+		frozen = humanoid
+		unfreeze = freeze(humanoid)
+	end
 
 	local function hideOthers()
 		for _, name in HIDDEN_GUIS do
@@ -99,9 +140,11 @@ function CinemaScreen.takeover(): Takeover
 			}
 			camera.CameraType = Enum.CameraType.Scriptable
 			setControls(false)
+			holdStill()
 			hideOthers()
 		end,
 		keep = function()
+			holdStill()
 			hideOthers()
 			Workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
 		end,
@@ -118,6 +161,10 @@ function CinemaScreen.takeover(): Takeover
 				other.Enabled = enabled
 			end
 			table.clear(hiddenGuis)
+			if unfreeze then
+				unfreeze()
+			end
+			frozen, unfreeze = nil, nil
 			setControls(true)
 		end,
 	}
