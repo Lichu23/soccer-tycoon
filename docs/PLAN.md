@@ -353,7 +353,7 @@ Principle: the server owns every game fact and the client only draws. No framewo
 | `UpgradeStadium` | the tier the client saw | It is the next tier, affordable, nothing in progress |
 | `BuyStoreUpgrade` | an upgrade ID | The ID exists, unlocked, the next level, affordable |
 | `ClaimDaily` | which one (case) | 20 hours since the last claim |
-| `PenaltyKick` | an aim zone (small enum) | Kicks left, cooldown, the server rolls the result |
+| `PenaltyStart`, `PenaltyTap`, `PenaltyRelease` | nothing; a server-time stamp per tap and release | Kicks left, cooldown, the stamp within the grace window; the server judges the shot (`shared/Penalty`) |
 | `SetCosmetic` | an option ID | Tier reached and the style is free or owned |
 | `StartNewSeason` | the season number the client saw | Floor 3 complete, number matches, then reset |
 | `TrainingDrillHit` | the press only | Drill active, 15 TP per minute cap, stamina |
@@ -389,7 +389,7 @@ Principle: the server owns every game fact and the client only draws. No framewo
 | Store levels | `Store` | Store pad or `BuyStoreUpgrade` |
 | Season, trophies, head start | `Season` | `StartNewSeason` |
 | Legend trial progress | `Legends` | Recomputed by the server from state |
-| Cooldowns, kicks | `Daily` | `ClaimDaily`, `PenaltyKick` |
+| Cooldowns, kicks | `Daily` | `ClaimDaily`, `PenaltyStart` / `PenaltyTap` / `PenaltyRelease` |
 | Cosmetics owned and chosen | `Cosmetics` | `SetCosmetic`, receipts |
 | Plot ownership | `Plots` | Claim ring, join, leave |
 | Receipts | `Purchases` | `ProcessReceipt` |

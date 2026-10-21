@@ -133,7 +133,7 @@ end
 
 -- The reticle at time `at` (during the aim step): it starts in the middle of the goal and glides
 -- across and up and down at different speeds, so it passes every corner.
-function Freekick.aimAt(state: State, at: number): (number, number)
+function Freekick.aimAt(state: { stageAt: number }, at: number): (number, number)
 	local training = Config.Training
 	local t = at - state.stageAt
 	local across = training.freekickAimSeconds
@@ -145,7 +145,7 @@ function Freekick.aimAt(state: State, at: number): (number, number)
 end
 
 -- The power meter at time `at` while the hold goes on: it fills, then empties again.
-function Freekick.powerAt(state: State, at: number): number
+function Freekick.powerAt(state: { holdAt: number }, at: number): number
 	return sweep(at - state.holdAt, Config.Training.freekickPowerSeconds)
 end
 
@@ -155,13 +155,15 @@ function Freekick.height(aimY: number, power: number): number
 	return math.max(aimY + (power - training.freekickPowerSweet) * training.freekickPowerLift, 0)
 end
 
--- What a shot does: saved, missed or a goal.
+-- What a shot does: saved, missed or a goal. The keeper reaches further with every `kick` of the
+-- streak, unless `keeperReach` sets his reach (the daily penalty has a keeper of its own).
 function Freekick.judge(
 	keeperX: number,
 	kick: number,
 	aimX: number,
 	aimY: number,
-	power: number
+	power: number,
+	keeperReach: number?
 ): Outcome
 	local training = Config.Training
 	local r = training.freekickBallRadius
@@ -180,8 +182,12 @@ function Freekick.judge(
 		return "post"
 	end
 	local reach = (
-		training.freekickKeeperReach
-		+ math.min((kick - 1) * training.freekickKeeperReachStep, training.freekickKeeperReachMax)
+		keeperReach
+		or training.freekickKeeperReach
+			+ math.min(
+				(kick - 1) * training.freekickKeeperReachStep,
+				training.freekickKeeperReachMax
+			)
 	) * (1 + training.freekickPowerSweet - power)
 	local distance = math.abs(aimX - keeperX)
 		+ math.max(height - 0.6, 0) * training.freekickTopCorner

@@ -263,15 +263,14 @@ Config.Daily = {
 	penaltyMultiplier = 1.5,
 	-- Seconds of boost for the number of goals scored out of 3 kicks.
 	penaltyBoostSeconds = { [0] = 0, [1] = 180, [2] = 300, [3] = 600 } :: { [number]: number },
-	-- Chance that a kick goes wide or over before the keeper is even asked, by aim zone. Corners
-	-- are riskier than the middle; the keeper then dives to a random zone.
-	zoneMissChance = {
-		topLeft = 0.2,
-		topRight = 0.2,
-		bottomLeft = 0.08,
-		bottomRight = 0.08,
-		center = 0.03,
-	} :: { [string]: number },
+	-- Each kick is played like the shot of the 1v1 breakaway (shared/Penalty): the reticle and the
+	-- power meter of Config.Training, then a film of `penaltyFilmSeconds` (the run-up, the strike, the
+	-- result). The next kick's reticle starts `penaltyLeadSeconds` after the film. The keeper always
+	-- stands in the middle of the goal and reaches `penaltyKeeperReach` to either side (goal units at
+	-- the sweet power; the posts are at 1), so only a kick placed towards a post beats him.
+	penaltyLeadSeconds = 1.2,
+	penaltyFilmSeconds = 5.2,
+	penaltyKeeperReach = 0.5,
 	-- The free daily case: five small rewards (never players, never large amounts). `weight` is the
 	-- relative chance. Cash is worth `minutes` of normal income, a boost is x2 for `seconds`, `tp`
 	-- is a few training points. The roulette on screen spins through exactly these.

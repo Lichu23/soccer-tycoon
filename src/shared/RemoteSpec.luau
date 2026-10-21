@@ -29,15 +29,6 @@ table.sort(storeIds)
 
 local RemoteSpec = {}
 
--- The five aim targets of the daily penalty kick: the four corners of the goal and the middle.
-RemoteSpec.aimZones = {
-	"topLeft",
-	"topRight",
-	"bottomLeft",
-	"bottomRight",
-	"center",
-} :: { string }
-
 local ID_FIELD: FieldSchema = { kind = "string", maxLength = 40 }
 
 RemoteSpec.remotes = {
@@ -71,11 +62,26 @@ RemoteSpec.remotes = {
 		ratePerSecond = 0.5,
 		burst = 2,
 	},
-	PenaltyKick = {
+	-- The daily penalty kicks (shared/Penalty): the screen opens (a new visit to the spot, or the film
+	-- that was playing), then the same tap and release as the breakaway, each stamped with the server
+	-- time the player's screen showed (never trusted more than a fraction of a second into the past).
+	PenaltyStart = {
 		direction = "toServer",
-		args = { { kind = "enum", values = RemoteSpec.aimZones } },
+		args = {},
 		ratePerSecond = 1,
 		burst = 2,
+	},
+	PenaltyTap = {
+		direction = "toServer",
+		args = { { kind = "number", min = 0, max = 4_000_000_000 } },
+		ratePerSecond = 6,
+		burst = 6,
+	},
+	PenaltyRelease = {
+		direction = "toServer",
+		args = { { kind = "number", min = 0, max = 4_000_000_000 } },
+		ratePerSecond = 6,
+		burst = 6,
 	},
 	SetCosmetic = {
 		direction = "toServer",

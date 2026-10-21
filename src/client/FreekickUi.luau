@@ -23,6 +23,7 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local BreakawayScene = require(script.Parent.BreakawayScene)
+local CinemaScreen = require(script.Parent.CinemaScreen)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Freekick = require(ReplicatedStorage.Shared.Freekick)
 local Net = require(script.Parent.Net)
@@ -39,25 +40,9 @@ local PROMPT_TOP = 108 -- the move prompt starts under the step name
 local PROMPT_HEIGHT = 170
 local COACH_BOTTOM = MOVE_BUTTON + 22 + 14 + 8 -- the hint sits just over the move buttons
 local COACH_HEIGHT = 30
-local POWER_WIDTH = 30
-local POWER_GOOD_MAX = Config.Training.freekickPowerSweet + 0.12 -- the top of the green zone
 local LETTERBOX = 0.08 -- the share of the screen height of each film bar
 local SPEED_LINES = 12
 local LEAVE_STEP = 5 -- the X walks the character this far past the edge of the spot
--- The other screens hidden while the stadium shows: the HUD and its dock, the menu buttons down the
--- left, the floor buttons, the guide and the pad hint.
-local HIDDEN_GUIS = {
-	"Hud",
-	"Shop",
-	"Locker",
-	"Reminders",
-	"Daily",
-	"Season",
-	"FloorSwitcher",
-	"Objective",
-	"PadHint",
-}
-
 local MEDAL_NAMES = { [0] = "No medal", [1] = "BRONZE", [2] = "SILVER", [3] = "GOLD" }
 local MEDAL_COLORS = {
 	[0] = Color3.fromRGB(150, 155, 170),
@@ -167,22 +152,6 @@ local function fitted(label: TextLabel, maxSize: number)
 	new("UITextSizeConstraint", { MaxTextSize = maxSize }, label)
 end
 
-local function setControls(enabled: boolean)
-	local scripts = player:FindFirstChild("PlayerScripts")
-	local module = scripts and scripts:FindFirstChild("PlayerModule")
-	if module == nil then
-		return
-	end
-	pcall(function()
-		local controls = (require(module :: ModuleScript) :: any):GetControls()
-		if enabled then
-			controls:Enable()
-		else
-			controls:Disable()
-		end
-	end)
-end
-
 -- The free-kick spot of the player's own plot, or nil.
 local function ownSpot(): BasePart?
 	local slot = player:GetAttribute("plotSlot")
@@ -242,40 +211,8 @@ function FreekickUi.init()
 	end
 
 	-- The aim reticle, on the goal mouth.
-	local reticle = new("Frame", {
-		Name = "Reticle",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Size = UDim2.fromOffset(48, 48),
-		BackgroundTransparency = 1,
-		Visible = false,
-		ZIndex = 4,
-	}, world)
-	rounded(reticle, 1000)
-	local reticleStroke = new("UIStroke", { Color = Style.ui.gold, Thickness = 4 }, reticle)
-	for _, bar in { { 0.5, 0.06, 1.5, 0 }, { 0.06, 0.5, 0, 1.5 } } do
-		for _, sign in { -1, 1 } do
-			new("Frame", {
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.fromScale(
-					0.5 + sign * 0.5 * bar[3] * 0.5,
-					0.5 + sign * 0.5 * bar[4] * 0.5
-				),
-				Size = UDim2.fromScale(bar[1], bar[2]),
-				BackgroundColor3 = Style.ui.gold,
-				BorderSizePixel = 0,
-				ZIndex = 4,
-			}, reticle)
-		end
-	end
-	local reticleDot = new("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(8, 8),
-		BackgroundColor3 = Style.ui.gold,
-		ZIndex = 4,
-	}, reticle)
-	rounded(reticleDot, 1000)
-	local reticleScale = new("UIScale", {}, reticle)
+	local aimMark = CinemaScreen.reticle(world)
+	local reticle, reticleStroke, reticleScale = aimMark.frame, aimMark.stroke, aimMark.scale
 
 	-- The safe area: everything the player reads or presses ------------------------------------------
 	local tapArea = new("TextButton", {
@@ -485,53 +422,8 @@ function FreekickUi.init()
 	end
 
 	-- The power meter, on the right.
-	local powerBox = new("Frame", {
-		Name = "Power",
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -24, 0.5, 0),
-		Size = UDim2.new(0, POWER_WIDTH, 0.42, 0),
-		BackgroundColor3 = Style.ui.dark,
-		BackgroundTransparency = 0.2,
-		Visible = false,
-		ZIndex = 5,
-	}, gui)
-	rounded(powerBox, 8)
-	local powerStroke = new("UIStroke", { Color = Style.ui.gold, Thickness = 3 }, powerBox)
-	new("Frame", {
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.fromScale(0, 1 - Config.Training.freekickWeakPower),
-		Size = UDim2.fromScale(1, POWER_GOOD_MAX - Config.Training.freekickWeakPower),
-		BackgroundColor3 = Style.ui.good,
-		BackgroundTransparency = 0.6,
-		BorderSizePixel = 0,
-		ZIndex = 5,
-	}, powerBox)
-	for _, edge in { Config.Training.freekickWeakPower, POWER_GOOD_MAX } do
-		new("Frame", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 1 - edge),
-			Size = UDim2.new(1, 10, 0, 3),
-			BackgroundColor3 = WHITE,
-			BorderSizePixel = 0,
-			ZIndex = 7,
-		}, powerBox)
-	end
-	local powerFill = new("Frame", {
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.fromScale(0, 1),
-		Size = UDim2.fromScale(1, 0),
-		BackgroundColor3 = Style.ui.gold,
-		ZIndex = 6,
-	}, powerBox)
-	rounded(powerFill, 8)
-	outlined({
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 0, -4),
-		Size = UDim2.fromOffset(70, 16),
-		Text = "POWER",
-		TextSize = 14,
-		ZIndex = 5,
-	}, powerBox)
+	local meter = CinemaScreen.powerMeter(gui)
+	local powerBox, powerFill, powerStroke = meter.box, meter.fill, meter.stroke
 
 	-- The words of a result, in the middle.
 	local feedback = outlined({
@@ -724,34 +616,14 @@ function FreekickUi.init()
 	-- On and off: the stadium, the camera, the controls and the other screens ---------------------------
 	local scene: BreakawayScene.Scene? = nil
 	local dismissed = false -- the X was pressed; stays off until the player leaves the spot
-	local savedCamera: { [string]: any } = {}
-	local hiddenGuis: { [ScreenGui]: boolean } = {}
-
-	local function hideOthers()
-		for _, name in HIDDEN_GUIS do
-			local other = playerGui:FindFirstChild(name)
-			if other and other:IsA("ScreenGui") then
-				if hiddenGuis[other] == nil then
-					hiddenGuis[other] = other.Enabled
-				end
-				other.Enabled = false
-			end
-		end
-	end
+	local takeover = CinemaScreen.takeover()
 
 	local function open()
 		if scene then
 			return
 		end
-		local camera = Workspace.CurrentCamera
-		savedCamera = {
-			CameraType = camera.CameraType,
-			FieldOfView = camera.FieldOfView,
-		}
-		camera.CameraType = Enum.CameraType.Scriptable
+		takeover.take()
 		scene = BreakawayScene.new()
-		setControls(false)
-		hideOthers()
 		world.Enabled = true
 		gui.Enabled = true
 	end
@@ -766,19 +638,7 @@ function FreekickUi.init()
 		gui.Enabled = false
 		resultCard.Visible = false
 		holding = false
-		local camera = Workspace.CurrentCamera
-		camera.CameraType = savedCamera.CameraType or Enum.CameraType.Custom
-		camera.FieldOfView = savedCamera.FieldOfView or 70
-		local character = player.Character
-		local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
-		if humanoid then
-			camera.CameraSubject = humanoid
-		end
-		for other, enabled in hiddenGuis do
-			other.Enabled = enabled
-		end
-		table.clear(hiddenGuis)
-		setControls(true)
+		takeover.give()
 	end
 
 	-- The X: off the spot, a few steps past its edge (any input of the player takes over).
@@ -961,9 +821,8 @@ function FreekickUi.init()
 			return
 		end
 		local current = scene :: BreakawayScene.Scene
-		hideOthers()
 		-- The default camera scripts can switch the camera back (a respawn, a new subject); keep it ours.
-		Workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
+		takeover.keep()
 		local now = Workspace:GetServerTimeNow()
 		local phase = state.phase
 		local reduced = GuiService.ReducedMotionEnabled
@@ -1046,8 +905,7 @@ function FreekickUi.init()
 			else 0
 		powerBox.Visible = phase == "power"
 		powerFill.Size = UDim2.fromScale(1, power)
-		local good = power >= Config.Training.freekickWeakPower and power <= POWER_GOOD_MAX
-		powerFill.BackgroundColor3 = if good then Style.ui.good else BAD
+		powerFill.BackgroundColor3 = if CinemaScreen.powerGood(power) then Style.ui.good else BAD
 		powerStroke.Color = if holding then Style.ui.good else Style.ui.gold
 
 		-- The texts.
