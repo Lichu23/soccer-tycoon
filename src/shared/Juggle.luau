@@ -116,7 +116,12 @@ end
 -- TP for a clean touch at `combo` (the streak after the touch).
 function Juggle.tpFor(combo: number): number
 	local training = Config.Training
-	return training.juggleBaseTp + training.juggleComboTp * math.min(combo, training.juggleComboMax)
+	for _, tier in training.juggleTpTiers do
+		if combo <= tier.upTo then
+			return tier.tp
+		end
+	end
+	return training.juggleTpFloor
 end
 
 local function finish(state: State, at: number): Event

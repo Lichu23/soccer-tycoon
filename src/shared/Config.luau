@@ -358,9 +358,11 @@ Config.Training = {
 	-- `juggleWindow` seconds either side of that moment is a clean touch and the streak grows; a tap
 	-- outside it or a ball left to drop ends the streak. The result shows for `juggleOverSeconds`, then
 	-- a new streak starts after `juggleLeadSeconds`. The longest streak is the personal best; the
-	-- medals (`juggleMedals`: bronze, silver, gold) are streak milestones. Each touch pays
-	-- `juggleBaseTp` plus `juggleComboTp` per step of the streak up to `juggleComboMax`, at most
-	-- `juggleTpPerMinuteMax` TP in any minute for the skill games together (the treadmill pays 10).
+	-- medals (`juggleMedals`: bronze, silver, gold) are streak milestones. Each touch pays by its
+	-- place in the streak (`juggleTpTiers`: touches up to `upTo` pay `tp`; past the last tier
+	-- `juggleTpFloor`), with no cap per minute: a new streak starts again at the top tier, and the
+	-- stamina bar ends the session. The breakaway's goals are capped at
+	-- `freekickTpPerMinuteMax` TP in any minute (the treadmill pays 10).
 	juggleBounceSeconds = 0.8,
 	juggleBounceStep = 0.006,
 	juggleBounceMin = 0.5,
@@ -368,10 +370,14 @@ Config.Training = {
 	juggleLeadSeconds = 2, -- "get ready": the first ball of a streak leaves the foot this long after it starts
 	juggleIntroSeconds = 4, -- extra time before the first streak after stepping on the mat, to read how to play
 	juggleOverSeconds = 2.5, -- the result of a streak shows this long before the next one starts
-	juggleBaseTp = 0.35,
-	juggleComboTp = 0.05,
-	juggleComboMax = 10,
-	juggleTpPerMinuteMax = 40,
+	juggleTpTiers = {
+		{ upTo = 40, tp = 1 }, -- 40 TP for the first 40 touches
+		{ upTo = 110, tp = 0.5 },
+		{ upTo = 210, tp = 0.3 },
+		{ upTo = 340, tp = 0.2 },
+	},
+	juggleTpFloor = 0.1,
+	freekickTpPerMinuteMax = 40,
 	juggleMedals = { bronze = 10, silver = 25, gold = 50 },
 	-- The 1v1 breakaway (the free-kick spot, the other skill station), an endless streak of goals. Each
 	-- attack: the through-ball arrives (`freekickLeadSeconds`), then a skill move shows and waits

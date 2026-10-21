@@ -93,7 +93,7 @@ end
 
 local WINDOW_SECONDS = 60
 
--- TP the skill games may still pay now (one cap for both, only one is played at a time): the per-minute cap minus what it paid in the last minute.
+-- TP the breakaway may still pay now: the per-minute cap minus what it paid in the last minute.
 function Training.gameRoomLeft(carry: Carry, now: number): number
 	local log = carry.payLog
 	while #log > 0 and now - log[1].at > WINDOW_SECONDS do
@@ -103,22 +103,32 @@ function Training.gameRoomLeft(carry: Carry, now: number): number
 	for _, entry in log do
 		paid += entry.amount
 	end
-	return math.max(Config.Training.juggleTpPerMinuteMax - paid, 0)
+	return math.max(Config.Training.freekickTpPerMinuteMax - paid, 0)
 end
 
 -- Pays `wanted` TP for a clean touch of the keepie-uppies or a goal of the free kicks (the game's
--- `tpFor` of the streak). Only while the player is training with stamina left and under the rate
--- cap (counted before the x2 TP boost, which doubles what is paid). Returns the TP paid (a
--- fraction), which can be less than asked when the cap is reached.
-function Training.gamePay(data: Profile, carry: Carry, wanted: number, now: number): number
+-- `tpFor` of the streak). Only while the player is training with stamina left; when `capped` (the
+-- breakaway) also under the per-minute cap (counted before the x2 TP boost, which doubles what is
+-- paid). The keepie-uppies are not capped: their tiers lower the pay of a long streak instead.
+-- Returns the TP paid (a fraction), which can be less than asked when the cap is reached.
+function Training.gamePay(
+	data: Profile,
+	carry: Carry,
+	wanted: number,
+	now: number,
+	capped: boolean
+): number
 	if data.staminaLeft <= 0 or not (wanted > 0) then
 		return 0
 	end
-	local paid = math.min(wanted, Training.gameRoomLeft(carry, now))
-	if paid <= 0 then
-		return 0
+	local paid = wanted
+	if capped then
+		paid = math.min(wanted, Training.gameRoomLeft(carry, now))
+		if paid <= 0 then
+			return 0
+		end
+		table.insert(carry.payLog, { at = now, amount = paid })
 	end
-	table.insert(carry.payLog, { at = now, amount = paid })
 	paid *= Boosts.tpMultiplier(data)
 	carry.fraction += paid
 	payWhole(data, carry)

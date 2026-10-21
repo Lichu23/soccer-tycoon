@@ -514,15 +514,10 @@ function KeepieUi.init()
 				earned += paid
 				Sounds.play("kick")
 				pulse(comboScale, 1.35)
-				if info.capped == true then
-					popFeedback("MAX RATE", Style.ui.gold)
-				else
-					popFeedback(
-						string.format("+%.2f TP", paid)
-							.. (if combo >= 3 then "  x" .. combo else ""),
-						Style.ui.good
-					)
-				end
+				popFeedback(
+					string.format("+%.2f TP", paid) .. (if combo >= 3 then "  x" .. combo else ""),
+					Style.ui.good
+				)
 			elseif info.outcome == "miss" then
 				popFeedback("TOO EARLY", BAD)
 			end
@@ -608,9 +603,7 @@ function KeepieUi.init()
 			then Style.ui.gold
 			else WHITE
 		comboText.Text = if round.combo >= 2 then "x" .. round.combo else ""
-		comboText.TextColor3 = if round.combo >= Config.Training.juggleComboMax
-			then Style.ui.gold
-			else WHITE
+		comboText.TextColor3 = if round.combo >= medals.bronze then Style.ui.gold else WHITE
 		local progress = math.clamp(round.combo / medals.gold, 0, 1)
 		medalFill.Size = UDim2.fromScale(progress, 1)
 		medalFill.BackgroundColor3 = MEDAL_COLORS[math.max(Juggle.medal(round.combo), 1)]

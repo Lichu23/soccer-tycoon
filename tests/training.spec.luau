@@ -48,7 +48,8 @@ T.test("a bought x2 TP boost doubles the pad and the skill games", function()
 	T.eq(train(data, carry, 60, true), 20)
 	local gameData, gameCarry = fresh()
 	gameData.boosts.tpBoostLeft = 600
-	T.eq(Training.gamePay(gameData, gameCarry, 1, 0), 2)
+	T.eq(Training.gamePay(gameData, gameCarry, 1, 0, false), 2)
+	T.eq(Training.gamePay(gameData, gameCarry, 1, 0, true), 2)
 end)
 
 T.test("one full stamina session is 50 TP and then it stops", function()
@@ -106,6 +107,7 @@ T.test("the fraction of a TP is carried, so slow steps lose nothing", function()
 end)
 
 local Juggle = T.load("shared/Juggle")
+local Freekick = T.load("shared/Freekick")
 
 local WINDOW = Config.Training.juggleWindow
 
@@ -227,26 +229,46 @@ T.test("a long gap is caught up without looping for ever", function()
 	T.truthy(#events >= 1 and #events <= 64)
 end)
 
-T.test(
-	"a clean touch pays the base TP plus a little per step of the streak, up to the cap",
-	function()
-		local data, carry = fresh()
-		local training = Config.Training
-		T.near(
-			Training.gamePay(data, carry, Juggle.tpFor(1), 0),
-			training.juggleBaseTp + training.juggleComboTp,
-			1e-9
-		)
-		local maxPay = training.juggleBaseTp + training.juggleComboTp * training.juggleComboMax
-		T.near(Training.gamePay(data, carry, Juggle.tpFor(50), 1), maxPay, 1e-9) -- the streak stops counting at the cap
-		T.eq(Training.gamePay(data, carry, 0, 2), 0)
+T.test("a clean touch pays by its place in the streak: 1 TP, then less in long streaks", function()
+	T.eq(Juggle.tpFor(1), 1)
+	T.eq(Juggle.tpFor(40), 1)
+	T.eq(Juggle.tpFor(41), 0.5)
+	T.eq(Juggle.tpFor(110), 0.5)
+	T.eq(Juggle.tpFor(111), 0.3)
+	T.eq(Juggle.tpFor(210), 0.3)
+	T.eq(Juggle.tpFor(211), 0.2)
+	T.eq(Juggle.tpFor(340), 0.2)
+	T.eq(Juggle.tpFor(341), Config.Training.juggleTpFloor)
+	T.eq(Juggle.tpFor(100000), Config.Training.juggleTpFloor)
+	local total = 0
+	for combo = 1, 40 do
+		total += Juggle.tpFor(combo)
 	end
-)
+	T.eq(total, 40)
+	local last = math.huge
+	for _, tier in Config.Training.juggleTpTiers do
+		T.truthy(tier.tp < last, "every tier pays less than the one before")
+		last = tier.tp
+	end
+	T.truthy(Config.Training.juggleTpFloor > 0 and Config.Training.juggleTpFloor < last)
+end)
+
+T.test("the keepie-uppies pay every touch with no cap per minute", function()
+	local data, carry = fresh()
+	local paid = 0
+	for combo = 1, 120 do
+		paid += Training.gamePay(data, carry, Juggle.tpFor(combo), combo * 0.5, false) -- one minute
+	end
+	T.near(paid, 40 + 70 * 0.5 + 10 * 0.3, 1e-9)
+	T.eq(#carry.payLog, 0, "the keepie-uppies leave the breakaway's cap alone")
+	T.eq(Training.gamePay(data, carry, 0, 61, false), 0)
+end)
 
 T.test("the skill games pay nothing without stamina", function()
 	local data, carry = fresh()
 	data.staminaLeft = 0
-	T.eq(Training.gamePay(data, carry, Juggle.tpFor(5), 0), 0)
+	T.eq(Training.gamePay(data, carry, Juggle.tpFor(5), 0, false), 0)
+	T.eq(Training.gamePay(data, carry, Freekick.tpFor(1), 0, true), 0)
 end)
 
 T.test("a skill station only pays what the game pays: no idle TP there", function()
@@ -258,17 +280,17 @@ T.test("a skill station only pays what the game pays: no idle TP there", functio
 	T.truthy(data.staminaLeft < Config.Training.staminaSeconds, "stamina still drains")
 end)
 
-T.test("the game part of the rate is capped per minute, and room comes back later", function()
+T.test("the breakaway's pay is capped per minute, and room comes back later", function()
 	local data, carry = fresh()
-	local room = Config.Training.juggleTpPerMinuteMax
+	local room = Config.Training.freekickTpPerMinuteMax
 	local paid = 0
 	for index = 1, 200 do
-		paid += Training.gamePay(data, carry, Juggle.tpFor(10), index * 0.1) -- 200 touches in 20 seconds
+		paid += Training.gamePay(data, carry, Freekick.tpFor(10), index * 0.1, true) -- 200 goals in 20 seconds
 	end
 	T.near(paid, room, 1e-9)
-	T.eq(Training.gamePay(data, carry, Juggle.tpFor(10), 21), 0)
+	T.eq(Training.gamePay(data, carry, Freekick.tpFor(10), 21, true), 0)
 	T.truthy(
-		Training.gamePay(data, carry, Juggle.tpFor(10), 85) > 0,
+		Training.gamePay(data, carry, Freekick.tpFor(10), 85, true) > 0,
 		"a minute later the cap has room again"
 	)
 end)
@@ -391,8 +413,6 @@ T.test("before floor 1 is complete an owned player's pad still says OWNED", func
 end)
 
 -- The 1v1 breakaway (the free-kick spot) ----------------------------------------------------------------
-
-local Freekick = T.load("shared/Freekick")
 
 local FK = Config.Training
 local KEEPER = -0.2 -- the keeper leaning left

@@ -248,7 +248,7 @@ local function tap(player: Player)
 		recordKeepie(session, round.combo)
 		local carry = carries[player]
 		if carry then
-			paid = Training.gamePay(session.data, carry, Juggle.tpFor(round.combo), now)
+			paid = Training.gamePay(session.data, carry, Juggle.tpFor(round.combo), now, false)
 			if paid > 0 then
 				Economy.publish(player, session.data)
 			end
@@ -260,7 +260,6 @@ local function tap(player: Player)
 		outcome = outcome,
 		combo = round.combo,
 		paid = paid,
-		capped = outcome == "hit" and paid <= 0,
 	})
 	if event then
 		handleEvents(session, { event })
@@ -319,7 +318,7 @@ local function kickRelease(player: Player, ...: any)
 		recordFreekick(session, state.streak)
 		local carry = carries[player]
 		if carry then
-			paid = Training.gamePay(session.data, carry, Freekick.tpFor(state.streak), now)
+			paid = Training.gamePay(session.data, carry, Freekick.tpFor(state.streak), now, true)
 			if paid > 0 then
 				Economy.publish(player, session.data)
 			end

@@ -219,11 +219,12 @@ T.test("stars, training and season constants", function()
 	T.eq(Config.Training.bonusPerLevel, 0.03)
 	T.eq(Config.Training.levelCostBase, 40)
 	T.eq(Config.Training.idleTpPerMinute, 10)
-	T.eq(Config.Training.juggleTpPerMinuteMax, 40)
+	T.eq(Config.Training.freekickTpPerMinuteMax, 40)
 	T.truthy(
-		Config.Training.juggleTpPerMinuteMax > Config.Training.idleTpPerMinute,
-		"the keepie-uppies must beat the treadmill"
+		Config.Training.freekickTpPerMinuteMax > Config.Training.idleTpPerMinute,
+		"the breakaway must beat the treadmill"
 	)
+	T.eq(Config.Training.juggleTpTiers[1].tp, 1)
 	T.eq(Config.Season.bonusPerSeason, 0.5)
 	T.eq(Config.Match.momentumCap, 0.25)
 end)
