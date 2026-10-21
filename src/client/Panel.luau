@@ -1,6 +1,7 @@
 --!strict
 -- The shared look of the big screens (Shop, Locker room, Reminders): a light panel in the middle of
--- the screen with a centred title, a red X in the corner and a scrolling column, over a dimmed game.
+-- the screen with a centred title, a red X in the corner and a scrolling column, over the game (no
+-- dimming).
 -- While a panel is open its ScreenGui sits above every other HUD screen. The X is the only way to
 -- close it, so a stray tap outside never loses the player's place. Text colours are dark, for contrast
 -- on the light panel.

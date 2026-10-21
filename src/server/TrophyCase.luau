@@ -2,7 +2,7 @@
 -- The trophy case outside the door of a plot (template folder Entrance, built by
 -- tools/studio/BuildEntrance.luau). It starts empty, with the name of each trophy on its plaque; the
 -- trophy of a tier appears on its pedestal for every season the owner has finished. The trophies are
--- models made in Studio from the trophy drawings (shared/TrophyModels); a plain gold cup stands in if one
+-- the cartoon trophy meshes of shared/TrophyModels; a plain gold cup stands in if one
 -- is missing.
 -- Derived from the season number, never stored (docs/PLAN.md, Step 6): a finished season is every
 -- season before the current.

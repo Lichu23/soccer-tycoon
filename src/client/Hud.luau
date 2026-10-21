@@ -1,6 +1,6 @@
 --!strict
--- The HUD (docs/PLAN.md, Step 7): one compact column at the top right with the money, the match
--- loading bar and the boost badge, plus the VICTORY text near the top and "+$N" next to the money
+-- The HUD (docs/PLAN.md, Step 7): one compact column at the top right with the match timer, the
+-- money and the boost badge, plus the VICTORY text near the top with "+$N" at its bottom right
 -- after each match. There is no goal card: the guide covers the first steps and the player decides
 -- the rest. The middle of the screen stays clear. Built in code for the smallest landscape phone
 -- first, inside the safe area below the Roblox top bar. It only shows what the server sent.
@@ -8,11 +8,13 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TextService = game:GetService("TextService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Icons = require(script.Parent.Icons)
 local Net = require(script.Parent.Net)
+local Sounds = require(script.Parent.Sounds)
 local NumberFormat = require(ReplicatedStorage.Shared.NumberFormat)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
@@ -21,8 +23,10 @@ local player = Players.LocalPlayer
 
 local COLUMN_WIDTH = 230
 local BOX_HEIGHT = 44
-local MATCH_BAR_HEIGHT = 8
-local MONEY_Y = MATCH_BAR_HEIGHT + 5 -- the money box under the match bar
+local MATCH_TITLE_HEIGHT = 16 -- "MATCH TIME" over the timer
+local MATCH_TIMER_WIDTH = 104
+local MATCH_TIMER_HEIGHT = 30
+local MONEY_Y = MATCH_TITLE_HEIGHT + MATCH_TIMER_HEIGHT + 6 -- the money box under the match timer
 local BADGE_SIZE = 30
 local TP_GAIN_HOLD_SECONDS = 1.2 -- how long "+N TP" stays after the last gain
 local AWAY_HOLD_SECONDS = 5 -- how long "+$N while you were away" stays
@@ -168,25 +172,50 @@ function Hud.build(parent: Instance): any
 		BackgroundTransparency = 1,
 	}, gui)
 
-	local matchBar = new("Frame", {
-		Name = "MatchBar",
-		Position = UDim2.fromOffset(0, 0),
-		Size = UDim2.new(1, 0, 0, MATCH_BAR_HEIGHT),
-		BackgroundColor3 = Style.ui.dark,
-		BackgroundTransparency = 0.2,
+	-- The match timer: "MATCH TIME" and under it the time left in the match, at the right edge.
+	local matchTimer = new("Frame", {
+		Name = "MatchTimer",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.fromScale(1, 0),
+		Size = UDim2.fromOffset(MATCH_TIMER_WIDTH, MATCH_TITLE_HEIGHT + MATCH_TIMER_HEIGHT),
+		BackgroundTransparency = 1,
 		Visible = false, -- shown once the team plays
 	}, top)
-	rounded(matchBar, 4)
-	stroke(matchBar, Style.ui.idle, 1)
-	local matchFill = new("Frame", {
-		Name = "Fill",
-		Size = UDim2.fromScale(0, 1),
-		BackgroundColor3 = Style.ui.bar,
-		BorderSizePixel = 0,
-	}, matchBar)
-	rounded(matchFill, 4)
+	local matchTitle = new("TextLabel", {
+		Name = "Title",
+		Size = UDim2.new(1, 0, 0, MATCH_TITLE_HEIGHT),
+		BackgroundTransparency = 1,
+		Text = "MATCH TIME",
+		Font = Style.font,
+		TextSize = 14,
+		TextColor3 = Style.ui.idle,
+	}, matchTimer)
+	stroke(matchTitle, Style.ui.dark, 2)
+	local clockBox = new("Frame", {
+		Name = "Box",
+		Position = UDim2.fromOffset(0, MATCH_TITLE_HEIGHT),
+		Size = UDim2.new(1, 0, 0, MATCH_TIMER_HEIGHT),
+		BackgroundColor3 = Style.ui.panel,
+		BackgroundTransparency = 0.05,
+	}, matchTimer)
+	rounded(clockBox, 10)
+	new("UIStroke", {
+		Color = Style.ui.bar,
+		Thickness = 2,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+	}, clockBox)
+	local clock = new("TextLabel", {
+		Name = "Clock",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Text = "0:00",
+		Font = Style.font,
+		TextSize = 22,
+		TextColor3 = Style.ui.text,
+	}, clockBox)
+	stroke(clock, Style.ui.dark, 2)
 
-	-- The money sits under the match bar. The bar's place stays free before the first player.
+	-- The money sits under the match timer. The timer's place stays free before the first player.
 	local _, money = statBox(top, "MoneyRow", MONEY_Y, Style.ui.money, "$", "cash", "Money")
 	money.Text = "$0"
 
@@ -194,23 +223,6 @@ function Hud.build(parent: Instance): any
 	local _, tpValue =
 		statBox(top, "Tp", MONEY_Y + BOX_HEIGHT + 6, Style.ui.bar, "TP", "tp", "Value")
 	tpValue.Text = "0"
-
-	-- "+$N" sits right next to the money amount (its position is set from the money text width).
-	local payout = new("TextLabel", {
-		Name = "Payout",
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.fromOffset(COLUMN_WIDTH - 90, MONEY_Y + 8),
-		Size = UDim2.fromOffset(110, 28),
-		BackgroundTransparency = 1,
-		Text = "",
-		TextXAlignment = Enum.TextXAlignment.Right,
-		Font = Style.font,
-		TextSize = 22,
-		TextColor3 = Style.ui.gold,
-		Visible = false,
-		ZIndex = 4,
-	}, top)
-	stroke(payout, Style.ui.dark, 2)
 
 	-- The boost badge sits under the TP box, at the right edge of the column.
 	local boost = new("TextLabel", {
@@ -275,6 +287,23 @@ function Hud.build(parent: Instance): any
 	}, gui)
 	stroke(banner, Style.ui.dark, 3)
 
+	-- "+$N" at the bottom right of the result text, for the cash the match paid.
+	local payout = new("TextLabel", {
+		Name = "Payout",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, 0, 1, -8),
+		Size = UDim2.fromOffset(200, 30),
+		BackgroundTransparency = 1,
+		Text = "",
+		TextXAlignment = Enum.TextXAlignment.Right,
+		Font = Style.font,
+		TextSize = 26,
+		TextColor3 = Style.ui.gold,
+		Visible = false,
+		ZIndex = 2,
+	}, banner)
+	stroke(payout, Style.ui.dark, 2)
+
 	-- "+$N while you were away", shown once after joining.
 	local away = new("TextLabel", {
 		Name = "Away",
@@ -299,16 +328,18 @@ function Hud.init()
 	local playerGui = player:WaitForChild("PlayerGui")
 	local gui = Hud.build(playerGui)
 	local top = gui.Top
-	local money, matchFill, payout = top.MoneyRow.Money, top.MatchBar.Fill, top.Payout
+	local money, matchTimer = top.MoneyRow.Money, top.MatchTimer
+	local matchClock = matchTimer.Box.Clock
 	local boost, banner = top.BoostBadge, gui.Banner
+	local payout = banner.Payout
 	local tpValue = top.Tp.Value
 
-	-- The match bar shows from the first player on (the team plays from then).
-	local function showMatchBar()
-		top.MatchBar.Visible = State.data.fieldStarted
+	-- The match timer shows from the first player on (the team plays from then).
+	local function showMatchTimer()
+		matchTimer.Visible = State.data.fieldStarted
 	end
-	showMatchBar()
-	State.onChange(showMatchBar)
+	showMatchTimer()
+	State.onChange(showMatchTimer)
 
 	-- Money counts up towards the real value; the real value is never delayed.
 	local shownCash = State.data.cash
@@ -317,7 +348,7 @@ function Hud.init()
 	end
 	setMoney()
 
-	-- The result: VICTORY near the top and +$N next to the money, shown for 1 second ----------
+	-- The result: VICTORY near the top with +$N under it and the cash sound, shown for 1 second --
 	local resultToken = 0
 	Net.on("MatchResult", function(_plot: any, info: any)
 		if type(info) ~= "table" or info.ownerUserId ~= player.UserId then
@@ -328,12 +359,19 @@ function Hud.init()
 
 		banner.Text = if info.hatTrick then "HAT-TRICK x2" else "VICTORY"
 		banner.TextColor3 = if info.hatTrick then Style.ui.gold else Style.ui.good
-		fadeIn(banner)
-
 		payout.Text = "+" .. NumberFormat.money(info.payout)
-		-- Right next to the money text, which is right aligned in the column.
-		payout.Position = UDim2.fromOffset(COLUMN_WIDTH - money.TextBounds.X - 22, MONEY_Y + 8)
+		-- At the bottom right of the result text, which is centred in its label (TextBounds is only
+		-- updated on the next frame, so the width is measured here).
+		local width = TextService:GetTextSize(
+			banner.Text,
+			banner.TextSize,
+			banner.Font,
+			Vector2.new(1000, 100)
+		).X
+		payout.Position = UDim2.new(0.5, width / 2 + 14, 1, -8)
+		fadeIn(banner)
 		fadeIn(payout)
+		Sounds.play("cash")
 
 		task.delay(RESULT_HOLD_SECONDS, function()
 			if token ~= resultToken then
@@ -411,7 +449,7 @@ function Hud.init()
 	showAway()
 	player:GetAttributeChangedSignal("offlineEarned"):Connect(showAway)
 
-	-- Every frame: the money counter, the match bar and the boost badge ------------------
+	-- Every frame: the money counter, the match timer and the boost badge ----------------
 	RunService.RenderStepped:Connect(function(dt: number)
 		local target = State.shownCash()
 		if shownCash ~= target then
@@ -426,19 +464,22 @@ function Hud.init()
 
 		local now = Workspace:GetServerTimeNow()
 		local endsAt = player:GetAttribute("matchEndsAt")
-		local duration = player:GetAttribute("matchDuration")
-		if
-			type(endsAt) == "number"
-			and type(duration) == "number"
-			and endsAt > 0
-			and duration > 0
-		then
-			matchFill.Size = UDim2.fromScale(math.clamp(1 - (endsAt - now) / duration, 0, 1), 1)
+		if type(endsAt) == "number" and endsAt > 0 then
+			matchClock.Text = clockText(math.ceil(endsAt - now))
 		else
-			matchFill.Size = UDim2.fromScale(0, 1)
+			matchClock.Text = "0:00"
 		end
 
 		tpValue.Text = NumberFormat.short(State.shownTp())
+
+		-- The result text moves under the tutorial objective (client/Arrow) while that shows, which
+		-- can start in the same moment as the result, so the chip never covers it.
+		if banner.Visible then
+			local objective = playerGui:FindFirstChild("Objective")
+			local chip = objective and objective:FindFirstChild("Chip")
+			local chipShown = chip ~= nil and chip:IsA("GuiObject") and chip.Visible
+			banner.Position = UDim2.new(0.5, 0, 0, if chipShown then 58 else 10)
+		end
 
 		local boostEnds = player:GetAttribute("boostEndsAt")
 		if type(boostEnds) == "number" and boostEnds > now and not State.boostHeld() then

@@ -25,7 +25,7 @@ local player = Players.LocalPlayer
 local GLOW_SECONDS = 4 -- how long a newly ready icon pulses
 local TOAST_SECONDS = 2.5
 local PRIZE_SECONDS = 4
-local AUTO_OPEN_SECONDS = 1 -- after the level-up that ends the tutorial
+local AUTO_OPEN_SECONDS = 5 -- after the level-up that ends the tutorial
 
 local DailyUi = {}
 
@@ -241,7 +241,7 @@ function DailyUi.init()
 	end)
 
 	-- When the level-up tutorial ends (the first level any player gets), the kick screen opens by
-	-- itself a second later, once, in place of the level-up card. Sending SeenTile marks the Kick
+	-- itself five seconds later, once, in place of the level-up card. Sending SeenTile marks the Kick
 	-- button as seen for good, so it never opens by itself again.
 	local autoOpened = false
 	Net.on("Notice", function(info: any)

@@ -21,7 +21,6 @@ local Mannequin = require(ReplicatedStorage.Shared.Mannequin)
 local MatchScript = require(ReplicatedStorage.Shared.MatchScript)
 local Net = require(script.Parent.Net)
 local Roster = require(ReplicatedStorage.Shared.Roster)
-local Sounds = require(script.Parent.Sounds)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
 
@@ -43,7 +42,7 @@ local TACKLE_COOLDOWN = 1.6
 local FAR_AWAY = 240 -- studs from the camera: do not animate
 local OTHER_PLOT_SECONDS = 40
 local FALLBACK_SECONDS = 3 -- a result with no kick-off seen (joined mid-match) plays its goals this fast
-local BOARD_HEIGHT = 18 -- the scoreboard over the middle of the pitch, studs above the grass
+local BOARD_HEIGHT = 5.5 -- the bottom of the score over the middle of the pitch, studs above the grass (like the pad labels)
 
 type Runner = {
 	model: Model,
@@ -167,7 +166,33 @@ local function destroyTeam(team: Team)
 	teams[team.plot] = nil
 end
 
--- The scoreboard: a dark plate high over the middle of the pitch with the score and the time left.
+-- The scoreboard: the score and the time left over the middle of the pitch, drawn like the text over
+-- the pads (client/PadRing): the same sizes and outline, and its bottom edge the same height over the
+-- grass. It grows upward from that edge, so it stays just over the players' heads at any distance.
+local function boardLabel(
+	parent: Instance,
+	name: string,
+	order: number,
+	size: number,
+	color: Color3
+): TextLabel
+	local label = Instance.new("TextLabel")
+	label.Name = name
+	label.LayoutOrder = order
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.new(1, 0, 0, size + 4)
+	label.Font = Style.font
+	label.TextSize = size
+	label.TextColor3 = color
+	label.Text = ""
+	label.Parent = parent
+	local outline = Instance.new("UIStroke")
+	outline.Color = Color3.new(0, 0, 0)
+	outline.Thickness = 2
+	outline.Parent = label
+	return label
+end
+
 local function buildBoard(team: Team): Board
 	local part = Instance.new("Part")
 	part.Name = "MatchBoard"
@@ -181,42 +206,27 @@ local function buildBoard(team: Team): Board
 	part.Parent = folder
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "Board"
-	gui.Size = UDim2.fromOffset(170, 64)
+	gui.Size = UDim2.fromOffset(240, 200)
 	gui.MaxDistance = 180
 	gui.LightInfluence = 0
 	gui.Enabled = false
 	gui.Parent = part
-	local plate = Instance.new("Frame")
-	plate.Size = UDim2.fromScale(1, 1)
-	plate.BackgroundColor3 = Style.ui.dark
-	plate.BackgroundTransparency = 0.15
-	plate.Parent = gui
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 12)
-	corner.Parent = plate
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = Style.ui.gold
-	stroke.Thickness = 2
-	stroke.Parent = plate
-	local score = Instance.new("TextLabel")
-	score.Name = "Score"
-	score.BackgroundTransparency = 1
-	score.Size = UDim2.new(1, 0, 0, 40)
-	score.Font = Style.font
-	score.TextSize = 32
-	score.TextColor3 = Style.ui.gold
+	local frame = Instance.new("Frame")
+	frame.AnchorPoint = Vector2.new(0.5, 1)
+	frame.Position = UDim2.fromScale(0.5, 0.5)
+	frame.Size = UDim2.fromScale(1, 0)
+	frame.AutomaticSize = Enum.AutomaticSize.Y
+	frame.BackgroundTransparency = 1
+	frame.Parent = gui
+	local layout = Instance.new("UIListLayout")
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.Padding = UDim.new(0, 3)
+	layout.Parent = frame
+	-- The pad label sizes: the price (30) for the score, the note (18) for the clock.
+	local score = boardLabel(frame, "Score", 1, 30, Style.ui.gold)
 	score.Text = "0 - 0"
-	score.Parent = plate
-	local clock = Instance.new("TextLabel")
-	clock.Name = "Clock"
-	clock.BackgroundTransparency = 1
-	clock.Position = UDim2.fromOffset(0, 38)
-	clock.Size = UDim2.new(1, 0, 0, 22)
-	clock.Font = Style.font
-	clock.TextSize = 16
-	clock.TextColor3 = Style.ui.text
-	clock.Text = ""
-	clock.Parent = plate
+	local clock = boardLabel(frame, "Clock", 2, 18, Style.ui.text)
 	return { part = part, gui = gui, score = score, clock = clock }
 end
 
@@ -485,7 +495,7 @@ local function enterStretch(play: Play, stretch: number, now: number)
 end
 
 -- One frame of a match with a timeline.
-local function updatePlay(team: Team, play: Play, now: number, own: boolean)
+local function updatePlay(team: Team, play: Play, now: number)
 	local time = now - play.startedAt
 	local stretch, goal, goalIndex = stretchAt(play, time)
 	if stretch ~= play.segment then
@@ -504,9 +514,8 @@ local function updatePlay(team: Team, play: Play, now: number, own: boolean)
 				team.celebrateSide = goal.side
 				team.celebrateUntil = now + (goal.resetAt - time)
 				play.kickoffSide = -goal.side
-				if own then
-					Sounds.play("net")
-				end
+				-- The goals are quiet: the only sound of the match is the cash with VICTORY at the
+				-- whistle (client/Hud).
 			end
 		else
 			attack = goal.side
@@ -885,7 +894,7 @@ function MatchView.init()
 					play.holder = nil -- the team was rebuilt under the match
 				end
 				if play then
-					updatePlay(team, play, now, plot == mine)
+					updatePlay(team, play, now)
 				end
 				drawTeam(team, play, now, dt)
 				updateBoard(team, play, now)

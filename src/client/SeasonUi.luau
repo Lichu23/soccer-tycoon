@@ -26,6 +26,9 @@ local TrophyScene = require(script.Parent.TrophyScene)
 local player = Players.LocalPlayer
 
 local BADGE_W, BADGE_H = 160, 28
+-- Under the boost badge and "+N TP" of the HUD column (client/Hud, their row ends at 187), so a
+-- running boost stays readable.
+local BADGE_Y = 194
 local PANEL_W, PANEL_H = 540, 290
 local TILE = 180 -- the trophy tile, square
 local COLUMN_X = 18 + TILE + 18 -- the text column right of the tile
@@ -100,7 +103,7 @@ function SeasonUi.init()
 	local badge = new("TextButton", {
 		Name = "Badge",
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -10, 0, 160),
+		Position = UDim2.new(1, -10, 0, BADGE_Y),
 		Size = UDim2.fromOffset(BADGE_W, BADGE_H),
 		BackgroundColor3 = Style.ui.panel,
 		BackgroundTransparency = 0.15,
@@ -509,19 +512,15 @@ function SeasonUi.init()
 		end
 		celebrating = true
 		local reduced = GuiService.ReducedMotionEnabled
+		-- No dimming, like the Shop and the New Season screen: the screen only takes the tap.
 		local screen = new("TextButton", {
 			Name = "Trophy",
 			Size = UDim2.fromScale(1, 1),
-			BackgroundColor3 = Style.ui.dark,
-			BackgroundTransparency = if reduced then 0.35 else 1,
+			BackgroundTransparency = 1,
 			AutoButtonColor = false,
 			Text = "",
 			ZIndex = 8,
 		}, gui)
-		if not reduced then
-			TweenService:Create(screen, TweenInfo.new(0.3), { BackgroundTransparency = 0.35 })
-				:Play()
-		end
 		local box = new("Frame", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),

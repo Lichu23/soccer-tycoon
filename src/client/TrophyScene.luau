@@ -271,13 +271,13 @@ function TrophyScene.build(parent: GuiObject, options: SceneOptions): () -> ()
 		end
 	end
 
-	-- A dark plinth with a gold rim, and the trophy on it.
+	-- A white plinth with a gold rim, like the pedestals of the trophy case, and the trophy on it.
 	local upright = CFrame.Angles(0, 0, math.pi / 2)
 	local plinth = Instance.new("Part")
 	plinth.Anchored = true
 	plinth.Shape = Enum.PartType.Cylinder
 	plinth.Material = Enum.Material.SmoothPlastic
-	plinth.Color = Color3.fromRGB(32, 38, 56)
+	plinth.Color = Color3.fromRGB(240, 240, 240)
 	plinth.Size = Vector3.new(PLINTH_HEIGHT, 3.6, 3.6)
 	plinth.CFrame = CFrame.new(TROPHY_AT + Vector3.new(0, PLINTH_HEIGHT / 2, 0)) * upright
 	plinth.Parent = view
