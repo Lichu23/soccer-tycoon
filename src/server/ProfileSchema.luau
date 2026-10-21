@@ -49,6 +49,12 @@ export type Profile = {
 		keepieBestStreak: number,
 		freekickBestStreak: number,
 	},
+	-- Totals for the plaza leaderboards, kept across seasons: the Robux spent on products (what
+	-- Roblox charged) and all the cash ever earned (spending and a New Season never lower it).
+	stats: {
+		robuxSpent: number,
+		cashEarned: number,
+	},
 	receipts: { [string]: Receipt },
 	pendingReveals: { PendingReveal },
 	seenRarities: { [string]: boolean },
@@ -98,6 +104,10 @@ function ProfileSchema.newProfile(): Profile
 		gym = {
 			keepieBestStreak = 0,
 			freekickBestStreak = 0,
+		},
+		stats = {
+			robuxSpent = 0,
+			cashEarned = 0,
 		},
 		receipts = {},
 		pendingReveals = {},
@@ -317,6 +327,14 @@ function ProfileSchema.validate(profile: { [string]: any }): (boolean, string?)
 		or not isCount(profile.gym.freekickBestStreak, 100_000)
 	then
 		return false, "profile.gym is out of range"
+	end
+	if
+		not isCount(profile.stats.robuxSpent)
+		or not isFiniteNumber(profile.stats.cashEarned)
+		or profile.stats.cashEarned < 0
+		or profile.stats.cashEarned > Config.MaxCash
+	then
+		return false, "profile.stats is out of range"
 	end
 	return true, nil
 end

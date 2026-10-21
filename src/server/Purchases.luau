@@ -63,7 +63,8 @@ end
 local function grantAndStore(
 	session: Session.Session,
 	product: Config.ProductDef,
-	purchaseId: string
+	purchaseId: string,
+	robuxSpent: number?
 ): boolean
 	local result = Grants.process(
 		session.data,
@@ -75,7 +76,8 @@ local function grantAndStore(
 			return Session.saveAndConfirm(session.player, function(saved)
 				return saved.receipts ~= nil and saved.receipts[purchaseId] ~= nil
 			end)
-		end
+		end,
+		robuxSpent
 	)
 	if result == nil then
 		return false
@@ -99,7 +101,8 @@ local function processReceipt(info: { [string]: any }): Enum.ProductPurchaseDeci
 		warn("[Purchases] unknown product " .. tostring(info.ProductId))
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
-	if grantAndStore(session, product, tostring(info.PurchaseId)) then
+	local spent = if type(info.CurrencySpent) == "number" then info.CurrencySpent else nil
+	if grantAndStore(session, product, tostring(info.PurchaseId), spent) then
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 	end
 	return Enum.ProductPurchaseDecision.NotProcessedYet

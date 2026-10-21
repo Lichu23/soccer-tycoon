@@ -20,13 +20,15 @@ local Grants = {}
 
 -- Grants a product once for this PurchaseId and records the receipt in the profile. A resent
 -- receipt grants nothing again and returns the saved result with `false`. `roll` is a number in
--- [0, 1) for the case pick. Returns (result, granted).
+-- [0, 1) for the case pick. `robuxSpent` is what Roblox charged (the shown price when not given),
+-- added to the leaderboard total. Returns (result, granted).
 function Grants.apply(
 	data: Profile,
 	product: Config.ProductDef,
 	purchaseId: string,
 	now: number,
-	roll: number
+	roll: number,
+	robuxSpent: number?
 ): ({ [string]: any }, boolean)
 	local existing = data.receipts[purchaseId]
 	if existing then
@@ -79,6 +81,10 @@ function Grants.apply(
 		Reveals.grant(data, id, owned)
 		result = { kind = "legend", playerId = id, isNew = not owned }
 	end
+	local spent = robuxSpent or product.robux
+	if type(spent) == "number" and spent > 0 and spent == math.floor(spent) then
+		data.stats.robuxSpent += spent
+	end
 	data.receipts[purchaseId] = { at = now, result = result }
 	return result, true
 end
@@ -93,9 +99,10 @@ function Grants.process(
 	purchaseId: string,
 	now: number,
 	roll: number,
-	save: () -> boolean
+	save: () -> boolean,
+	robuxSpent: number?
 ): ({ [string]: any }?, boolean)
-	local result, granted = Grants.apply(data, product, purchaseId, now, roll)
+	local result, granted = Grants.apply(data, product, purchaseId, now, roll, robuxSpent)
 	if not save() then
 		return nil, granted
 	end
