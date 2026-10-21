@@ -20,6 +20,7 @@ DevCommands.commands = {
 	"resetDaily",
 	"grantTp",
 	"offerWait",
+	"quickStart",
 }
 
 -- Applies one command. Returns false for an unknown command.
@@ -28,6 +29,9 @@ DevCommands.commands = {
 --   grantTp n:    adds n training points
 --   resetDaily:   the free case and the penalty kicks are ready again
 --   offerWait:    the 30-minute wait before cases are offered has passed
+--   quickStart:   the opening is done: floor 1 owned, its cheapest player at level 1 (the level-up
+--                 tutorial is over), the plot counts as claimed before (no tour) and the Kick button
+--                 as seen (the penalty screen never opens by itself). DevTools claims the plot.
 --   resetProfile: back to a brand-new profile
 function DevCommands.apply(data: ProfileSchema.Profile, command: string, amount: number): boolean
 	if command == "grantFloor" then
@@ -50,6 +54,21 @@ function DevCommands.apply(data: ProfileSchema.Profile, command: string, amount:
 		return true
 	elseif command == "offerWait" then
 		data.flags.milestones["first_purchase"] = os.time() - Config.CaseRules.noOfferSeconds - 1
+		return true
+	elseif command == "quickStart" then
+		DevCommands.apply(data, "grantFloor", 1)
+		local first: Config.PlayerDef? = nil
+		for id in data.players do
+			local def = Config.PlayersById[id]
+			if def and def.rarity ~= "Legend" and (first == nil or def.price < first.price) then
+				first = def
+			end
+		end
+		if first and data.players[first.id].level == 0 then
+			data.players[first.id].level = 1
+		end
+		data.flags.hasClaimedPlot = true
+		data.flags.tilesSeen.kick = true
 		return true
 	elseif command == "resetProfile" then
 		local fresh = ProfileSchema.newProfile()

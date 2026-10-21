@@ -70,6 +70,26 @@ T.test("resetDaily makes the case and the kicks ready again", function()
 	T.eq(ok, true)
 end)
 
+T.test(
+	"quickStart owns floor 1, ends the level-up tutorial and skips the tour and the kick screen",
+	function()
+		local data = ProfileSchema.newProfile()
+		T.eq(DevCommands.apply(data, "quickStart", 0), true)
+		T.eq(Roster.floorComplete(data, 1), true)
+		local levelled = 0
+		for _, owned in data.players do
+			if owned.level > 0 then
+				levelled += 1
+			end
+		end
+		T.eq(levelled, 1)
+		T.eq(data.flags.hasClaimedPlot, true)
+		T.eq(data.flags.tilesSeen.kick, true)
+		local ok = ProfileSchema.validate(data)
+		T.eq(ok, true)
+	end
+)
+
 T.test("an unknown command does nothing", function()
 	local data = ProfileSchema.newProfile()
 	T.eq(DevCommands.apply(data, "explode", 1), false)
