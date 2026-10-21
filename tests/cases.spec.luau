@@ -317,13 +317,13 @@ T.test("a banked match doubles one match and is used up", function()
 	local never = function()
 		return 0.99
 	end
-	local plain = MatchLogic.resolve(data, state, never).payout
+	local plain = MatchLogic.resolve(data, state, MatchLogic.plan(data, state, never)).payout
 	data.boosts.bankedMatches = 2
-	local boosted = MatchLogic.resolve(data, state, never).payout
+	local boosted = MatchLogic.resolve(data, state, MatchLogic.plan(data, state, never)).payout
 	T.eq(boosted, plain * 2)
-	MatchLogic.resolve(data, state, never)
+	MatchLogic.resolve(data, state, MatchLogic.plan(data, state, never))
 	T.eq(data.boosts.bankedMatches, 0)
-	T.eq(MatchLogic.resolve(data, state, never).payout, plain)
+	T.eq(MatchLogic.resolve(data, state, MatchLogic.plan(data, state, never)).payout, plain)
 end)
 
 -- Cash and TP packs (the Robux pads) -------------------------------------------------------------

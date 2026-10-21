@@ -21,6 +21,12 @@ local LUCK = function()
 	return 0.05
 end
 
+-- One match the way the server plays it: rolled at kick-off, paid at the whistle.
+local function play(data, state, rng)
+	local plan = MatchLogic.plan(data, state, rng)
+	return if plan then MatchLogic.resolve(data, state, plan) else nil
+end
+
 T.suite("match interval")
 
 T.test("the very first match is 5 seconds, then the match speed applies", function()
@@ -59,11 +65,11 @@ T.suite("match resolve")
 
 T.test("nobody on the field means no match", function()
 	local data = ProfileSchema.newProfile()
-	T.eq(MatchLogic.resolve(data, FRESH, NO_LUCK), nil)
+	T.eq(play(data, FRESH, NO_LUCK), nil)
 end)
 
 T.test("one Common player pays his income", function()
-	local result = MatchLogic.resolve(newData(), FRESH, NO_LUCK)
+	local result = play(newData(), FRESH, NO_LUCK)
 	T.eq(result.payout, 3)
 	T.eq(result.hatTrick, false)
 	T.deepEq(result.fieldIds, { "rashford" })
@@ -72,7 +78,7 @@ end)
 
 T.test("a lucky roll is a hat-trick: double payout and the flag is set", function()
 	local data = newData()
-	local result = MatchLogic.resolve(data, FRESH, LUCK)
+	local result = play(data, FRESH, LUCK)
 	T.eq(result.hatTrick, true)
 	T.eq(result.payout, 6)
 	T.truthy(result.goalsFor >= 3)
@@ -84,16 +90,16 @@ T.test("the hat-trick chance upgrade changes the odds", function()
 	local roll = function()
 		return 0.11
 	end
-	T.eq(MatchLogic.resolve(data, FRESH, roll).hatTrick, false) -- base 10%
+	T.eq(play(data, FRESH, roll).hatTrick, false) -- base 10%
 	data.storeLevels.hatTrick = 1 -- 12%
-	T.eq(MatchLogic.resolve(data, FRESH, roll).hatTrick, true)
+	T.eq(play(data, FRESH, roll).hatTrick, true)
 end)
 
 T.test("the first hat-trick is scripted on match 22 even with bad luck", function()
 	local data = newData()
-	local early = MatchLogic.resolve(data, { matchesInRow = 20, matchesPlayed = 20 }, NO_LUCK)
+	local early = play(data, { matchesInRow = 20, matchesPlayed = 20 }, NO_LUCK)
 	T.eq(early.hatTrick, false)
-	local scripted = MatchLogic.resolve(data, { matchesInRow = 21, matchesPlayed = 21 }, NO_LUCK)
+	local scripted = play(data, { matchesInRow = 21, matchesPlayed = 21 }, NO_LUCK)
 	T.eq(scripted.hatTrick, true)
 	T.eq(data.flags.firstHatTrickDone, true)
 end)
@@ -101,21 +107,21 @@ end)
 T.test("the scripted hat-trick only happens once", function()
 	local data = newData()
 	data.flags.firstHatTrickDone = true
-	local result = MatchLogic.resolve(data, { matchesInRow = 21, matchesPlayed = 21 }, NO_LUCK)
+	local result = play(data, { matchesInRow = 21, matchesPlayed = 21 }, NO_LUCK)
 	T.eq(result.hatTrick, false)
 end)
 
 T.test("a natural hat-trick before match 22 replaces the scripted one", function()
 	local data = newData()
-	MatchLogic.resolve(data, { matchesInRow = 5, matchesPlayed = 5 }, LUCK)
-	local later = MatchLogic.resolve(data, { matchesInRow = 21, matchesPlayed = 21 }, NO_LUCK)
+	play(data, { matchesInRow = 5, matchesPlayed = 5 }, LUCK)
+	local later = play(data, { matchesInRow = 21, matchesPlayed = 21 }, NO_LUCK)
 	T.eq(later.hatTrick, false)
 end)
 
 T.test("an active stadium boost doubles the payout", function()
 	local data = newData()
 	Boosts.startStadium(data)
-	T.eq(MatchLogic.resolve(data, FRESH, NO_LUCK).payout, 6)
+	T.eq(play(data, FRESH, NO_LUCK).payout, 6)
 end)
 
 T.test("momentum adds 1% per match in a row", function()
@@ -125,20 +131,20 @@ T.test("momentum adds 1% per match in a row", function()
 	Roster.add(data, "sterling")
 	data.stadiumTier = 1
 	-- field: sterling 9 + grealish 5 + rashford 3 = 17, momentum 10 -> x1.1
-	local result = MatchLogic.resolve(data, { matchesInRow = 10, matchesPlayed = 10 }, NO_LUCK)
+	local result = play(data, { matchesInRow = 10, matchesPlayed = 10 }, NO_LUCK)
 	T.eq(result.payout, 19) -- 18.7 rounds to 19
 end)
 
 T.test("the cash upgrade multiplies the payout", function()
 	local data = newData()
 	data.storeLevels.cashPerMatch = 1 -- x1.5: 3 -> 4.5 -> 5
-	T.eq(MatchLogic.resolve(data, FRESH, NO_LUCK).payout, 5)
+	T.eq(play(data, FRESH, NO_LUCK).payout, 5)
 end)
 
 T.test("a later season multiplies the payout", function()
 	local data = newData()
 	data.season.number = 3 -- x2
-	T.eq(MatchLogic.resolve(data, FRESH, NO_LUCK).payout, 6)
+	T.eq(play(data, FRESH, NO_LUCK).payout, 6)
 end)
 
 T.suite("boosts")
@@ -154,4 +160,35 @@ T.test("the stadium boost lasts 300 connected seconds", function()
 	T.eq(data.boosts.stadiumBoostLeft, 0)
 	T.deepEq(Boosts.active(data), {})
 	T.eq(Config.Boost.stadiumSeconds, 300)
+end)
+
+T.suite("match plan")
+
+T.test("the plan rolled at kick-off is the match that is paid", function()
+	local data = newData()
+	local plan = MatchLogic.plan(data, FRESH, LUCK)
+	T.eq(plan.hatTrick, true)
+	T.eq(data.flags.firstHatTrickDone, false) -- rolling changes nothing
+	local result = MatchLogic.resolve(data, FRESH, plan)
+	T.eq(result.hatTrick, true)
+	T.eq(result.goalsFor, plan.goalsFor)
+	T.eq(result.goalsAgainst, plan.goalsAgainst)
+	T.eq(data.flags.firstHatTrickDone, true)
+end)
+
+T.test("a player bought during the match is paid at the whistle", function()
+	local data = newData()
+	local plan = MatchLogic.plan(data, FRESH, NO_LUCK)
+	Roster.add(data, "grealish")
+	data.stadiumTier = 1
+	T.eq(MatchLogic.resolve(data, FRESH, plan).payout, 8) -- 3 + 5
+end)
+
+T.test("a banked boosted match is used up once, at the whistle", function()
+	local data = newData()
+	data.boosts.bankedMatches = 1
+	local plan = MatchLogic.plan(data, FRESH, NO_LUCK)
+	T.eq(data.boosts.bankedMatches, 1)
+	T.eq(MatchLogic.resolve(data, FRESH, plan).payout, 6)
+	T.eq(data.boosts.bankedMatches, 0)
 end)

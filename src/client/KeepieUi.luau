@@ -171,27 +171,19 @@ function KeepieUi.init()
 		Material = Enum.Material.SmoothPlastic,
 	}, view)
 
-	-- The player: the best of the owned players. A kick swings one leg (shorts, sock and boot) about
-	-- the hip, forwards (the front of the figure is the -Z side).
+	-- The player: the best of the owned players. A kick swings one leg about the hip, forwards (the
+	-- front of the figure is the -Z side).
 	local shown: Model? = nil
 	local shownId = ""
-	local legParts: { [string]: { { part: Part, offset: Vector3 } } } = {}
+	local legParts: { [string]: BasePart } = {}
 	local BASE_HEIGHT = Mannequin.FEET_TO_TORSO + 0.15
 	local function findLegParts(model: Model)
 		table.clear(legParts)
 		for _, side in { "Left", "Right" } do
-			local list = {}
-			for _, kind in { "Shorts", "Sock", "Boot" } do
-				local part = model:FindFirstChild(side .. kind)
-				if part and part:IsA("Part") then
-					-- Where the part is, relative to the torso.
-					table.insert(
-						list,
-						{ part = part, offset = part.Position - model:GetPivot().Position }
-					)
-				end
+			local leg = model:FindFirstChild(side .. " Leg")
+			if leg and leg:IsA("BasePart") then
+				legParts[side] = leg
 			end
-			legParts[side] = list
 		end
 	end
 	local function showPlayer()
@@ -207,7 +199,7 @@ function KeepieUi.init()
 		if shown then
 			shown:Destroy()
 		end
-		local model = Mannequin.build(def, nil, false, { detailed = true })
+		local model = Mannequin.build(def, nil, false)
 		model:PivotTo(CFrame.new(0, BASE_HEIGHT, 0))
 		model.Parent = view
 		findLegParts(model)
@@ -216,18 +208,16 @@ function KeepieUi.init()
 	end
 	-- Swings the leg `side` ("Left" or "Right") by `angle` degrees about the hip.
 	local function poseLeg(side: string, angle: number)
-		local list = legParts[side]
-		if list == nil then
+		local leg: BasePart? = legParts[side]
+		if leg == nil then
 			return
 		end
 		local sign = if side == "Right" then 1 else -1
-		local torso = CFrame.new(0, BASE_HEIGHT, 0)
-		local hip = torso * CFrame.new(sign * 0.5, -1, 0)
-		local swing = hip * CFrame.Angles(math.rad(angle), 0, 0)
-		for _, entry in list do
-			local fromHip = entry.offset - Vector3.new(sign * 0.5, -1, 0)
-			entry.part.CFrame = swing * CFrame.new(fromHip)
-		end
+		local joint = Mannequin.HIP
+		local hip = CFrame.new(0, BASE_HEIGHT, 0) * CFrame.new(sign * joint.X, joint.Y, joint.Z)
+		leg.CFrame = hip
+			* CFrame.Angles(math.rad(angle), 0, 0)
+			* CFrame.new(0, -Mannequin.LEG_REACH, 0)
 	end
 
 	-- The combo and the medal bar ---------------------------------------------------------------------

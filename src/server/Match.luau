@@ -1,10 +1,12 @@
 --!strict
 -- The match loop (docs/PLAN.md, Step 1). Every player with a started field plays an automatic
--- match every few seconds. The server resolves the match and pays; the client only draws it from
--- the MatchResult event. One loop serves every player.
+-- match every few seconds. At kick-off the server rolls the match (MatchLogic.plan) and tells every
+-- client (MatchStarted) so they can draw it while it is played; at the whistle it pays with that roll
+-- (MatchResult). The clients only draw. One loop serves every player.
 --
 -- Attributes on the player for the HUD bar: matchDuration (seconds) and matchEndsAt (server time).
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Analytics = require(script.Parent.Analytics)
@@ -12,6 +14,7 @@ local Boosts = require(script.Parent.Boosts)
 local Economy = require(script.Parent.Economy)
 local MatchLogic = require(script.Parent.MatchLogic)
 local Remotes = require(script.Parent.Remotes)
+local Roster = require(ReplicatedStorage.Shared.Roster)
 local Safe = require(script.Parent.Safe)
 local Session = require(script.Parent.Session)
 local Sync = require(script.Parent.Sync)
@@ -28,18 +31,40 @@ local function rng(): number
 end
 
 local function schedule(session: Session.Session)
+	local runtime = session.runtime
 	local seconds = MatchLogic.interval(session.data)
-	session.runtime.nextMatchAt = os.clock() + seconds
+	local startedAt = Workspace:GetServerTimeNow()
+	runtime.nextMatchAt = os.clock() + seconds
 	session.player:SetAttribute("matchDuration", seconds)
-	session.player:SetAttribute("matchEndsAt", Workspace:GetServerTimeNow() + seconds)
+	session.player:SetAttribute("matchEndsAt", startedAt + seconds)
+	local plan = MatchLogic.plan(session.data, {
+		matchesInRow = runtime.matchesInRow,
+		matchesPlayed = runtime.matchesPlayed,
+	}, rng)
+	runtime.matchPlan = plan
+	if plan and runtime.plot then
+		Remotes.fireAllClients("MatchStarted", runtime.plot, {
+			ownerUserId = session.player.UserId,
+			startedAt = startedAt,
+			duration = seconds,
+			goalsFor = plan.goalsFor,
+			goalsAgainst = plan.goalsAgainst,
+			fieldIds = Roster.field(session.data),
+			stadiumTier = session.data.stadiumTier,
+		})
+	end
 end
 
 local function finishMatch(session: Session.Session)
 	local runtime = session.runtime
-	local result = MatchLogic.resolve(session.data, {
+	local state = {
 		matchesInRow = runtime.matchesInRow,
 		matchesPlayed = runtime.matchesPlayed,
-	}, rng)
+	}
+	-- The roll from kick-off; a match scheduled with nobody on the field rolls now.
+	local plan = runtime.matchPlan or MatchLogic.plan(session.data, state, rng)
+	runtime.matchPlan = nil
+	local result = if plan then MatchLogic.resolve(session.data, state, plan) else nil
 	if result == nil then
 		-- Nobody on the field (a reset, for example): wait and look again.
 		runtime.nextMatchAt = 0

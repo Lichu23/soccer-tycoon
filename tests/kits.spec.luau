@@ -5,7 +5,7 @@ local Kits = T.load("shared/Kits")
 
 T.suite("team kits")
 
-local PATTERNS = { stripes = true, hem = true, plain = true }
+local PATTERNS = { stripes = true, sleeves = true, hem = true, plain = true }
 
 local function valid(color)
 	if type(color) ~= "table" or #color ~= 3 then
@@ -24,7 +24,11 @@ T.test("every player has a kit with valid colours and a known pattern", function
 		local kit = Kits.of(def.id)
 		T.eq(kit ~= nil, true, def.id .. " has no kit")
 		T.eq(
-			valid(kit.shirt) and valid(kit.trim) and valid(kit.shorts) and valid(kit.socks),
+			valid(kit.shirt)
+				and valid(kit.trim)
+				and valid(kit.shorts)
+				and valid(kit.socks)
+				and valid(kit.accent),
 			true,
 			def.id
 		)
@@ -39,4 +43,12 @@ end)
 
 T.test("a name with no team has no kit", function()
 	T.eq(Kits.of("nobody"), nil)
+end)
+
+T.test("every team has its clothing images", function()
+	local KitImages = T.load("shared/KitImages")
+	for team in Kits.teams do
+		T.eq(type(KitImages.shirts[team]), "string", team .. " shirt")
+		T.eq(type(KitImages.pants[team]), "string", team .. " pants")
+	end
 end)

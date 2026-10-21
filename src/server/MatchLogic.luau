@@ -1,6 +1,7 @@
 --!strict
--- What one finished match pays and shows (docs/PLAN.md, Step 1). The match is always a win and
--- the opponent is cosmetic, so the goals on the scoreboard are derived from the payout.
+-- What one match pays and shows (docs/PLAN.md, Step 1). The match is always a win and the opponent
+-- is cosmetic. The hat-trick and the score are rolled at kick-off (plan) so the clients can draw the
+-- match while it is played; the cash is paid at the whistle (resolve).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -45,30 +46,21 @@ function MatchLogic.goals(payout: number, hatTrick: boolean): (number, number)
 	return goalsFor, goalsAgainst
 end
 
--- Resolves one match. `rng` returns a number from 0 to 1. Returns nil when nobody is on the
--- field. Rolling a hat-trick (scripted or natural) marks the first hat-trick as done.
-function MatchLogic.resolve(data: ProfileSchema.Profile, state: State, rng: () -> number): Result?
-	local fieldIds = Roster.field(data)
-	if #fieldIds == 0 then
-		return nil
-	end
+export type Plan = {
+	hatTrick: boolean,
+	goalsFor: number,
+	goalsAgainst: number,
+}
 
-	local scripted = not data.flags.firstHatTrickDone
-		and state.matchesPlayed + 1 == Config.Match.scriptedHatTrickMatch
-	local hatTrick = scripted or rng() < Progress.hatTrickChance(data)
-	if hatTrick then
-		data.flags.firstHatTrickDone = true
-	end
-
-	-- A banked boosted match (bought with Robux) doubles this match and is used up. It stacks with the
-	-- timed boosts inside the x4 cap.
+-- The cash the match would pay now (a banked boosted match counts, it is used up in resolve).
+local function payoutNow(data: ProfileSchema.Profile, state: State, hatTrick: boolean): number
+	-- A banked boosted match (bought with Robux) doubles this match. It stacks with the timed boosts
+	-- inside the x4 cap.
 	local boosts = Boosts.active(data)
 	if data.boosts.bankedMatches > 0 then
-		data.boosts.bankedMatches -= 1
 		table.insert(boosts, Config.Boost.matchMultiplier)
 	end
-
-	local payout = Formulas.payout({
+	return Formulas.payout({
 		fieldIncomes = Roster.fieldIncomes(data),
 		cashUpgradeLevel = data.storeLevels.cashPerMatch,
 		season = data.season.number,
@@ -76,12 +68,44 @@ function MatchLogic.resolve(data: ProfileSchema.Profile, state: State, rng: () -
 		boosts = boosts,
 		hatTrick = hatTrick,
 	})
-	local goalsFor, goalsAgainst = MatchLogic.goals(payout, hatTrick)
+end
+
+-- Rolls the coming match at kick-off, so every client can draw it while it is played: whether it is a
+-- hat-trick, and the score, from the payout as it stands now (the payout itself is worked out at the
+-- end, so a purchase during the match still counts). `rng` returns a number from 0 to 1. Changes
+-- nothing. Returns nil when nobody is on the field.
+function MatchLogic.plan(data: ProfileSchema.Profile, state: State, rng: () -> number): Plan?
+	if #Roster.field(data) == 0 then
+		return nil
+	end
+	local scripted = not data.flags.firstHatTrickDone
+		and state.matchesPlayed + 1 == Config.Match.scriptedHatTrickMatch
+	local hatTrick = scripted or rng() < Progress.hatTrickChance(data)
+	local goalsFor, goalsAgainst = MatchLogic.goals(payoutNow(data, state, hatTrick), hatTrick)
+	return { hatTrick = hatTrick, goalsFor = goalsFor, goalsAgainst = goalsAgainst }
+end
+
+-- Resolves one match at the whistle with the plan rolled at kick-off: pays from the field and the
+-- upgrades as they are now, uses up a banked boosted match, and keeps the score that was drawn.
+-- Returns nil when nobody is on the field. A hat-trick (scripted or natural) marks the first hat-trick
+-- as done.
+function MatchLogic.resolve(data: ProfileSchema.Profile, state: State, plan: Plan): Result?
+	local fieldIds = Roster.field(data)
+	if #fieldIds == 0 then
+		return nil
+	end
+	if plan.hatTrick then
+		data.flags.firstHatTrickDone = true
+	end
+	local payout = payoutNow(data, state, plan.hatTrick)
+	if data.boosts.bankedMatches > 0 then
+		data.boosts.bankedMatches -= 1
+	end
 	return {
 		payout = payout,
-		hatTrick = hatTrick,
-		goalsFor = goalsFor,
-		goalsAgainst = goalsAgainst,
+		hatTrick = plan.hatTrick,
+		goalsFor = plan.goalsFor,
+		goalsAgainst = plan.goalsAgainst,
 		fieldIds = fieldIds,
 	}
 end

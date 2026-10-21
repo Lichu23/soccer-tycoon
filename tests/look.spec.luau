@@ -43,3 +43,25 @@ T.test("the 35 players show real variety: skin tones, hair styles and kit patter
 	T.eq(size(hairs) >= 4, true)
 	T.eq(size(patterns) >= 3, true)
 end)
+
+T.test("every player has a chosen hair style and colour", function()
+	local styles = {
+		fade = true,
+		sidepart = true,
+		sleek = true,
+		fringe = true,
+		short = true,
+		messy = true,
+		long = true,
+		shaggy = true,
+		swept = true,
+		buzz = true,
+		bald = true,
+	}
+	for _, def in Config.Players do
+		local hair = Look.hairOf[def.id]
+		T.eq(hair ~= nil and styles[hair[1]] == true, true, def.id)
+		T.eq(Look.hairColors[hair[2]] ~= nil, true, def.id .. " colour")
+		T.eq(Look.of(def.id).hair, hair[1])
+	end
+end)

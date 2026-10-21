@@ -1,11 +1,17 @@
 --!strict
--- A blocky player figure built from anchored parts (no Humanoid, no uploaded assets, no logos): a
--- face, hair, a skin tone, a kit with a pattern, the number on the chest and the surname and number on
--- the back. Used for the capsules, the match drawing and the reveal. Everything is made of parts, so it
--- also shows in a ViewportFrame; only the printed text uses SurfaceGuis. Kit colour follows the rarity.
+-- A player figure: a classic Roblox body (R6 parts, the rounded head and a Humanoid that is switched off) in the
+-- kit of his team. The kit is a Shirt and Pants made from the team's colours and design (KitImages, drawn
+-- by tools/kits: no real crest, maker logo or sponsor), the face is a decal, the hair a Roblox catalog
+-- hair (ReplicatedStorage.Avatar.Hair) in the player's hair colour, and the number is printed on the
+-- chest and the surname and number on the back. Used for the capsules, the match drawing, the reveal and
+-- the mini games. Every part is anchored and there are no joints: the screens pose the limbs by moving
+-- the parts (see the joint positions below), so it also shows in a ViewportFrame.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BackPrint = require(script.Parent.BackPrint)
 local Config = require(script.Parent.Config)
+local KitImages = require(script.Parent.KitImages)
 local Kits = require(script.Parent.Kits)
 local Look = require(script.Parent.Look)
 local Style = require(script.Parent.Style)
@@ -13,6 +19,38 @@ local Style = require(script.Parent.Style)
 local Mannequin = {}
 
 local INK = Color3.fromRGB(20, 24, 35)
+local HEAD_Y = 1.5 -- the middle of the head above the middle of the torso
+local HEAD_TOP = 0.6 -- the top of the classic head above its middle
+local WHITE = Color3.new(1, 1, 1)
+
+-- Height from the feet to the middle of the torso.
+Mannequin.FEET_TO_TORSO = 3
+-- The joints, from the middle of the torso (the right side; the left is the mirror in X), and how far
+-- the middle of the limb hangs below its joint.
+Mannequin.SHOULDER = Vector3.new(1.5, 0.5, 0)
+Mannequin.ARM_REACH = 0.5
+Mannequin.HIP = Vector3.new(0.5, -1, 0)
+Mannequin.LEG_REACH = 1
+
+-- The catalog hair of each hair style of Look; "buzz" is painted on the head and "bald" has none.
+local HAIR_MODELS: { [string]: string } = {
+	fade = "CurlyFade",
+	sidepart = "SidePart",
+	sleek = "ShortSleek",
+	fringe = "ShortFringe",
+	short = "BrownHair",
+	messy = "SideDreads",
+	long = "StraightHair",
+	shaggy = "PalHair",
+	swept = "CharmerHair",
+}
+
+export type Options = {
+	locked: boolean?, -- a player the owner does not have yet: the kit is washed out
+}
+
+local LOCKED_GREY = Color3.fromRGB(105, 110, 125)
+local LOCKED_BLEND = 0.7
 
 local function part(model: Model, name: string, size: Vector3, offset: Vector3, color: Color3): Part
 	local p = Instance.new("Part")
@@ -35,17 +73,6 @@ local function rgb(values: { number }): Color3
 	return Color3.fromRGB(values[1], values[2], values[3])
 end
 
--- Height from the feet to the middle of the torso.
-Mannequin.FEET_TO_TORSO = 3
-
-export type Options = {
-	detailed: boolean?, -- short sleeves, socks and boots (a still figure: the limbs are no longer one piece)
-	locked: boolean?, -- a player the owner does not have yet: the colours are washed out
-}
-
-local LOCKED_GREY = Color3.fromRGB(105, 110, 125)
-local LOCKED_BLEND = 0.7
-
 local function brightness(color: Color3): number
 	return 0.299 * color.R + 0.587 * color.G + 0.114 * color.B
 end
@@ -55,188 +82,171 @@ local function textColor(shirt: Color3): Color3
 	return if brightness(shirt) > 0.55 then INK else Color3.fromRGB(255, 255, 255)
 end
 
--- The hair: a few blocks on and behind the head (the head is a 1.3 cube centred at y 1.7).
-local function addHair(model: Model, style: string, color: Color3)
-	if style == "bald" then
+local function decal(parent: Instance, name: string, texture: string?, color: Color3)
+	if texture == nil then
 		return
 	end
-	local top = 1.7 + 0.65
+	local face = Instance.new("Decal")
+	face.Name = name
+	face.Face = Enum.NormalId.Front
+	face.Texture = texture
+	face.Color3 = color
+	face.Parent = parent
+end
+
+-- The classic rounded head shape on a part.
+local function headMesh(target: BasePart, scale: Vector3)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Head
+	mesh.Scale = scale
+	mesh.Parent = target
+end
+
+-- The hair on top of `head`: the catalog hair of the style in the player's hair colour (the stored
+-- hairs have no texture). A classic hair hangs from its attachment; a layered hair (made for round
+-- heads) is stored sized to the head and stands on its top, its own top `FitTop` above the head's.
+local function addHair(model: Model, head: BasePart, style: string, color: Color3)
+	local top = head.Position.Y + HEAD_TOP
 	if style == "buzz" then
-		part(model, "Hair", Vector3.new(1.36, 0.14, 1.36), Vector3.new(0, top + 0.05, 0), color)
-	elseif style == "short" then
-		part(model, "Hair", Vector3.new(1.4, 0.3, 1.4), Vector3.new(0, top + 0.1, 0), color)
-		part(model, "HairBack", Vector3.new(1.4, 0.7, 0.3), Vector3.new(0, top - 0.3, 0.6), color)
-	elseif style == "tall" then
-		part(model, "Hair", Vector3.new(1.6, 0.75, 1.6), Vector3.new(0, top + 0.3, 0.05), color)
-	elseif style == "long" then
-		part(model, "Hair", Vector3.new(1.4, 0.3, 1.4), Vector3.new(0, top + 0.1, 0), color)
-		part(model, "HairBack", Vector3.new(1.4, 1.5, 0.3), Vector3.new(0, top - 0.7, 0.6), color)
-		part(
-			model,
-			"HairSide",
-			Vector3.new(0.25, 0.9, 1.0),
-			Vector3.new(-0.72, top - 0.45, 0.1),
-			color
-		)
-		part(
-			model,
-			"HairSide",
-			Vector3.new(0.25, 0.9, 1.0),
-			Vector3.new(0.72, top - 0.45, 0.1),
-			color
-		)
-	elseif style == "mohawk" then
-		part(model, "Hair", Vector3.new(0.32, 0.6, 1.2), Vector3.new(0, top + 0.2, 0.05), color)
-	end
-end
-
--- The face on the front of the head (the -Z side): eyes with a white and a pupil, brows and a mouth,
--- as thin parts. The mouth is a shade of the skin, so it shows on every skin tone.
-local function addFace(model: Model, hairColor: Color3, skin: Color3)
-	local z = -0.65 - 0.02
-	for _, side in { -1, 1 } do
-		part(
-			model,
-			"EyeWhite",
-			Vector3.new(0.26, 0.22, 0.04),
-			Vector3.new(side * 0.28, 1.75, z),
-			Color3.fromRGB(245, 245, 245)
-		)
-		part(
-			model,
-			"Eye",
-			Vector3.new(0.12, 0.18, 0.04),
-			Vector3.new(side * 0.28, 1.75, z - 0.03),
-			INK
-		)
-		part(
-			model,
-			"Brow",
-			Vector3.new(0.3, 0.07, 0.04),
-			Vector3.new(side * 0.28, 1.99, z),
-			hairColor
-		)
-	end
-	local mouth = if brightness(skin) < 0.35
-		then skin:Lerp(Color3.new(1, 1, 1), 0.5)
-		else skin:Lerp(Color3.new(0, 0, 0), 0.5)
-	part(model, "Mouth", Vector3.new(0.38, 0.08, 0.04), Vector3.new(0, 1.4, z), mouth)
-end
-
--- The pattern of the kit as flat bars through the torso: stripes at the sides, a band at the hem, or
--- one darker half. The middle stays the shirt colour for the print.
-local function addPattern(model: Model, pattern: string, color: Color3)
-	if pattern == "stripes" then
-		for _, x in { -0.7, 0.7 } do
-			part(model, "Stripe", Vector3.new(0.4, 1.98, 1.04), Vector3.new(x, 0, 0), color)
+		-- A buzz cut is painted on the scalp: the top, the upper sides and back, and the hairline.
+		for face, texture in
+			{
+				[Enum.NormalId.Top] = KitImages.buzz.top,
+				[Enum.NormalId.Back] = KitImages.buzz.side,
+				[Enum.NormalId.Left] = KitImages.buzz.side,
+				[Enum.NormalId.Right] = KitImages.buzz.side,
+				[Enum.NormalId.Front] = KitImages.buzz.front,
+			}
+		do
+			local paint = Instance.new("Decal")
+			paint.Name = "Buzz" .. face.Name
+			paint.Face = face
+			paint.Texture = texture
+			paint.Color3 = color
+			paint.Parent = head
 		end
-	elseif pattern == "hem" then
-		part(model, "Hem", Vector3.new(2.04, 0.24, 1.04), Vector3.new(0, -0.88, 0), color)
-	elseif pattern == "half" then
-		part(model, "Half", Vector3.new(0.98, 1.98, 1.04), Vector3.new(-0.5, 0, 0), color)
+		return
 	end
+	local folder = ReplicatedStorage:FindFirstChild("Avatar")
+	local hair = if folder then folder:FindFirstChild("Hair") else nil
+	local name = HAIR_MODELS[style]
+	local source = if hair and name then hair:FindFirstChild(name) else nil
+	if source == nil or not source:IsA("Accessory") then
+		return
+	end
+	local accessory = source:Clone()
+	local handle = accessory:FindFirstChild("Handle")
+	local attachment = if handle then handle:FindFirstChildWhichIsA("Attachment") else nil
+	if handle == nil or not handle:IsA("BasePart") or attachment == nil then
+		accessory:Destroy()
+		return
+	end
+	handle.Anchored = true
+	handle.CanCollide = false
+	handle.CanQuery = false
+	handle.CanTouch = false
+	handle.Color = color
+	if handle:IsA("MeshPart") then
+		handle.TextureID = ""
+	end
+	local fitTop = accessory:GetAttribute("FitTop")
+	if type(fitTop) == "number" then
+		handle.CFrame = CFrame.new(0, top + fitTop - handle.Size.Y / 2, 0.05)
+	else
+		-- The hair attachment of a head sits in the middle of its top.
+		handle.CFrame = CFrame.new(0, top, 0) * attachment.CFrame:Inverse()
+	end
+	accessory.Parent = model
 end
 
--- `kit` overrides the shirt colour (for example the rival kit of the opponents). With `label`,
--- the player's name floats above the head. The number is printed on the chest, the surname and the
--- number on the back.
+-- `kit` dresses the player in the plain kit of that colour instead of his team's (the owner's chosen
+-- kit, the rival team, the keeper). With `label`, the player's name floats above the head.
 function Mannequin.build(
 	def: Config.PlayerDef,
 	kit: Color3?,
 	label: boolean,
 	options: Options?
 ): Model
-	local detailed = options ~= nil and options.detailed == true
 	local locked = options ~= nil and options.locked == true
 	local look = Look.of(def.id)
 	local function tone(color: Color3): Color3
 		return if locked then color:Lerp(LOCKED_GREY, LOCKED_BLEND) else color
 	end
-	-- With no kit given the player wears the colours of his team (Kits); a kit given (the owner's chosen
-	-- kit, the rival team) overrides the shirt only. Without a team the shirt follows the rarity.
-	local team = if kit == nil then Kits.of(def.id) else nil
-	local shirt = tone(
-		kit
-			or (if team then rgb(team.shirt) else nil)
-			or Style.rarityColors[def.rarity]
-			or Style.rarityColors.Common
-	)
-	local trim = if team
-		then tone(rgb(team.trim))
-		elseif brightness(shirt) > 0.55 then shirt:Lerp(Color3.new(0, 0, 0), 0.25)
-		else shirt:Lerp(Color3.new(1, 1, 1), 0.3)
-	local pattern = if team then team.pattern else look.pattern
-	local shorts = tone(if team then rgb(team.shorts) else Color3.fromRGB(35, 40, 60))
-	local skin = tone(rgb(look.skin))
-	local hair = tone(rgb(look.hairColor))
-	local socks = if team
-		then tone(rgb(team.socks))
-		else shirt:Lerp(Color3.fromRGB(255, 255, 255), 0.25)
-	local boots = tone(Color3.fromRGB(25, 25, 30))
+	local team = if kit == nil then Kits.teamOf[def.id] else nil
+	local teamKit = if team then Kits.teams[team] else nil
+	local teamShirt = if team then KitImages.shirts[team] else nil
+	-- The colour the shirt reads as: the team's shirt, or the plain kit's tint.
+	local shirtColor = kit
+		or (if teamKit then rgb(teamKit.shirt) else nil)
+		or Style.rarityColors[def.rarity]
+		or Style.rarityColors.Common
+	-- A team image is drawn in its own colours (white tint); the plain kit is tinted.
+	local shirtImage: string = teamShirt or KitImages.plainShirt
+	local pantsImage: string = if teamShirt and team
+		then KitImages.pants[team] or KitImages.plainPants
+		else KitImages.plainPants
+	local shirtTint = if teamShirt then WHITE else shirtColor
+	-- A locked player keeps his own skin and hair colours; only the kit is washed out.
+	local skin = rgb(look.skin)
+	local hair = rgb(look.hairColor)
+
 	local model = Instance.new("Model")
 	model.Name = "Mannequin_" .. def.id
-
-	local torso = part(model, "Torso", Vector3.new(2, 2, 1), Vector3.new(0, 0, 0), shirt)
-	part(model, "Head", Vector3.new(1.3, 1.3, 1.3), Vector3.new(0, 1.7, 0), skin)
-	addFace(model, hair, skin)
-	addHair(model, look.hair, hair)
-	addPattern(model, pattern, trim)
-	if detailed then
-		for _, side in { { name = "Left", x = -1 }, { name = "Right", x = 1 } } do
-			part(
-				model,
-				side.name .. "Shorts",
-				Vector3.new(0.9, 0.9, 0.9),
-				Vector3.new(side.x * 0.5, -1.45, 0),
-				shorts
-			)
-			part(
-				model,
-				side.name .. "Sock",
-				Vector3.new(0.9, 0.8, 0.9),
-				Vector3.new(side.x * 0.5, -2.3, 0),
-				socks
-			)
-			part(
-				model,
-				side.name .. "Boot",
-				Vector3.new(0.9, 0.3, 1.1),
-				Vector3.new(side.x * 0.5, -2.85, -0.1),
-				boots
-			)
-			part(
-				model,
-				side.name .. "Sleeve",
-				Vector3.new(0.8, 0.8, 0.8),
-				Vector3.new(side.x * 1.4, 0.6, 0),
-				shirt
-			)
-			part(
-				model,
-				side.name .. "Forearm",
-				Vector3.new(0.8, 1, 0.8),
-				Vector3.new(side.x * 1.4, -0.3, 0),
-				skin
-			)
-		end
-	else
-		part(model, "LeftLeg", Vector3.new(0.9, 2, 0.9), Vector3.new(-0.5, -2, 0), shorts)
-		part(model, "RightLeg", Vector3.new(0.9, 2, 0.9), Vector3.new(0.5, -2, 0), shorts)
-		part(model, "LeftArm", Vector3.new(0.8, 1.8, 0.8), Vector3.new(-1.4, 0.1, 0), skin)
-		part(model, "RightArm", Vector3.new(0.8, 1.8, 0.8), Vector3.new(1.4, 0.1, 0), skin)
-		-- Short sleeves over the top of the arms, so the shoulders are covered by the shirt.
-		part(model, "LeftSleeve", Vector3.new(0.9, 0.85, 0.9), Vector3.new(-1.4, 0.55, 0), shirt)
-		part(model, "RightSleeve", Vector3.new(0.9, 0.85, 0.9), Vector3.new(1.4, 0.55, 0), shirt)
+	local torso = part(model, "Torso", Vector3.new(2, 2, 1), Vector3.zero, tone(shirtColor))
+	local head = part(model, "Head", Vector3.new(2, 1, 1), Vector3.new(0, HEAD_Y, 0), skin)
+	headMesh(head, Vector3.new(1.25, 1.25, 1.25))
+	local shoulder, hip = Mannequin.SHOULDER, Mannequin.HIP
+	for _, side in { { name = "Right", x = 1 }, { name = "Left", x = -1 } } do
+		part(
+			model,
+			side.name .. " Arm",
+			Vector3.new(1, 2, 1),
+			Vector3.new(side.x * shoulder.X, shoulder.Y - Mannequin.ARM_REACH, 0),
+			skin
+		)
+		part(
+			model,
+			side.name .. " Leg",
+			Vector3.new(1, 2, 1),
+			Vector3.new(side.x * hip.X, hip.Y - Mannequin.LEG_REACH, 0),
+			skin
+		)
 	end
+	decal(head, "face", KitImages.faces[look.face], WHITE)
+	decal(head, "Brows", KitImages.brows[look.brows], hair)
+	addHair(model, head, look.hair, hair)
+
+	-- The Humanoid only carries the clothing: no physics, no states, no name over the head.
+	local humanoid = Instance.new("Humanoid")
+	humanoid.RigType = Enum.HumanoidRigType.R6
+	humanoid.EvaluateStateMachine = false
+	humanoid.RequiresNeck = false
+	humanoid.BreakJointsOnDeath = false
+	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+	humanoid.Parent = model
+	local shirt = Instance.new("Shirt")
+	shirt.ShirtTemplate = shirtImage
+	shirt.Color3 = tone(shirtTint)
+	shirt.Parent = model
+	local pants = Instance.new("Pants")
+	pants.PantsTemplate = pantsImage
+	pants.Color3 = tone(WHITE)
+	pants.Parent = model
 	model.PrimaryPart = torso
 
 	-- The print: the number on the chest (the -Z side) and the surname and number on the back (+Z).
-	local ink = textColor(shirt)
+	local ink = textColor(shirtColor)
 	local function printOn(face: Enum.NormalId, withName: boolean)
-		-- An invisible plate just in front of the pattern bars carries the print.
-		local z = if face == Enum.NormalId.Back then 0.56 else -0.56
-		local plate =
-			part(model, "Plate" .. face.Name, Vector3.new(2, 2, 0.02), Vector3.new(0, 0, z), shirt)
+		-- An invisible plate just in front of the shirt carries the print.
+		local z = if face == Enum.NormalId.Back then 0.52 else -0.52
+		local plate = part(
+			model,
+			"Plate" .. face.Name,
+			Vector3.new(2, 2, 0.02),
+			Vector3.new(0, 0, z),
+			shirtColor
+		)
 		plate.Transparency = 1
 		local gui = Instance.new("SurfaceGui")
 		gui.Name = "Print" .. face.Name
@@ -248,8 +258,8 @@ function Mannequin.build(
 			local surname = Instance.new("TextLabel")
 			surname.Name = "Surname"
 			surname.BackgroundTransparency = 1
-			surname.Position = UDim2.fromScale(0.04, 0.05)
-			surname.Size = UDim2.fromScale(0.92, 0.22)
+			surname.Position = UDim2.fromScale(0.04, 0.08)
+			surname.Size = UDim2.fromScale(0.92, 0.2)
 			surname.Text = BackPrint.surname(def.name)
 			surname.TextColor3 = ink
 			surname.Font = Style.font
@@ -259,8 +269,9 @@ function Mannequin.build(
 		local number = Instance.new("TextLabel")
 		number.Name = "Number"
 		number.BackgroundTransparency = 1
-		number.Position = if withName then UDim2.fromScale(0, 0.28) else UDim2.fromScale(0.2, 0.18)
-		number.Size = if withName then UDim2.fromScale(1, 0.68) else UDim2.fromScale(0.6, 0.5)
+		-- On the chest the number sits under the collar and the badge.
+		number.Position = if withName then UDim2.fromScale(0, 0.3) else UDim2.fromScale(0.3, 0.42)
+		number.Size = if withName then UDim2.fromScale(1, 0.62) else UDim2.fromScale(0.4, 0.4)
 		number.Text = tostring(def.number)
 		number.TextColor3 = ink
 		number.Font = Style.font

@@ -171,6 +171,7 @@ RemoteSpec.remotes = {
 	-- Server to client
 	Snapshot = { direction = "toClient", args = {} },
 	Delta = { direction = "toClient", args = {} },
+	MatchStarted = { direction = "toClient", args = {} },
 	MatchResult = { direction = "toClient", args = {} },
 	Reveal = { direction = "toClient", args = {} },
 	StadiumUpgraded = { direction = "toClient", args = {} },

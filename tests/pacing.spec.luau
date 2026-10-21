@@ -41,11 +41,9 @@ local function simulate(walkSeconds, seconds, luck)
 				nextMatchAt = t + MatchLogic.interval(data)
 			end
 			if t >= nextMatchAt then
-				local result = MatchLogic.resolve(
-					data,
-					{ matchesInRow = matchesInRow, matchesPlayed = matchesPlayed },
-					rng
-				)
+				local state = { matchesInRow = matchesInRow, matchesPlayed = matchesPlayed }
+				local plan = MatchLogic.plan(data, state, rng)
+				local result = if plan then MatchLogic.resolve(data, state, plan) else nil
 				if result then
 					Economy.grant(data, result.payout)
 					matchesPlayed += 1
