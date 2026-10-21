@@ -152,17 +152,6 @@ local function fitted(label: TextLabel, maxSize: number)
 	new("UITextSizeConstraint", { MaxTextSize = maxSize }, label)
 end
 
--- The free-kick spot of the player's own plot, or nil.
-local function ownSpot(): BasePart?
-	local slot = player:GetAttribute("plotSlot")
-	local plots = Workspace:FindFirstChild("Plots")
-	local plot = if type(slot) == "number" and plots
-		then plots:FindFirstChild("Plot_" .. slot)
-		else nil
-	local spot = if plot then plot:FindFirstChild("TrainingFreekick", true) else nil
-	return if spot and spot:IsA("BasePart") then spot else nil
-end
-
 function FreekickUi.init()
 	local playerGui = player:WaitForChild("PlayerGui")
 	-- Two layers: the film's bars, speed lines and the reticle cover the whole screen; the controls and
@@ -645,20 +634,7 @@ function FreekickUi.init()
 	leave.Activated:Connect(function()
 		dismissed = true
 		close()
-		local character = player.Character
-		local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
-		local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
-		local spot = ownSpot()
-		if humanoid == nil or root == nil or not root:IsA("BasePart") or spot == nil then
-			return
-		end
-		local away = root.Position - spot.Position
-		away = Vector3.new(away.X, 0, away.Z)
-		if away.Magnitude < 0.5 then
-			away = -spot.CFrame.LookVector
-		end
-		local reach = math.max(spot.Size.X, spot.Size.Z) / 2 + LEAVE_STEP
-		humanoid:MoveTo(spot.Position + away.Unit * reach)
+		CinemaScreen.walkOff("TrainingFreekick", LEAVE_STEP)
 	end)
 
 	-- The inputs -------------------------------------------------------------------------------------

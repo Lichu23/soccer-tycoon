@@ -1,8 +1,9 @@
 --!strict
--- What the full-screen cinematic games share (docs/CINEMATICS.md): the 1v1 breakaway (FreekickUi)
--- and the daily penalty kicks (PenaltyUi). The takeover saves the camera, turns off the controls and
--- hides the other screens while the stadium shows, then puts everything back; the aim reticle and
--- the power meter are built here so both games draw them the same way.
+-- What the full-screen cinematic games share (docs/CINEMATICS.md): the 1v1 breakaway (FreekickUi),
+-- the daily penalty kicks (PenaltyUi) and the keepie-uppies (KeepieUi). The takeover saves the
+-- camera, turns off the controls and hides the other screens while the scene shows, then puts
+-- everything back; the aim reticle and the power meter are built here so both kicking games draw
+-- them the same way, and the red X walks the player off the spot.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -223,6 +224,35 @@ function CinemaScreen.powerMeter(parent: Instance): PowerMeter
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
 	}, label)
 	return { box = box, fill = fill, stroke = stroke }
+end
+
+-- The marker `name` (TrainingFreekick, TrainingKeepie) of the player's own plot, or nil.
+local function ownSpot(name: string): BasePart?
+	local slot = player:GetAttribute("plotSlot")
+	local plots = Workspace:FindFirstChild("Plots")
+	local plot = if type(slot) == "number" and plots
+		then plots:FindFirstChild("Plot_" .. slot)
+		else nil
+	local spot = if plot then plot:FindFirstChild(name, true) else nil
+	return if spot and spot:IsA("BasePart") then spot else nil
+end
+
+-- The red X's walk: off the spot `name`, `step` studs past its edge (any input of the player takes over).
+function CinemaScreen.walkOff(name: string, step: number)
+	local character = player.Character
+	local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
+	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+	local spot = ownSpot(name)
+	if humanoid == nil or root == nil or not root:IsA("BasePart") or spot == nil then
+		return
+	end
+	local away = root.Position - spot.Position
+	away = Vector3.new(away.X, 0, away.Z)
+	if away.Magnitude < 0.5 then
+		away = -spot.CFrame.LookVector
+	end
+	local reach = math.max(spot.Size.X, spot.Size.Z) / 2 + step
+	humanoid:MoveTo(spot.Position + away.Unit * reach)
 end
 
 -- The meter's fill colour for `power`: green inside the good zone, red outside it.
