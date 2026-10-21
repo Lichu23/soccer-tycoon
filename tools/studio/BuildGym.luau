@@ -287,14 +287,15 @@ for index, x in { -126, -124, -122 } do
 	soft(box("SpareCone" .. index, x - 0.5, x + 0.5, TOP, 1.3, 132.2, 133.2, COLORS.cone))
 end
 
--- Treadmill (conditioning, x -70, z 80): a dark belt, side rails and a console at the back.
-box("TreadmillBelt", -76, -64, TOP, TOP + 0.15, 74, 86, COLORS.dark)
-soft(box("TreadmillRail", -77, -76, TOP, 4.4, 73.5, 86.5, COLORS.steel, Enum.Material.Metal))
-soft(box("TreadmillRail", -64, -63, TOP, 4.4, 73.5, 86.5, COLORS.steel, Enum.Material.Metal))
-soft(box("TreadmillConsole", -78.5, -77.5, 4, 6.4, 76, 84, COLORS.dark))
-for i = 0, 5 do
-	soft(box("TreadmillStripe", -76 + i * 2, -75.4 + i * 2, TOP + 0.15, TOP + 0.2, 74, 86, COLORS.line))
-end
+-- Treadmill (conditioning, x -70, z 80): the cartoon treadmill model (ServerStorage.GymModels.Treadmill,
+-- saved in the place): one generated mesh in white with a blue console, a navy belt with blue chevrons
+-- to the console (-x), and an invisible Stand on the belt with a Ramp at the back (+x), since the
+-- meshes do not collide. Its pivot is the bottom centre of the machine; with the ramp it spans x -5.6
+-- to 8.6 of it, so the pivot sits 1.5 studs short of the station centre. The old part-built treadmill
+-- is kept in ServerStorage.TreadmillOld.
+local treadmill = ServerStorage:WaitForChild("GymModels"):WaitForChild("Treadmill"):Clone()
+treadmill:PivotTo(CFrame.new(-71.5, TOP, 80))
+treadmill.Parent = gym
 
 -- Agility ladder (conditioning, x -70, z 120): two rails and nine rungs lying along x.
 soft(box("LadderRail", -78, -62, TOP, TOP + 0.25, 117.2, 117.8, COLORS.line))
