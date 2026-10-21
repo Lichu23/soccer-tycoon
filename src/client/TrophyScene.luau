@@ -39,29 +39,16 @@ local TROPHY_HEIGHT = 5
 local TURN_SPEED = 0.6 -- radians a second
 local SHOWCASE_FOV = 30
 
-local ARM_Y = 1.0 -- the shoulder, above the middle of the torso
-local ARM_REACH = 0.9 -- from the shoulder to the middle of the arm
-local SLEEVE_REACH = 0.45
-
-local function find(model: Model, name: string): BasePart?
-	local part = model:FindFirstChild(name)
-	return if part and part:IsA("BasePart") then part else nil
-end
-
--- Puts one arm (and its sleeve) up at `angle` degrees: 0 hangs down, 180 is straight up. The right
--- arm leans to +X, the left arm to -X.
+-- Puts one arm up at `angle` degrees: 0 hangs down, 180 is straight up. The right arm leans to +X,
+-- the left arm to -X.
 local function poseArm(model: Model, base: CFrame, side: number, angle: number)
+	local joint = Mannequin.SHOULDER
 	local shoulder = base
-		* CFrame.new(side * 1.4, ARM_Y, 0)
+		* CFrame.new(side * joint.X, joint.Y, joint.Z)
 		* CFrame.Angles(0, 0, side * math.rad(angle))
-	local name = if side > 0 then "Right" else "Left"
-	local arm = find(model, name .. "Arm")
-	local sleeve = find(model, name .. "Sleeve")
-	if arm then
-		arm.CFrame = shoulder * CFrame.new(0, -ARM_REACH, 0)
-	end
-	if sleeve then
-		sleeve.CFrame = shoulder * CFrame.new(0, -SLEEVE_REACH, 0)
+	local arm = model:FindFirstChild(if side > 0 then "Right Arm" else "Left Arm")
+	if arm and arm:IsA("BasePart") then
+		arm.CFrame = shoulder * CFrame.new(0, -Mannequin.ARM_REACH, 0)
 	end
 end
 

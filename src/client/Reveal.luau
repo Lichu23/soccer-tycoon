@@ -33,9 +33,9 @@ local JUGGLE_SECONDS = 1.1 -- from one kick to the next
 local JUGGLE_HEIGHT = 3.2 -- how high the ball goes above the foot
 local BALL_X, BALL_Z = 0.7, -1.6
 local BALL_REST_Y = -2.3 -- the ball at the foot
-local HIP_RIGHT = Vector3.new(0.5, -1, 0)
-local SHOULDER_LEFT = Vector3.new(-1.4, 1, 0)
-local SHOULDER_RIGHT = Vector3.new(1.4, 1, 0)
+local HIP_RIGHT = Mannequin.HIP
+local SHOULDER_RIGHT = Mannequin.SHOULDER
+local SHOULDER_LEFT = Vector3.new(-SHOULDER_RIGHT.X, SHOULDER_RIGHT.Y, SHOULDER_RIGHT.Z)
 local KICK_BACK = 0.5 -- radians
 local KICK_FORWARD = 0.9
 
@@ -123,14 +123,12 @@ local function buildTrick(parent: Instance, def: Config.PlayerDef, animated: boo
 	if not animated then
 		return nil
 	end
-	local rightLeg = model:FindFirstChild("RightLeg") :: BasePart?
-	local leftArm = model:FindFirstChild("LeftArm") :: BasePart?
-	local rightArm = model:FindFirstChild("RightArm") :: BasePart?
+	local rightLeg = model:FindFirstChild("Right Leg") :: BasePart?
+	local leftArm = model:FindFirstChild("Left Arm") :: BasePart?
+	local rightArm = model:FindFirstChild("Right Arm") :: BasePart?
 	if rightLeg == nil or leftArm == nil or rightArm == nil then
 		return nil
 	end
-	local leftSleeve = model:FindFirstChild("LeftSleeve") :: BasePart?
-	local rightSleeve = model:FindFirstChild("RightSleeve") :: BasePart?
 	-- One clock drives both: the ball leaves the foot at phase 0 and comes back at phase 1, and the
 	-- leg swings through the ball exactly at that moment. The figure itself never turns.
 	local startedAt = os.clock()
@@ -139,14 +137,9 @@ local function buildTrick(parent: Instance, def: Config.PlayerDef, animated: boo
 		ball.CFrame =
 			CFrame.new(BALL_X, BALL_REST_Y + JUGGLE_HEIGHT * 4 * phase * (1 - phase), BALL_Z)
 		local swing = legAngle(if phase > 0.5 then phase - 1 else phase)
-		swingLimb(rightLeg, HIP_RIGHT, swing, -1)
-		swingLimb(leftArm, SHOULDER_LEFT, -swing * 0.4, -0.9)
-		swingLimb(rightArm, SHOULDER_RIGHT, swing * 0.4, -0.9)
-		-- The sleeves swing with the arms (their middle is 0.45 below the shoulder).
-		if leftSleeve and rightSleeve then
-			swingLimb(leftSleeve, SHOULDER_LEFT, -swing * 0.4, -0.45)
-			swingLimb(rightSleeve, SHOULDER_RIGHT, swing * 0.4, -0.45)
-		end
+		swingLimb(rightLeg, HIP_RIGHT, swing, -Mannequin.LEG_REACH)
+		swingLimb(leftArm, SHOULDER_LEFT, -swing * 0.4, -Mannequin.ARM_REACH)
+		swingLimb(rightArm, SHOULDER_RIGHT, swing * 0.4, -Mannequin.ARM_REACH)
 	end
 end
 

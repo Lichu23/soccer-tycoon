@@ -337,8 +337,7 @@ function Plots.refresh(session: Session.Session)
 				figure = nil
 			end
 			if figure == nil then
-				local model =
-					Mannequin.build(def, nil, false, { detailed = true, locked = not owned })
+				local model = Mannequin.build(def, nil, false, { locked = not owned })
 				model.Name = "Figure"
 				model:SetAttribute("Owned", owned)
 				local stand =

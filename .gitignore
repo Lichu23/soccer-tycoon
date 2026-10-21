@@ -11,3 +11,6 @@ roblox.yml
 *.log
 Thumbs.db
 .DS_Store
+
+# Clothing images drawn by tools/kits/make (uploaded; the ids live in src/shared/KitImages.luau)
+tools/kits/out/
