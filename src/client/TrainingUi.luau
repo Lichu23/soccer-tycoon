@@ -164,7 +164,11 @@ function TrainingUi.init()
 		if not active then
 			return
 		end
-		title.Text = STATION_TITLES[player:GetAttribute("trainingStation")] or "TRAINING"
+		local station = player:GetAttribute("trainingStation")
+		title.Text = STATION_TITLES[station] or "TRAINING"
+		hint.Text = if station == "treadmill"
+			then "Keep going: 10 TP per minute. Jump to get off the treadmill!"
+			else "Keep going: 10 TP per minute. Want more? Try the keepie-uppies!"
 		local fraction = player:GetAttribute("tpFraction")
 		fill.Size =
 			UDim2.fromScale(math.clamp(if type(fraction) == "number" then fraction else 0, 0, 1), 1)

@@ -1,11 +1,13 @@
 --!strict
 -- The player's own Roblox character works out at the conditioning stations of the Training Gym: on the
 -- agility ladder it runs along the ladder and back in a loop, on the treadmill it runs in place with the
--- run animation of its own avatar. It only starts while the server says the player is training (on the
--- pad with stamina left) and stops the moment the player takes the controls, leaves the pad or runs out
--- of stamina. The TP are the server's: this only moves and animates the character, nothing here pays.
+-- run animation of its own avatar, held in the middle of the belt until a jump takes it off. It only
+-- starts while the server says the player is training (on the pad with stamina left) and stops the
+-- moment the player takes the controls (a jump on the treadmill), leaves the pad or runs out of
+-- stamina. The TP are the server's: this only moves and animates the character, nothing here pays.
 
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
@@ -16,23 +18,48 @@ local RETURN_LANE = 4.5 -- the way back runs beside the ladder
 local REACH_DISTANCE = 1.2
 local LEG_TIMEOUT = 4
 local TREADMILL_SPEED = 1.25 -- the run animation plays a little faster than normal
+local HOLD_TOLERANCE = 0.3 -- studs the runner may drift from the middle of the belt
+local HOP_DISTANCE = 12 -- a jump walks the runner this far back from the middle: down the ramp, off the pad
 
 local GymRunner = {}
 
--- The own plot's marker with this name (the markers carry the position of the stations).
-local function ownMarker(name: string): BasePart?
+local function ownPlot(): Instance?
 	local plots = Workspace:FindFirstChild("Plots")
 	if plots == nil then
 		return nil
 	end
 	for _, plot in plots:GetChildren() do
 		if plot:GetAttribute("OwnerUserId") == player.UserId then
-			local markers = plot:FindFirstChild("Markers")
-			local marker = if markers then markers:FindFirstChild(name) else nil
-			return if marker and marker:IsA("BasePart") then marker else nil
+			return plot
 		end
 	end
 	return nil
+end
+
+-- The own plot's marker with this name (the markers carry the position of the stations).
+local function ownMarker(name: string): BasePart?
+	local plot = ownPlot()
+	local markers = if plot then plot:FindFirstChild("Markers") else nil
+	local marker = if markers then markers:FindFirstChild(name) else nil
+	return if marker and marker:IsA("BasePart") then marker else nil
+end
+
+-- The middle of the own treadmill's belt (its invisible Stand) and the flat way to its console, or nil.
+local function treadmillSpot(): (Vector3?, Vector3?)
+	local plot = ownPlot()
+	local gym = if plot then plot:FindFirstChild("Gym") else nil
+	local treadmill = if gym then gym:FindFirstChild("Treadmill") else nil
+	local stand = if treadmill then treadmill:FindFirstChild("Stand") else nil
+	local console = if treadmill then treadmill:FindFirstChild("Console") else nil
+	if stand == nil or not stand:IsA("BasePart") or console == nil or not console:IsA("Model") then
+		return nil, nil
+	end
+	local toConsole = console:GetPivot().Position - stand.Position
+	toConsole = Vector3.new(toConsole.X, 0, toConsole.Z)
+	if toConsole.Magnitude < 0.01 then
+		return nil, nil
+	end
+	return stand.Position, toConsole.Unit
 end
 
 -- The run animation of the player's own avatar (the Animate script keeps it, whatever the rig).
@@ -99,10 +126,13 @@ function GymRunner.init()
 		end
 	end
 
-	local function runTreadmill(myRun: number, character: Model, humanoid: Humanoid)
+	-- On the treadmill the character is held in the middle of the belt, facing the console: walking does
+	-- nothing, and a jump is the way off (it walks back down the ramp, and the controls come back).
+	local function runTreadmill(myRun: number, character: Model, humanoid: Humanoid, root: BasePart)
 		local animation = runAnimation(character)
 		local animator = humanoid:FindFirstChildOfClass("Animator")
-		if animation == nil or animator == nil then
+		local middle, toConsole = treadmillSpot()
+		if animation == nil or animator == nil or middle == nil or toConsole == nil then
 			return
 		end
 		local track = animator:LoadAnimation(animation)
@@ -110,10 +140,49 @@ function GymRunner.init()
 		track.Looped = true
 		track:Play(0.2)
 		track:AdjustSpeed(TREADMILL_SPEED)
-		cleanup = function()
-			track:Stop(0.2)
+
+		local oldSpeed = humanoid.WalkSpeed
+		local oldAutoRotate = humanoid.AutoRotate
+		humanoid.WalkSpeed = 0
+		humanoid.AutoRotate = false
+		local function hold()
+			local spot = Vector3.new(middle.X, root.Position.Y, middle.Z)
+			root.CFrame = CFrame.lookAt(spot, spot + toConsole)
 		end
-		while runNumber == myRun and character.Parent do
+		hold()
+		local holding = RunService.Heartbeat:Connect(function()
+			-- Only a push (another player, a bump) moves it off the middle; put it back.
+			local offset = root.Position - middle
+			if Vector3.new(offset.X, 0, offset.Z).Magnitude > HOLD_TOLERANCE then
+				hold()
+			end
+		end)
+		local released = false
+		local jumping: RBXScriptConnection? = nil
+		local function release()
+			if released then
+				return
+			end
+			released = true
+			holding:Disconnect()
+			if jumping then
+				jumping:Disconnect()
+			end
+			track:Stop(0.2)
+			if humanoid.Parent then
+				humanoid.WalkSpeed = oldSpeed
+				humanoid.AutoRotate = oldAutoRotate
+			end
+		end
+		jumping = humanoid.StateChanged:Connect(function(_, state)
+			if state == Enum.HumanoidStateType.Jumping then
+				release()
+				-- The humanoid damps a push, so it walks off instead (any input of the player takes over).
+				humanoid:MoveTo(middle - toConsole * HOP_DISTANCE)
+			end
+		end)
+		cleanup = release
+		while runNumber == myRun and character.Parent and not released do
 			task.wait(0.25)
 		end
 	end
@@ -134,7 +203,7 @@ function GymRunner.init()
 		if station == "ladder" then
 			task.spawn(runLadder, myRun, character, humanoid, root)
 		elseif station == "treadmill" then
-			task.spawn(runTreadmill, myRun, character, humanoid)
+			task.spawn(runTreadmill, myRun, character, humanoid, root)
 		end
 	end
 
