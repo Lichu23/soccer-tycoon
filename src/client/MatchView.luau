@@ -264,18 +264,23 @@ local function buildTeam(plot: Model, fieldIds: { string }, tier: Config.Stadium
 		lastUsed = os.clock(),
 	}
 	team.board = buildBoard(team)
+	ball.CFrame = gateCFrame(team, 0, 0, BALL_LIFT) -- on the centre spot until the team is drawn
 	local ours = Formation.spots(count, team.length, team.width, -1)
 	local theirs = Formation.spots(count, team.length, team.width, 1)
 	local function add(model: Model, side: number, spot: Formation.Spot)
-		model.Parent = folder
 		local home = Vector3.new(spot.x, 0, spot.z)
+		local yaw = if side == 1 then -math.pi / 2 else math.pi / 2
+		-- Placed on its spot at once: the team is only drawn near the camera, and a model left at
+		-- the origin would stand on the spawn until then.
+		model:PivotTo(gateCFrame(team, home.X, home.Z, 0) * CFrame.Angles(0, yaw, 0))
+		model.Parent = folder
 		table.insert(team.runners, {
 			model = model,
 			side = side,
 			home = home,
 			position = home,
 			stride = 0,
-			yaw = if side == 1 then -math.pi / 2 else math.pi / 2,
+			yaw = yaw,
 			stumbleUntil = 0,
 			kickUntil = 0,
 			wanderAt = 0,
