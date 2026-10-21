@@ -60,6 +60,13 @@ function DevTools.start()
 				session.runtime.nextMatchAt = 0
 				Actions.onChange(session, "player", target)
 			end
+		elseif command == "playIntro" then
+			-- Plays an intro cinematic again (1 the plot tour, 2 the first-match camera), also while
+			-- DevSkipIntros is on. The client checks that the plot exists.
+			local kind = if amount == 1 then "plotTour" elseif amount == 2 then "firstMatch" else nil
+			if kind and session.runtime.plot then
+				Remotes.fireClient("Notice", player, { kind = kind })
+			end
 		elseif command == "simulateAway" then
 			-- Pretends the player was away for `amount` hours and pays it the way a join does.
 			session.data.lastSeen = os.time() - math.floor(amount * 3600)

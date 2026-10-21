@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local DevFlags = require(script.Parent.DevFlags)
 local Economy = require(script.Parent.Economy)
 local Freekick = require(ReplicatedStorage.Shared.Freekick)
 local Juggle = require(ReplicatedStorage.Shared.Juggle)
@@ -87,7 +88,9 @@ local function stationOf(session: Session.Session): { field: string, station: st
 	end
 	for marker, info in STATIONS do
 		if key == plot.Name .. ":" .. marker then
-			if info.field == "conditioning" and not onMachine(plot, session.player, info.station) then
+			if
+				info.field == "conditioning" and not onMachine(plot, session.player, info.station)
+			then
 				return nil
 			end
 			return info
@@ -188,7 +191,8 @@ local function step(session: Session.Session, dt: number)
 	if at and at.station == "keepie" then
 		local round = games[player]
 		if round == nil then
-			round = Juggle.new(now + Config.Training.juggleIntroSeconds)
+			local intro = if DevFlags.skipIntros() then 0 else Config.Training.juggleIntroSeconds
+			round = Juggle.new(now + intro)
 			games[player] = round
 		end
 		handleEvents(session, Juggle.normalize(round, now))
@@ -201,7 +205,8 @@ local function step(session: Session.Session, dt: number)
 	if at and at.station == "freekick" then
 		local state = kicks[player]
 		if state == nil then
-			state = Freekick.new(now + Config.Training.freekickIntroSeconds)
+			local intro = if DevFlags.skipIntros() then 0 else Config.Training.freekickIntroSeconds
+			state = Freekick.new(now + intro)
 			kicks[player] = state
 		end
 		handleKickEvents(session, Freekick.normalize(state, now))

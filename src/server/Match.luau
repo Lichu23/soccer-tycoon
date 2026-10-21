@@ -11,6 +11,7 @@ local Workspace = game:GetService("Workspace")
 
 local Analytics = require(script.Parent.Analytics)
 local Boosts = require(script.Parent.Boosts)
+local DevFlags = require(script.Parent.DevFlags)
 local Economy = require(script.Parent.Economy)
 local MatchLogic = require(script.Parent.MatchLogic)
 local Remotes = require(script.Parent.Remotes)
@@ -47,7 +48,9 @@ local function schedule(session: Session.Session)
 		-- The first match ever: the camera shows the pitch until it ends (IntroCinematics).
 		if not runtime.firstMatchShown then
 			runtime.firstMatchShown = true
-			Remotes.fireClient("Notice", session.player, { kind = "firstMatch" })
+			if not DevFlags.skipIntros() then
+				Remotes.fireClient("Notice", session.player, { kind = "firstMatch" })
+			end
 		end
 	end
 	if plan and runtime.plot then

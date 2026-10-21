@@ -154,6 +154,7 @@ RemoteSpec.remotes = {
 					"grantTp",
 					"revealRarity",
 					"offerWait",
+					"playIntro",
 				},
 			},
 			{ kind = "number", min = 0, max = 1e15 },

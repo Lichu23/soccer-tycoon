@@ -80,6 +80,7 @@ T.test("the remote only accepts the known commands and a sane number", function(
 	local args = RemoteSpec.remotes.DevCommand.args
 	T.eq((Validate.args(args, { "grantFloor", 2 }, 2)), true)
 	T.eq((Validate.args(args, { "setCash", 1e12 }, 2)), true)
+	T.eq((Validate.args(args, { "playIntro", 1 }, 2)), true)
 	T.eq((Validate.args(args, { "explode", 1 }, 2)), false)
 	T.eq((Validate.args(args, { "setCash", -1 }, 2)), false)
 	T.eq((Validate.args(args, { "setCash", 0 / 0 }, 2)), false)

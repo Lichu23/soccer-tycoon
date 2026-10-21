@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local CourtPlan = require(ReplicatedStorage.Shared.CourtPlan)
+local DevFlags = require(script.Parent.DevFlags)
 local Remotes = require(script.Parent.Remotes)
 local Session = require(script.Parent.Session)
 local StadiumLogic = require(script.Parent.StadiumLogic)
@@ -154,7 +155,12 @@ function Stadium.upgraded(session: Session.Session, firstEver: boolean)
 	local runtime = session.runtime
 	local tier = session.data.stadiumTier
 	runtime.upgrading = true
-	Remotes.fireClient("StadiumUpgraded", session.player, StadiumLogic.upgradeInfo(tier, firstEver))
+	local unskippable = firstEver and not DevFlags.skipIntros()
+	Remotes.fireClient(
+		"StadiumUpgraded",
+		session.player,
+		StadiumLogic.upgradeInfo(tier, unskippable)
+	)
 	task.delay(Config.Cinematic.buildDelaySeconds, function()
 		runtime.upgrading = false
 		local plot = runtime.plot

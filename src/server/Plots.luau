@@ -13,6 +13,7 @@ local Analytics = require(script.Parent.Analytics)
 local BackPrint = require(ReplicatedStorage.Shared.BackPrint)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
+local DevFlags = require(script.Parent.DevFlags)
 local Mannequin = require(ReplicatedStorage.Shared.Mannequin)
 local PadActions = require(script.Parent.PadActions)
 local Remotes = require(script.Parent.Remotes)
@@ -442,7 +443,7 @@ function Plots.assign(session: Session.Session, slotIndex: number?): boolean
 	Plots.refresh(session)
 	Analytics.milestone(session, "claimed_plot")
 	Sync.all(session)
-	if firstClaim then
+	if firstClaim and not DevFlags.skipIntros() then
 		-- The first claim ever: the client plays the 5 second tour of the building, stadium and training.
 		Remotes.fireClient("Notice", player, { kind = "plotTour" })
 	end
