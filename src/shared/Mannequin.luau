@@ -1,5 +1,5 @@
 --!strict
--- A player figure: a classic blocky Roblox body (R6 parts and a Humanoid that is switched off) in the
+-- A player figure: a classic Roblox body (R6 parts, the rounded head and a Humanoid that is switched off) in the
 -- kit of his team. The kit is a Shirt and Pants made from the team's colours and design (KitImages, drawn
 -- by tools/kits: no real crest, maker logo or sponsor), the face is a decal, the hair a Roblox catalog
 -- hair (ReplicatedStorage.Avatar.Hair) in the player's hair colour, and the number is printed on the
@@ -19,7 +19,8 @@ local Style = require(script.Parent.Style)
 local Mannequin = {}
 
 local INK = Color3.fromRGB(20, 24, 35)
-local HEAD = 1.2 -- the head is a cube
+local HEAD_Y = 1.5 -- the middle of the head above the middle of the torso
+local HEAD_TOP = 0.6 -- the top of the classic head above its middle
 local WHITE = Color3.new(1, 1, 1)
 
 -- Height from the feet to the middle of the torso.
@@ -31,16 +32,21 @@ Mannequin.ARM_REACH = 0.5
 Mannequin.HIP = Vector3.new(0.5, -1, 0)
 Mannequin.LEG_REACH = 1
 
--- The catalog hair of each hair style of Look; "buzz" is a thin cap of parts and "bald" has none.
+-- The catalog hair of each hair style of Look; "buzz" is painted on the head and "bald" has none.
 local HAIR_MODELS: { [string]: string } = {
-	short = "SpikedHair",
-	tall = "CharmerHair",
-	long = "PalHair",
-	mohawk = "DownToEarthHair",
+	fade = "CurlyFade",
+	sidepart = "SidePart",
+	sleek = "ShortSleek",
+	fringe = "ShortFringe",
+	short = "BrownHair",
+	messy = "SideDreads",
+	long = "StraightHair",
+	shaggy = "PalHair",
+	swept = "CharmerHair",
 }
 
 export type Options = {
-	locked: boolean?, -- a player the owner does not have yet: the colours are washed out
+	locked: boolean?, -- a player the owner does not have yet: the kit is washed out
 }
 
 local LOCKED_GREY = Color3.fromRGB(105, 110, 125)
@@ -88,18 +94,37 @@ local function decal(parent: Instance, name: string, texture: string?, color: Co
 	face.Parent = parent
 end
 
--- The hair on top of `head`: the catalog hair of the style, its texture taken off so it shows the
--- player's hair colour.
+-- The classic rounded head shape on a part.
+local function headMesh(target: BasePart, scale: Vector3)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Head
+	mesh.Scale = scale
+	mesh.Parent = target
+end
+
+-- The hair on top of `head`: the catalog hair of the style in the player's hair colour (the stored
+-- hairs have no texture). A classic hair hangs from its attachment; a layered hair (made for round
+-- heads) is stored sized to the head and stands on its top, its own top `FitTop` above the head's.
 local function addHair(model: Model, head: BasePart, style: string, color: Color3)
-	local top = head.Position.Y + HEAD / 2
+	local top = head.Position.Y + HEAD_TOP
 	if style == "buzz" then
-		part(
-			model,
-			"Hair",
-			Vector3.new(HEAD + 0.04, 0.12, HEAD + 0.04),
-			Vector3.new(0, top, 0),
-			color
-		)
+		-- A buzz cut is painted on the scalp: the top, the upper sides and back, and the hairline.
+		for face, texture in
+			{
+				[Enum.NormalId.Top] = KitImages.buzz.top,
+				[Enum.NormalId.Back] = KitImages.buzz.side,
+				[Enum.NormalId.Left] = KitImages.buzz.side,
+				[Enum.NormalId.Right] = KitImages.buzz.side,
+				[Enum.NormalId.Front] = KitImages.buzz.front,
+			}
+		do
+			local paint = Instance.new("Decal")
+			paint.Name = "Buzz" .. face.Name
+			paint.Face = face
+			paint.Texture = texture
+			paint.Color3 = color
+			paint.Parent = head
+		end
 		return
 	end
 	local folder = ReplicatedStorage:FindFirstChild("Avatar")
@@ -124,8 +149,13 @@ local function addHair(model: Model, head: BasePart, style: string, color: Color
 	if handle:IsA("MeshPart") then
 		handle.TextureID = ""
 	end
-	-- The hair attachment of a head sits in the middle of its top.
-	handle.CFrame = CFrame.new(0, top, 0) * attachment.CFrame:Inverse()
+	local fitTop = accessory:GetAttribute("FitTop")
+	if type(fitTop) == "number" then
+		handle.CFrame = CFrame.new(0, top + fitTop - handle.Size.Y / 2, 0.05)
+	else
+		-- The hair attachment of a head sits in the middle of its top.
+		handle.CFrame = CFrame.new(0, top, 0) * attachment.CFrame:Inverse()
+	end
 	accessory.Parent = model
 end
 
@@ -156,14 +186,15 @@ function Mannequin.build(
 		then KitImages.pants[team] or KitImages.plainPants
 		else KitImages.plainPants
 	local shirtTint = if teamShirt then WHITE else shirtColor
-	local skin = tone(rgb(look.skin))
-	local hair = tone(rgb(look.hairColor))
+	-- A locked player keeps his own skin and hair colours; only the kit is washed out.
+	local skin = rgb(look.skin)
+	local hair = rgb(look.hairColor)
 
 	local model = Instance.new("Model")
 	model.Name = "Mannequin_" .. def.id
 	local torso = part(model, "Torso", Vector3.new(2, 2, 1), Vector3.zero, tone(shirtColor))
-	local head =
-		part(model, "Head", Vector3.new(HEAD, HEAD, HEAD), Vector3.new(0, 1 + HEAD / 2, 0), skin)
+	local head = part(model, "Head", Vector3.new(2, 1, 1), Vector3.new(0, HEAD_Y, 0), skin)
+	headMesh(head, Vector3.new(1.25, 1.25, 1.25))
 	local shoulder, hip = Mannequin.SHOULDER, Mannequin.HIP
 	for _, side in { { name = "Right", x = 1 }, { name = "Left", x = -1 } } do
 		part(
@@ -181,7 +212,7 @@ function Mannequin.build(
 			skin
 		)
 	end
-	decal(head, "face", KitImages.faces[look.face], tone(WHITE))
+	decal(head, "face", KitImages.faces[look.face], WHITE)
 	decal(head, "Brows", KitImages.brows[look.brows], hair)
 	addHair(model, head, look.hair, hair)
 

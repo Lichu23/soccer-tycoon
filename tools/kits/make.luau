@@ -425,4 +425,19 @@ for _, kind in { "flat", "raised" } do
 	save(`brows_{kind}`, browsImage(kind))
 end
 
+-- A buzz cut painted on the head (tinted with the hair colour in the game): the whole top, and the
+-- upper part of the sides, the back and the front (above the brows), with a soft lower edge.
+local function buzzImage(height: number): Image
+	local image = newImage(FACE, FACE)
+	local fade = 14
+	for y = 0, math.floor(height) - 1 do
+		local alpha = if y > height - fade then math.floor(235 * (height - y) / fade) else 235
+		rect(image, 0, y, FACE, 1, { 255, 255, 255, alpha })
+	end
+	return image
+end
+save("buzz_top", buzzImage(FACE))
+save("buzz_side", buzzImage(FACE * 0.42))
+save("buzz_front", buzzImage(FACE * 0.2))
+
 print(`wrote {count} images to {OUT}`)

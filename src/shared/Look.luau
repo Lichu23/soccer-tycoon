@@ -6,7 +6,7 @@
 
 export type Look = {
 	skin: { number },
-	hair: string, -- "short", "buzz", "tall", "long", "mohawk" or "bald"
+	hair: string, -- a hair style of HAIR_OF below (Mannequin draws each one)
 	hairColor: { number },
 	pattern: string, -- "stripes", "half", "hem" or "plain"
 	face: string, -- "smile", "grin", "focus" or "smirk" (KitImages.faces)
@@ -27,9 +27,9 @@ local SKIN_TONES: { { number } } = {
 -- nearest of six tones. It is one table: change a number to change a player. A player not listed
 -- gets a tone from his id.
 local SKIN_OF: { [string]: number } = {
-	rashford = 4,
+	rashford = 5,
 	grealish = 1,
-	sterling = 4,
+	sterling = 5,
 	joao_felix = 2,
 	son = 2,
 	saka = 5,
@@ -61,10 +61,10 @@ local SKIN_OF: { [string]: number } = {
 	zidane = 3,
 	ronaldo_nazario = 3,
 	maradona = 3,
-	pele = 5,
+	pele = 6,
 }
 
-local HAIR_STYLES = { "short", "buzz", "tall", "long", "mohawk", "short", "bald", "buzz" }
+local HAIR_STYLES = { "fade", "sidepart", "fringe", "sleek", "buzz", "swept", "short", "messy" }
 
 local HAIR_COLORS: { { number } } = {
 	{ 30, 24, 22 },
@@ -73,47 +73,50 @@ local HAIR_COLORS: { { number } } = {
 	{ 214, 178, 96 },
 	{ 170, 82, 40 },
 	{ 20, 20, 24 },
+	{ 150, 115, 70 }, -- dark blond
 }
 
--- The hair of each real player as { style, colour index into HAIR_COLORS }, the way he wears it in
--- public photos, matched to the nearest style the figures have ("short" spiky, "tall" swept back,
--- "long", "mohawk" for curls or locks, "buzz", "bald"). Change a line to change a player. A player not
+-- The hair of each real player as { style, colour index into HAIR_COLORS }: the way he wore it in
+-- photos and news up to October 2026 (Haaland and Leao cut theirs to a buzz in 2026, Salah keeps the
+-- short crop he took in 2024), matched to the nearest hair the figures have (Mannequin): "fade" short
+-- curls with faded sides, "sidepart", "sleek" swept back, "fringe", "short" neat and short, "messy",
+-- "long", "shaggy" curls, "swept", "buzz" or "bald". Change a line to change a player. A player not
 -- listed gets a style and colour from his id.
 local HAIR_OF: { [string]: { any } } = {
-	rashford = { "buzz", 6 },
-	grealish = { "tall", 3 },
+	rashford = { "fade", 6 },
+	grealish = { "sleek", 3 },
 	sterling = { "buzz", 6 },
-	joao_felix = { "tall", 2 },
-	son = { "short", 6 },
-	saka = { "mohawk", 6 },
-	griezmann = { "tall", 4 },
-	pedri = { "long", 2 },
-	trent = { "buzz", 6 },
-	gavi = { "short", 2 },
-	lautaro = { "short", 1 },
-	leao = { "mohawk", 6 },
-	wirtz = { "short", 3 },
-	musiala = { "short", 6 },
-	lewandowski = { "short", 2 },
+	joao_felix = { "sidepart", 2 },
+	son = { "fringe", 6 },
+	saka = { "fade", 6 },
+	griezmann = { "sidepart", 7 },
+	pedri = { "messy", 2 },
+	trent = { "fade", 6 },
+	gavi = { "messy", 2 },
+	lautaro = { "sleek", 1 },
+	leao = { "buzz", 6 },
+	wirtz = { "sidepart", 7 },
+	musiala = { "fade", 6 },
+	lewandowski = { "sidepart", 2 },
 	benzema = { "buzz", 6 },
-	modric = { "long", 3 },
+	modric = { "long", 7 },
 	kane = { "short", 3 },
-	de_bruyne = { "short", 5 },
+	de_bruyne = { "fringe", 5 },
 	rodri = { "short", 2 },
-	foden = { "buzz", 4 },
-	vinicius = { "mohawk", 6 },
-	bellingham = { "buzz", 6 },
-	yamal = { "mohawk", 6 },
-	salah = { "mohawk", 6 },
-	neymar = { "short", 4 },
-	haaland = { "long", 4 },
+	foden = { "fringe", 3 },
+	vinicius = { "fade", 6 },
+	bellingham = { "fade", 6 },
+	yamal = { "fade", 6 },
+	salah = { "fade", 6 },
+	neymar = { "fade", 6 },
+	haaland = { "buzz", 4 },
 	mbappe = { "buzz", 6 },
-	cristiano = { "short", 6 },
-	messi = { "tall", 2 },
+	cristiano = { "sleek", 6 },
+	messi = { "sidepart", 2 },
 	ronaldinho = { "long", 6 },
 	zidane = { "bald", 1 },
 	ronaldo_nazario = { "bald", 1 },
-	maradona = { "mohawk", 6 },
+	maradona = { "shaggy", 6 },
 	pele = { "buzz", 6 },
 }
 

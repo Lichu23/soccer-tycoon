@@ -64,6 +64,13 @@ KitImages.faces = {
 	smirk = "rbxassetid://130355139035609",
 } :: { [string]: string }
 
+-- A buzz cut painted on the head (tinted with the hair colour): the top, the sides and back, the front.
+KitImages.buzz = {
+	top = "rbxassetid://125631609272068",
+	side = "rbxassetid://128569145891097",
+	front = "rbxassetid://117862765187151",
+}
+
 KitImages.brows = {
 	flat = "rbxassetid://90485149805243",
 	raised = "rbxassetid://109887108321110",
