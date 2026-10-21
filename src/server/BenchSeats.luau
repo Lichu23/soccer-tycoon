@@ -1,6 +1,7 @@
 --!strict
 -- The bench press of the Training Gym: its invisible seat (a Seat tagged "BenchSeat" in the bench
--- model) lays the plot's owner on their back along the bench, head under the barbell. Anyone else is
+-- model, placed where the root lies) lays the plot's owner on their back along the bench, head
+-- under the barbell. Anyone else is
 -- put straight back on their feet. Getting up is the Seat's own jump. Lying on the bench is standing
 -- on the training pad, so TrainingActions pays the TP; client/BenchPress animates the press.
 
@@ -9,7 +10,6 @@ local Players = game:GetService("Players")
 
 local TAG = "BenchSeat"
 local LIE_HEIGHT = 0.6 -- studs from the top of the seat to the middle of the root (the back on the pad)
-local LIE_SHIFT = 0.8 -- along the bench towards the barbell (the seat's -Z), so the chest is under it
 
 -- The root's turn on the seat: its front faces up, its head points to the seat's -Z.
 local LYING = CFrame.fromMatrix(Vector3.zero, Vector3.new(-1, 0, 0), Vector3.new(0, 0, -1))
@@ -47,7 +47,7 @@ local function watch(seat: Instance)
 			end
 			return
 		end
-		weld.C0 = CFrame.new(0, seat.Size.Y / 2 + LIE_HEIGHT, -LIE_SHIFT) * LYING
+		weld.C0 = CFrame.new(0, seat.Size.Y / 2 + LIE_HEIGHT, 0) * LYING
 		weld.C1 = CFrame.identity
 	end
 	seat.ChildAdded:Connect(lieDown)
