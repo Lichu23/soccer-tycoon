@@ -1,6 +1,6 @@
 --!strict
--- The HUD (docs/PLAN.md, Step 7): one compact column at the top right with the match timer, the
--- money and the boost badge, plus the VICTORY text near the top with "+$N" at its bottom right
+-- The HUD (docs/PLAN.md, Step 7): one compact column at the top right with the stadium tier and
+-- the match timer side by side, the money and the boost badge, plus the VICTORY text near the top with "+$N" at its bottom right
 -- after each match. There is no goal card: the guide covers the first steps and the player decides
 -- the rest. The middle of the screen stays clear. Built in code for the smallest landscape phone
 -- first, inside the safe area below the Roblox top bar. It only shows what the server sent.
@@ -28,6 +28,9 @@ local MATCH_TITLE_HEIGHT = 16 -- "MATCH TIME" over the timer
 local MATCH_TIMER_WIDTH = 104
 local MATCH_TIMER_HEIGHT = 30
 local MONEY_Y = MATCH_TITLE_HEIGHT + MATCH_TIMER_HEIGHT + 6 -- the money box under the match timer
+local STADIUM_WIDTH = 64 -- the stadium tile and its tier, left of the match timer
+local STADIUM_GAP = 8
+local STADIUM_TIER_HEIGHT = 16 -- "TIER N" under the tile, as tall as "MATCH TIME" over the timer
 local BADGE_SIZE = 30
 local TP_GAIN_HOLD_SECONDS = 1.2 -- how long "+N TP" stays after the last gain
 local AWAY_HOLD_SECONDS = 5 -- how long "+$N while you were away" stays
@@ -216,6 +219,38 @@ function Hud.build(parent: Instance): any
 	}, clockBox)
 	stroke(clock, Style.ui.dark, 2)
 
+	-- The stadium tier, left of the match timer and as tall as it: the stadium tile and "TIER N"
+	-- under it. Shown with the timer (the stadium plays from the first player on).
+	local stadium = new("Frame", {
+		Name = "Stadium",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -(MATCH_TIMER_WIDTH + STADIUM_GAP), 0, 0),
+		Size = UDim2.fromOffset(STADIUM_WIDTH, MATCH_TITLE_HEIGHT + MATCH_TIMER_HEIGHT),
+		BackgroundTransparency = 1,
+		Visible = false,
+	}, top)
+	local tileSize = MATCH_TITLE_HEIGHT + MATCH_TIMER_HEIGHT - STADIUM_TIER_HEIGHT
+	new("ImageLabel", {
+		Name = "Icon",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromScale(0.5, 0),
+		Size = UDim2.fromOffset(tileSize, tileSize),
+		BackgroundTransparency = 1,
+		Image = Icons.id("stadium"),
+		ScaleType = Enum.ScaleType.Fit,
+	}, stadium)
+	local stadiumTier = new("TextLabel", {
+		Name = "Tier",
+		Position = UDim2.fromOffset(0, tileSize),
+		Size = UDim2.new(1, 0, 0, STADIUM_TIER_HEIGHT),
+		BackgroundTransparency = 1,
+		Text = "TIER 1",
+		Font = Style.font,
+		TextSize = 14,
+		TextColor3 = Style.ui.text,
+	}, stadium)
+	stroke(stadiumTier, Style.ui.dark, 2)
+
 	-- The money sits under the match timer. The timer's place stays free before the first player.
 	local _, money = statBox(top, "MoneyRow", MONEY_Y, Style.ui.money, "$", "cash", "Money")
 	money.Text = "$0"
@@ -346,13 +381,16 @@ function Hud.init()
 	local top = gui.Top
 	local money, matchTimer = top.MoneyRow.Money, top.MatchTimer
 	local matchClock = matchTimer.Box.Clock
+	local stadium = top.Stadium
 	local boost, banner = top.BoostBadge, gui.Banner
 	local payout = banner.Payout
 	local tpValue, tpBoost = top.Tp.Value, top.Tp.TpBoost
 
-	-- The match timer shows from the first player on (the team plays from then).
+	-- The match timer and the stadium tier show from the first player on (the team plays from then).
 	local function showMatchTimer()
 		matchTimer.Visible = State.data.fieldStarted
+		stadium.Visible = State.data.fieldStarted
+		stadium.Tier.Text = "TIER " .. State.data.stadiumTier
 	end
 	showMatchTimer()
 	State.onChange(showMatchTimer)
