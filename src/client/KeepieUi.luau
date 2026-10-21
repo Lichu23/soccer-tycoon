@@ -3,7 +3,7 @@
 -- player stands on the mat the whole screen becomes the centre circle of a small stadium
 -- (client/KeepieScene) where the player's own avatar keeps a ball up. A ring closes in on the TAP
 -- button on the beat; a tap (the button, anywhere on the screen, E, Space or the A button) close to it
--- is a clean touch, the combo grows and each touch pays a little TP, and the foot flicks the ball
+-- is a clean touch, the streak grows and each touch pays TP, and the foot flicks the ball
 -- back up. It is an endless
 -- streak: the ball gets a little quicker with every touch, and a tap in the air or a dropped ball ends
 -- it. The medals (Bronze, Silver, Gold) are streak milestones and your longest streak is kept. Before
@@ -178,19 +178,6 @@ function KeepieUi.init()
 		}, medalBar)
 	end
 
-	-- The combo, on the left, clear of the ball's flight over the player.
-	local comboText = outlined({
-		Name = "Combo",
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 16, 0.42, 0),
-		Size = UDim2.fromOffset(140, 44),
-		Text = "",
-		TextSize = 40,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 5,
-	}, gui)
-	local comboScale = new("UIScale", {}, comboText)
-
 	-- The red X, top left: leaves the mat.
 	local leave = new("TextButton", {
 		Name = "Leave",
@@ -211,11 +198,11 @@ function KeepieUi.init()
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 	}, leave)
 
-	-- A pop-up after each tap, under the combo ----------------------------------------------------------
+	-- A pop-up after each tap, on the left, clear of the ball's flight over the player ----------------
 	local feedback = outlined({
 		Name = "Feedback",
-		AnchorPoint = Vector2.new(0, 0),
-		Position = UDim2.new(0, 16, 0.42, 26),
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 16, 0.42, 0),
 		Size = UDim2.new(0.3, 0, 0, 34),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Text = "",
@@ -509,15 +496,10 @@ function KeepieUi.init()
 		end
 		if info.kind == "juggleResult" then
 			local paid = if type(info.paid) == "number" then info.paid else 0
-			local combo = if type(info.combo) == "number" then info.combo else 0
 			if info.outcome == "hit" then
 				earned += paid
 				Sounds.play("kick")
-				pulse(comboScale, 1.35)
-				popFeedback(
-					string.format("+%.2f TP", paid) .. (if combo >= 3 then "  x" .. combo else ""),
-					Style.ui.good
-				)
+				popFeedback(string.format("+%.2f TP", paid), Style.ui.good)
 			elseif info.outcome == "miss" then
 				popFeedback("TOO EARLY", BAD)
 			end
@@ -602,8 +584,6 @@ function KeepieUi.init()
 				and round.combo >= record
 			then Style.ui.gold
 			else WHITE
-		comboText.Text = if round.combo >= 2 then "x" .. round.combo else ""
-		comboText.TextColor3 = if round.combo >= medals.bronze then Style.ui.gold else WHITE
 		local progress = math.clamp(round.combo / medals.gold, 0, 1)
 		medalFill.Size = UDim2.fromScale(progress, 1)
 		medalFill.BackgroundColor3 = MEDAL_COLORS[math.max(Juggle.medal(round.combo), 1)]
