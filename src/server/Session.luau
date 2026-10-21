@@ -21,6 +21,7 @@ export type Runtime = {
 	matchesInRow: number, -- momentum: matches played this session
 	matchesPlayed: number,
 	nextMatchAt: number, -- os.clock() when the next match ends, 0 when none is scheduled
+	matchPlan: { hatTrick: boolean, goalsFor: number, goalsAgainst: number }?, -- rolled at kick-off
 	upgrading: boolean, -- a stadium upgrade is waiting to build its pitch
 	sessionCases: number, -- Robux cases bought in this visit, for the confirm screen total
 	sessionRobux: number, -- Robux spent in this visit
