@@ -22,6 +22,8 @@ export type Runtime = {
 	matchesPlayed: number,
 	nextMatchAt: number, -- os.clock() when the next match ends, 0 when none is scheduled
 	matchPlan: { hatTrick: boolean, goalsFor: number, goalsAgainst: number }?, -- rolled at kick-off
+	firstRevealWait: number, -- seconds the first match has waited for the first reveal
+	firstMatchShown: boolean, -- the first-match camera was sent
 	upgrading: boolean, -- a stadium upgrade is waiting to build its pitch
 	sessionCases: number, -- Robux cases bought in this visit, for the confirm screen total
 	sessionRobux: number, -- Robux spent in this visit
@@ -128,6 +130,8 @@ local function startOne(player: Player): Session?
 			matchesInRow = 0,
 			matchesPlayed = 0,
 			nextMatchAt = 0,
+			firstRevealWait = 0,
+			firstMatchShown = false,
 			upgrading = false,
 			sessionCases = 0,
 			sessionRobux = 0,

@@ -5,8 +5,9 @@
 -- the first steps: to a free plot, then to the first player's pad.
 -- After the first purchase it disappears. Then it shows once, for a short time, towards the Store
 -- pad, only so the player knows the Store exists, and never again. When the first match ends the
--- training ground opens, and the trail shows once towards the treadmill of the Training Gym. Later goals are shown by the
--- goal row alone.
+-- training ground opens, and until the first player is levelled up an objective at the top of the
+-- screen says what to do: get the TP for the first level in the Training Gym (the trail leads there),
+-- then level up the first player bought (the trail leads to his pad).
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -14,10 +15,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
+local Config = require(ReplicatedStorage.Shared.Config)
 local Goals = require(ReplicatedStorage.Shared.Goals)
+local Icons = require(script.Parent.Icons)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Roster = require(ReplicatedStorage.Shared.Roster)
 local State = require(script.Parent.State)
+local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
 
@@ -25,8 +29,7 @@ local ARRIVED_DISTANCE = 7
 local UPDATE_SECONDS = 0.25
 local STORE_HINT_SECONDS = 20 -- how long the Store hint can show at most
 local STORE_HINT_NEAR = 14 -- the hint ends when the player gets this close to the Store pad
-local TRAINING_HINT_SECONDS = 40 -- the training ground is further away than the Store
-local TRAINING_HINT_NEAR = 14
+local TRAINING_HINT_NEAR = 14 -- at the gym the trail stops; the objective stays until the TP is in
 local GOLD = Color3.fromRGB(255, 205, 20)
 local CHEVRONS = 12 -- the most chevrons on the ground at once
 local SPACING = 5 -- studs between two chevrons
@@ -39,10 +42,6 @@ local guide: { kind: string, endsAt: number }? = nil -- asked for by a HUD icon
 local lastOwned: number? = nil -- players owned at the last state change (nil before the first)
 local storeHintStartedAt: number? = nil
 local storeHintDone = false
-local trainingHintPending = false -- the first match ended during this session
-local trainingHintStartedAt: number? = nil
-local trainingHintDone = false
-local lastMatchPlayed: boolean? = nil -- whether the first match had been played at the last change
 
 local Arrow = {}
 
@@ -64,6 +63,39 @@ local function nearestPad(root: BasePart, wantKind: string, wantId: string?): Ba
 		end
 	end
 	return best
+end
+
+-- The first player the owner bought: the cheapest one he owns (the climb buys them in price order).
+local function firstPlayer(): string?
+	local best: Config.PlayerDef? = nil
+	for id in State.data.players do
+		local def = Config.PlayersById[id]
+		if def and def.rarity ~= "Legend" and (best == nil or def.price < best.price) then
+			best = def
+		end
+	end
+	return if best then best.id else nil
+end
+
+-- The level-up objective: "train" while the TP for the first level is still missing, "level" once
+-- it is in, nil when training is not open yet or a player already has a level. Also the player and
+-- the TP the level costs.
+local function levelGuide(): (string?, string?, number)
+	local data = State.data
+	if not Progress.trainingUnlocked(data) then
+		return nil, nil, 0
+	end
+	for _, owned in data.players do
+		if owned.level > 0 then
+			return nil, nil, 0
+		end
+	end
+	local id = firstPlayer()
+	local cost = if id then Progress.levelCost(data, id) else nil
+	if id == nil or cost == nil then
+		return nil, nil, 0
+	end
+	return if data.tp >= cost then "level" else "train", id, cost
 end
 
 -- The pad part to point at right now, or nil for no guidance.
@@ -102,18 +134,15 @@ local function target(root: BasePart): BasePart?
 		return store
 	end
 
-	-- Then the training ground, once: it opened with the first match.
-	if trainingHintPending and not trainingHintDone then
+	-- Then the first level-up: to the Training Gym for the TP, then to the first player's pad.
+	local phase, id = levelGuide()
+	if phase == "train" then
 		local spot = nearestPad(root, "training", "trainingTreadmill")
-		local began = trainingHintStartedAt or os.clock()
-		trainingHintStartedAt = began
-		local expired = os.clock() - began > TRAINING_HINT_SECONDS
-		local near = spot ~= nil and (spot.Position - root.Position).Magnitude < TRAINING_HINT_NEAR
-		if expired or near or spot == nil then
-			trainingHintDone = true
-			return nil
+		if spot and (spot.Position - root.Position).Magnitude > TRAINING_HINT_NEAR then
+			return spot
 		end
-		return spot
+	elseif phase == "level" and id then
+		return nearestPad(root, "player", id)
 	end
 	return nil
 end
@@ -135,14 +164,93 @@ function Arrow.init()
 			storeHintStartedAt = os.clock()
 		end
 		lastOwned = owned
-		-- The training hint starts when the first match ends during this session. A returning
-		-- player who has played before never sees it.
-		local played = Progress.firstMatchPlayed(State.data)
-		if lastMatchPlayed == false and played and not trainingHintDone then
-			trainingHintPending = true
-		end
-		lastMatchPlayed = played
 	end)
+
+	-- The objective at the top of the screen, for the first level-up.
+	local objectiveGui = Instance.new("ScreenGui")
+	objectiveGui.Name = "Objective"
+	objectiveGui.ResetOnSpawn = false
+	objectiveGui.DisplayOrder = 3
+	objectiveGui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
+	objectiveGui.Parent = player:WaitForChild("PlayerGui")
+	local chip = Instance.new("Frame")
+	chip.Name = "Chip"
+	chip.AnchorPoint = Vector2.new(0.5, 0)
+	chip.Position = UDim2.new(0.5, 0, 0, 8)
+	chip.Size = UDim2.fromOffset(0, 40)
+	chip.AutomaticSize = Enum.AutomaticSize.X
+	chip.BackgroundColor3 = Style.ui.dark
+	chip.BackgroundTransparency = 0.15
+	chip.Visible = false
+	chip.Parent = objectiveGui
+	local chipCorner = Instance.new("UICorner")
+	chipCorner.CornerRadius = UDim.new(0, 10)
+	chipCorner.Parent = chip
+	local chipStroke = Instance.new("UIStroke")
+	chipStroke.Color = Style.ui.gold
+	chipStroke.Thickness = 2
+	chipStroke.Parent = chip
+	local chipPadding = Instance.new("UIPadding")
+	chipPadding.PaddingLeft = UDim.new(0, 8)
+	chipPadding.PaddingRight = UDim.new(0, 14)
+	chipPadding.Parent = chip
+	local chipLayout = Instance.new("UIListLayout")
+	chipLayout.FillDirection = Enum.FillDirection.Horizontal
+	chipLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	chipLayout.Padding = UDim.new(0, 8)
+	chipLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	chipLayout.Parent = chip
+	local chipIcon = Instance.new("ImageLabel")
+	chipIcon.LayoutOrder = 1
+	chipIcon.Size = UDim2.fromOffset(30, 30)
+	chipIcon.BackgroundTransparency = 1
+	chipIcon.Image = Icons.id("tp")
+	chipIcon.Parent = chip
+	local chipText = Instance.new("TextLabel")
+	chipText.LayoutOrder = 2
+	chipText.Size = UDim2.fromOffset(0, 40)
+	chipText.AutomaticSize = Enum.AutomaticSize.X
+	chipText.BackgroundTransparency = 1
+	chipText.Font = Style.font
+	chipText.TextSize = 17
+	chipText.TextColor3 = Style.ui.text
+	chipText.RichText = true
+	chipText.Text = ""
+	chipText.Parent = chip
+	-- The name as fans say it: "Rashford" for "Marcus Rashford" ("Vinícius Jr" stays whole).
+	local function shortName(name: string): string
+		local last = string.match(name, "(%S+)$")
+		if last == nil or last == name or last == "Jr" then
+			return name
+		end
+		return last
+	end
+	local function refreshObjective()
+		local phase, id, cost = levelGuide()
+		local def = if id then Config.PlayersById[id] else nil
+		if phase == nil or def == nil then
+			chip.Visible = false
+			return
+		end
+		local gold = "#" .. Style.ui.gold:ToHex()
+		chipText.Text = if phase == "train"
+			then string.format(
+				'Get %d TP in the Gym to level up %s  <font color="%s">%d/%d</font>',
+				cost,
+				shortName(def.name),
+				gold,
+				math.min(math.floor(State.data.tp), cost),
+				cost
+			)
+			else string.format(
+				'Level up %s: <font color="%s">stand on his pad</font>',
+				shortName(def.name),
+				gold
+			)
+		chip.Visible = true
+	end
+	State.onChange(refreshObjective)
+	refreshObjective()
 
 	-- The chevrons: flat squares lying on the ground, each with two rounded bars that meet in a point
 	-- (a ">" pointing along the trail). They exist only on this client.

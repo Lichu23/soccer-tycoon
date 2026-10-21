@@ -13,7 +13,7 @@ local function newData()
 end
 
 T.test(
-	"the first purchase is the first Common reveal: short, and the rarity is now seen",
+	"the first purchase is the first Common reveal: the full reveal, and the rarity is now seen",
 	function()
 		local data = newData()
 		local entry = Reveals.grant(data, "rashford", false)
@@ -21,7 +21,7 @@ T.test(
 		T.eq(entry.playerId, "rashford")
 		T.eq(entry.isNew, true)
 		T.eq(entry.firstOfRarity, true)
-		T.eq(entry.short, true)
+		T.eq(entry.short, false)
 		T.eq(data.seenRarities.Common, true)
 		T.eq(Roster.owns(data, "rashford"), true)
 		T.eq(#data.pendingReveals, 1)
@@ -139,6 +139,6 @@ T.test("buying a player from a pad records the reveal", function()
 	Actions.onChange = function() end
 	T.eq(Actions.buyPlayer(session, "rashford"), true)
 	T.eq(#session.data.pendingReveals, 1)
-	T.eq(session.data.pendingReveals[1].short, true)
+	T.eq(session.data.pendingReveals[1].short, false)
 	T.eq(session.data.seenRarities.Common, true)
 end)

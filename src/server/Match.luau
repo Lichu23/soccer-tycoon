@@ -20,6 +20,7 @@ local Session = require(script.Parent.Session)
 local Sync = require(script.Parent.Sync)
 
 local TICK_SECONDS = 0.25
+local FIRST_REVEAL_WAIT = 8 -- the first match waits this long at most for the first player's reveal
 
 local random = Random.new()
 local started = false
@@ -42,6 +43,13 @@ local function schedule(session: Session.Session)
 		matchesPlayed = runtime.matchesPlayed,
 	}, rng)
 	runtime.matchPlan = plan
+	if plan and runtime.plot and session.data.flags.milestones["first_match"] == nil then
+		-- The first match ever: the camera shows the pitch until it ends (IntroCinematics).
+		if not runtime.firstMatchShown then
+			runtime.firstMatchShown = true
+			Remotes.fireClient("Notice", session.player, { kind = "firstMatch" })
+		end
+	end
 	if plan and runtime.plot then
 		Remotes.fireAllClients("MatchStarted", runtime.plot, {
 			ownerUserId = session.player.UserId,
@@ -105,6 +113,14 @@ local function tick(session: Session.Session, seconds: number)
 		return
 	end
 	if runtime.nextMatchAt == 0 then
+		-- The first match waits until the first player's reveal has been watched (or a few seconds),
+		-- so the reveal comes first and then the match.
+		if data.flags.milestones["first_match"] == nil and #data.pendingReveals > 0 then
+			runtime.firstRevealWait += seconds
+			if runtime.firstRevealWait < FIRST_REVEAL_WAIT then
+				return
+			end
+		end
 		schedule(session)
 		return
 	end

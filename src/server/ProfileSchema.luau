@@ -16,7 +16,7 @@ export type PendingReveal = {
 	playerId: string,
 	isNew: boolean,
 	firstOfRarity: boolean?, -- the first player of this rarity the player ever owned
-	short: boolean?, -- the first purchase: a shorter reveal that never blocks movement
+	short: boolean?, -- a banner instead of the full reveal (old saves; new reveals are always full)
 	starsGained: number?, -- a duplicate from a case: the star it added (0 at the cap)
 	stars: number?, -- the player's stars after a duplicate
 }
