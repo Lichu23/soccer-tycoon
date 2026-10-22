@@ -330,10 +330,17 @@ function LockerView.preview(def: Config.CosmeticDef)
 	end
 end
 
+-- The stadium's (filtered) name, as the server published it.
+local function savedName(): string
+	local name = player:GetAttribute("stadiumName")
+	return if type(name) == "string" then name else ""
+end
+
 -- Paints the chosen style back on every slot of the copy (after browsing another slot).
 function LockerView.restore()
 	local court = copy and copy:FindFirstChild("Court")
 	showLamps(chosenModel())
+	LockerView.showName(savedName())
 	if court then
 		for _, slot in Config.CosmeticSlots do
 			local chosen = Cosmetics.chosen(State.data, slot.id)
@@ -349,7 +356,8 @@ function LockerView.restore()
 	hideFigures() -- the next focus on the kit shows the chosen one again
 end
 
--- Writes the stadium's (filtered) name on the copy's gate sign, after a rename.
+-- Writes `name` on the copy's name signs: the saved name after a rename, or what the player is
+-- typing (only they see it, on their copy; nobody else sees a name before the server filtered it).
 function LockerView.showName(name: string)
 	local court = copy and copy:FindFirstChild("Court")
 	if court and Cosmetics.slotOpen(State.data, "stadium") then

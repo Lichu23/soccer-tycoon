@@ -240,10 +240,24 @@ function StadiumLook.paint(court: Instance, slotId: string, def: Config.Cosmetic
 	end
 end
 
--- Writes the stadium's name on the sign over the gate (nil puts the plan's own text back).
+-- The signs that carry the stadium's name: the one over the gate and the roof arena's front board.
+local NAME_SIGNS = { GateSign = true, NameBoard = true }
+
+-- A typed stadium name tidied: letters, digits, spaces and a little punctuation; runs of spaces
+-- become one; no space at the ends. The server checks this text (server/StadiumName), and the Locker
+-- room shows the same text on its copy while the player types.
+function StadiumLook.cleanName(raw: string): string
+	local kept = string.gsub(raw, "[^%w %-'&%.!]", "")
+	kept = string.gsub(kept, "%s+", " ")
+	kept = string.gsub(kept, "^ ", "")
+	kept = string.gsub(kept, " $", "")
+	return kept
+end
+
+-- Writes the stadium's name on its signs (nil puts the plan's own text back).
 function StadiumLook.setName(court: Instance, name: string?)
 	for _, child in court:GetChildren() do
-		if child.Name == "GateSign" and child:IsA("BasePart") then
+		if NAME_SIGNS[child.Name] and child:IsA("BasePart") then
 			local gui = child:FindFirstChildOfClass("SurfaceGui")
 			local words = gui and gui:FindFirstChildOfClass("TextLabel")
 			if words then

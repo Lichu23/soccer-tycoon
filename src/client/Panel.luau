@@ -53,8 +53,12 @@ function Panel.build(gui: ScreenGui, title: string, heightScale: number, onClose
 		Active = true, -- swallows taps so nothing behind it is pressed
 		ZIndex = 5,
 	}, gui)
+	local scroll: ScrollingFrame
 	backdrop:GetPropertyChangedSignal("Visible"):Connect(function()
 		gui.DisplayOrder = if backdrop.Visible then OPEN_ORDER else CLOSED_ORDER
+		if backdrop.Visible then
+			scroll.CanvasPosition = Vector2.zero -- every screen opens at its top
+		end
 	end)
 
 	local panel = new("Frame", {
@@ -98,7 +102,7 @@ function Panel.build(gui: ScreenGui, title: string, heightScale: number, onClose
 	new("UIStroke", { Color = Color3.fromRGB(255, 255, 255), Thickness = 3 }, close)
 	close.Activated:Connect(onClose)
 
-	local scroll = new("ScrollingFrame", {
+	scroll = new("ScrollingFrame", {
 		Name = "Scroll",
 		Position = UDim2.fromOffset(0, HEADER_HEIGHT),
 		Size = UDim2.new(1, 0, 1, -HEADER_HEIGHT),

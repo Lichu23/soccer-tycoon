@@ -7,18 +7,16 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local StadiumLook = require(ReplicatedStorage.Shared.StadiumLook)
 
 type Data = { cash: number, stadiumTier: number, stadiumName: string }
 
 local StadiumName = {}
 
 -- Letters, digits, spaces and a little punctuation; runs of spaces become one; no space at the ends.
+-- (shared/StadiumLook, so the Locker room's preview shows the same text).
 function StadiumName.clean(raw: string): string
-	local kept = string.gsub(raw, "[^%w %-'&%.!]", "")
-	kept = string.gsub(kept, "%s+", " ")
-	kept = string.gsub(kept, "^ ", "")
-	kept = string.gsub(kept, " $", "")
-	return kept
+	return StadiumLook.cleanName(raw)
 end
 
 -- Whether `text` (already clean) may become the name: true, or false and the reason ("tier",

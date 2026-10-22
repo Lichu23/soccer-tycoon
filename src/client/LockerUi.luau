@@ -23,6 +23,7 @@ local Net = require(script.Parent.Net)
 local NumberFormat = require(ReplicatedStorage.Shared.NumberFormat)
 local Panel = require(script.Parent.Panel)
 local State = require(script.Parent.State)
+local StadiumLook = require(ReplicatedStorage.Shared.StadiumLook)
 local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
@@ -518,7 +519,16 @@ function LockerUi.init()
 				elseif short > 0 then `Need {NumberFormat.money(short)}`
 				else `Rename {NumberFormat.money(price)}`
 		end
+		-- The stadium in the Locker room shows the name as it is typed (tidied the way the server
+		-- tidies it), and the saved one again when the box is empty.
+		local function previewName()
+			local typed = StadiumLook.cleanName(draft)
+			LockerView.showName(
+				if typed ~= "" then typed elseif type(current) == "string" then current else ""
+			)
+		end
 		paintButton()
+		previewName()
 		box:GetPropertyChangedSignal("Text"):Connect(function()
 			local text = box.Text
 			if #text > Config.StadiumName.maxLength then
@@ -527,6 +537,7 @@ function LockerUi.init()
 			end
 			draft = text
 			paintButton()
+			previewName()
 		end)
 		box.Focused:Connect(function()
 			typing = true
@@ -550,7 +561,11 @@ function LockerUi.init()
 				end
 			end)
 		end)
-		line("Everyone sees the name over your gate. Roblox checks it first.", Panel.MUTED, 13)
+		line(
+			"Everyone sees the name on the front of your arena. Roblox checks it first.",
+			Panel.MUTED,
+			13
+		)
 	end
 
 	-- The one button under the cards, for the style being looked at (or the one in use).

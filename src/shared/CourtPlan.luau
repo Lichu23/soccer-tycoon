@@ -1217,6 +1217,28 @@ function CourtPlan.parts(tier: number, model: string?): { PartSpec }
 					end
 				end
 			end
+			if dome then
+				-- The front of the arena: the stadium's name on a long board across the back of the
+				-- near stand (over the gate) and a big club crest standing on the roof above it, both
+				-- facing the path outside (shared/StadiumLook writes the name and paints the crest).
+				local face = nearStart - 5 * STAND_DEPTH - 1.2
+				sign(
+					list,
+					"NameBoard",
+					-30,
+					30,
+					FLOOR + 10.5,
+					FLOOR + 20.5,
+					face - 0.6,
+					face,
+					"ROOF ARENA",
+					"Front",
+					WHITE
+				)
+				box(list, "Crest", -7, 7, FLOOR + 23, FLOOR + 37, face - 0.4, face, WHITE, nil, 1)
+				list[#list].image = ""
+				list[#list].face = "Front"
+			end
 			sign(
 				list,
 				"Scoreboard",
