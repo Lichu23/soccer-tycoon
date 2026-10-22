@@ -693,7 +693,9 @@ function PenaltyUi.init()
 			else 0
 		powerBox.Visible = ready and phase == "power"
 		powerFill.Size = UDim2.fromScale(1, power)
-		powerFill.BackgroundColor3 = if CinemaScreen.powerGood(power) then Style.ui.good else BAD
+		powerFill.BackgroundColor3 = if CinemaScreen.powerGood(meter, power)
+			then Style.ui.good
+			else BAD
 		powerStroke.Color = if holding then Style.ui.good else Style.ui.gold
 
 		-- The texts.

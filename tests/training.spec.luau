@@ -574,10 +574,48 @@ local function attack(state, aimX, power)
 	local lockAt = state.stageAt + aimTime(aimX)
 	Freekick.lock(state, lockAt, lockAt)
 	Freekick.hold(state, lockAt + 0.2, lockAt + 0.2)
-	local releaseAt = lockAt + 0.2 + FK.freekickPowerSeconds * power
+	local releaseAt = lockAt + 0.2 + Freekick.powerSeconds(state.kick) * power
 	Freekick.release(state, releaseAt, releaseAt)
 	return state.outcome
 end
+
+T.test("the power meter fills faster and its green zone narrows with every goal", function()
+	T.near(Freekick.powerSeconds(1), FK.freekickPowerSeconds, 1e-9)
+	T.near(Freekick.powerSeconds(2), FK.freekickPowerSeconds - FK.freekickPowerStep, 1e-9)
+	T.near(Freekick.powerSeconds(200), FK.freekickPowerMin, 1e-9)
+	local low, high = Freekick.goodZone(1)
+	T.near(low, FK.freekickWeakPower, 1e-9)
+	T.near(high, FK.freekickGoodHigh, 1e-9)
+	local low2, high2 = Freekick.goodZone(2)
+	T.truthy(low2 > low and high2 < high)
+	local lowMax, highMin = Freekick.goodZone(200)
+	T.near(lowMax, FK.freekickGoodLowMax, 1e-9)
+	T.near(highMin, FK.freekickGoodHighMin, 1e-9)
+	-- The sweet power stays green however long the streak.
+	T.truthy(lowMax < FK.freekickPowerSweet and FK.freekickPowerSweet < highMin)
+	-- The daily penalty (no kick given) keeps the first meter.
+	T.near(Freekick.powerAt({ holdAt = 0 }, FK.freekickPowerSeconds), 1, 1e-9)
+	T.near(Freekick.powerAt({ holdAt = 0 }, Freekick.powerSeconds(5), 5), 1, 1e-9)
+end)
+
+T.test("a free kick released outside the green zone misses", function()
+	-- Late in a streak: a release the first attack would take as green is now outside it.
+	local function at(kick: number, power: number): string
+		local state = Freekick.new(100)
+		state.kick = kick
+		state.stageAt = 100
+		state.phase = "power"
+		state.aimX, state.aimY = 0.85, 0.3
+		Freekick.hold(state, 100, 100)
+		local releaseAt = 100 + Freekick.powerSeconds(kick) * power
+		Freekick.release(state, releaseAt, releaseAt)
+		return state.outcome
+	end
+	local low, high = Freekick.goodZone(11)
+	T.eq(at(11, low - 0.05), "saved") -- too soft: it rolls to the keeper
+	T.eq(at(11, high + 0.02), "over") -- too hard: over the bar, though the reticle was low
+	T.eq(at(1, 0.4), "goal") -- the same soft shot is green on the first attack
+end)
 
 T.test("a goal brings the next attack, a miss ends the streak and a new one starts", function()
 	local state = Freekick.new(100)

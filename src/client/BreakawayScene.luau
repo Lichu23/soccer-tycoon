@@ -401,8 +401,12 @@ function BreakawayScene.new(options: Options?): Scene
 	end
 	local function shotEnd(state: Freekick.State): Vector3
 		local height = Freekick.height(state.aimY, state.power)
-		if state.power < Config.Training.freekickWeakPower then
+		-- The free kick's green zone narrows with the streak; the penalty keeps the first one.
+		local low, high = Freekick.goodZone(if penalty then 1 else state.kick)
+		if state.power < low then
 			height = 0 -- it rolls
+		elseif state.power > high and state.outcome == "over" then
+			height = math.max(height, 1.2) -- struck too hard: it clears the bar
 		end
 		return at(state.aimX * GOAL_HALF_WIDTH, height * GOAL_HEIGHT + BALL_R, 0)
 	end

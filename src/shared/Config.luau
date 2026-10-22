@@ -405,9 +405,22 @@ Config.Training = {
 	freekickAimLow = 0.1, -- the reticle's lowest and highest height
 	freekickAimHigh = 0.92,
 	freekickPowerSeconds = 0.9,
+	-- The meter fills faster with every goal of the streak: `freekickPowerStep` less, down to
+	-- `freekickPowerMin`.
+	freekickPowerStep = 0.03,
+	freekickPowerMin = 0.6,
 	freekickPowerSweet = 0.7,
 	freekickPowerLift = 1.2,
 	freekickWeakPower = 0.3, -- below this the shot rolls to the keeper
+	-- The green zone of the meter: from the weak power up to `freekickGoodHigh` on the first attack,
+	-- narrower with every goal (its bottom `freekickGoodLowStep` higher up to `freekickGoodLowMax`,
+	-- its top `freekickGoodHighStep` lower down to `freekickGoodHighMin`). A free kick released
+	-- under it rolls to the keeper, over it flies over the bar.
+	freekickGoodHigh = 0.82,
+	freekickGoodLowStep = 0.03,
+	freekickGoodLowMax = 0.58,
+	freekickGoodHighStep = 0.008,
+	freekickGoodHighMin = 0.78,
 	freekickGraceSeconds = 0.2,
 	freekickFilmSeconds = 6,
 	freekickTackleSeconds = 3,

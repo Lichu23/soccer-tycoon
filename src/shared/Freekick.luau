@@ -6,6 +6,8 @@
 -- (too soft rolls to the keeper, too hard lifts it over the bar). Then the client plays the attack as
 -- a short film: the dribble, the strike in slow motion, the goal or the save. A goal adds to the
 -- streak; a lost dribble or a shot that does not go in ends it, and the longest streak is kept.
+-- Every goal makes the next attack harder: a shorter move window, a keeper who reaches further, and
+-- a power meter that fills faster with a narrower green zone (a release outside it misses).
 -- The moves, the reticle and the meter run on the server clock from the start of their step, so the
 -- server and the client agree without a message per frame: the server keeps the state and judges
 -- every input (one may be stamped a little in the past for a slow connection), the client reads it
@@ -144,9 +146,33 @@ function Freekick.aimAt(state: { stageAt: number }, at: number): (number, number
 	return x, y
 end
 
--- The power meter at time `at` while the hold goes on: it fills, then empties again.
-function Freekick.powerAt(state: { holdAt: number }, at: number): number
-	return sweep(at - state.holdAt, Config.Training.freekickPowerSeconds)
+-- How long the meter of attack `kick` takes to fill: less with every goal of the streak.
+function Freekick.powerSeconds(kick: number): number
+	local training = Config.Training
+	return math.max(
+		training.freekickPowerSeconds - (kick - 1) * training.freekickPowerStep,
+		training.freekickPowerMin
+	)
+end
+
+-- The green zone of the meter on attack `kick`, bottom and top: narrower with every goal.
+function Freekick.goodZone(kick: number): (number, number)
+	local training = Config.Training
+	local low = math.min(
+		training.freekickWeakPower + (kick - 1) * training.freekickGoodLowStep,
+		training.freekickGoodLowMax
+	)
+	local high = math.max(
+		training.freekickGoodHigh - (kick - 1) * training.freekickGoodHighStep,
+		training.freekickGoodHighMin
+	)
+	return low, high
+end
+
+-- The power meter at time `at` while the hold goes on: it fills, then empties again, faster on a
+-- later attack `kick` of the streak (the first when left out, as for the daily penalty).
+function Freekick.powerAt(state: { holdAt: number }, at: number, kick: number?): number
+	return sweep(at - state.holdAt, Freekick.powerSeconds(kick or 1))
 end
 
 -- How high the shot is at the goal: the reticle's height, lifted by power above the sweet power.
@@ -307,13 +333,14 @@ function Freekick.release(state: State, now: number, stamp: number): boolean
 	if state.phase ~= "power" or state.holdAt <= 0 then
 		return false
 	end
-	state.power = Freekick.powerAt(state, inputTime(now, stamp, state.holdAt))
+	state.power = Freekick.powerAt(state, inputTime(now, stamp, state.holdAt), state.kick)
 	local setup = Freekick.setup(state.seed, state.kick)
-	shoot(
-		state,
-		Freekick.judge(setup.keeperX, state.kick, state.aimX, state.aimY, state.power),
-		now
-	)
+	local low, high = Freekick.goodZone(state.kick)
+	local outcome: Outcome = if state.power < low
+		then "saved" -- too soft: it rolls to the keeper
+		elseif state.power > high then "over" -- too hard: over the bar
+		else Freekick.judge(setup.keeperX, state.kick, state.aimX, state.aimY, state.power)
+	shoot(state, outcome, now)
 	return true
 end
 

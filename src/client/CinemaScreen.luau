@@ -9,7 +9,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local Config = require(ReplicatedStorage.Shared.Config)
+local Freekick = require(ReplicatedStorage.Shared.Freekick)
 local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
@@ -32,9 +32,6 @@ local HIDDEN_GUIS = {
 }
 
 local CinemaScreen = {}
-
--- The top of the power meter's green zone (its bottom is the weak power).
-CinemaScreen.POWER_GOOD_MAX = Config.Training.freekickPowerSweet + 0.12
 
 local function new(className: string, props: { [string]: any }, parent: Instance?): any
 	local instance = Instance.new(className)
@@ -210,11 +207,20 @@ function CinemaScreen.reticle(parent: Instance): Reticle
 	return { frame = reticle, stroke = stroke, scale = new("UIScale", {}, reticle) }
 end
 
-export type PowerMeter = { box: Frame, fill: Frame, stroke: UIStroke }
+export type PowerMeter = {
+	box: Frame,
+	fill: Frame,
+	stroke: UIStroke,
+	zone: Frame,
+	edges: { Frame },
+	low: number,
+	high: number,
+}
 
--- The power meter on the right: it fills from the bottom, with the green zone marked.
+-- The power meter on the right: it fills from the bottom, with the green zone of the first attack
+-- marked (`setPowerZone` narrows it).
 function CinemaScreen.powerMeter(parent: Instance): PowerMeter
-	local weak = Config.Training.freekickWeakPower
+	local low, high = Freekick.goodZone(1)
 	local box = new("Frame", {
 		Name = "Power",
 		AnchorPoint = Vector2.new(1, 0.5),
@@ -227,24 +233,28 @@ function CinemaScreen.powerMeter(parent: Instance): PowerMeter
 	}, parent)
 	rounded(box, 8)
 	local stroke = new("UIStroke", { Color = Style.ui.gold, Thickness = 3 }, box)
-	new("Frame", {
+	local zone = new("Frame", {
 		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.fromScale(0, 1 - weak),
-		Size = UDim2.fromScale(1, CinemaScreen.POWER_GOOD_MAX - weak),
+		Position = UDim2.fromScale(0, 1 - low),
+		Size = UDim2.fromScale(1, high - low),
 		BackgroundColor3 = Style.ui.good,
 		BackgroundTransparency = 0.6,
 		BorderSizePixel = 0,
 		ZIndex = 5,
 	}, box)
-	for _, edge in { weak, CinemaScreen.POWER_GOOD_MAX } do
-		new("Frame", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 1 - edge),
-			Size = UDim2.new(1, 10, 0, 3),
-			BackgroundColor3 = WHITE,
-			BorderSizePixel = 0,
-			ZIndex = 7,
-		}, box)
+	local edges = {}
+	for _, edge in { low, high } do
+		table.insert(
+			edges,
+			new("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 1 - edge),
+				Size = UDim2.new(1, 10, 0, 3),
+				BackgroundColor3 = WHITE,
+				BorderSizePixel = 0,
+				ZIndex = 7,
+			}, box)
+		)
 	end
 	local fill = new("Frame", {
 		AnchorPoint = Vector2.new(0, 1),
@@ -270,7 +280,27 @@ function CinemaScreen.powerMeter(parent: Instance): PowerMeter
 		Thickness = 3,
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
 	}, label)
-	return { box = box, fill = fill, stroke = stroke }
+	return {
+		box = box,
+		fill = fill,
+		stroke = stroke,
+		zone = zone,
+		edges = edges,
+		low = low,
+		high = high,
+	}
+end
+
+-- Moves the green zone of `meter` to run from `low` to `high`.
+function CinemaScreen.setPowerZone(meter: PowerMeter, low: number, high: number)
+	if meter.low == low and meter.high == high then
+		return
+	end
+	meter.low, meter.high = low, high
+	meter.zone.Position = UDim2.fromScale(0, 1 - low)
+	meter.zone.Size = UDim2.fromScale(1, high - low)
+	meter.edges[1].Position = UDim2.fromScale(0.5, 1 - low)
+	meter.edges[2].Position = UDim2.fromScale(0.5, 1 - high)
 end
 
 -- The marker `name` (TrainingFreekick, TrainingKeepie) of the player's own plot, or nil.
@@ -302,9 +332,9 @@ function CinemaScreen.walkOff(name: string, step: number)
 	humanoid:MoveTo(spot.Position + away.Unit * reach)
 end
 
--- The meter's fill colour for `power`: green inside the good zone, red outside it.
-function CinemaScreen.powerGood(power: number): boolean
-	return power >= Config.Training.freekickWeakPower and power <= CinemaScreen.POWER_GOOD_MAX
+-- The meter's fill colour for `power`: green inside the good zone of `meter`, red outside it.
+function CinemaScreen.powerGood(meter: PowerMeter, power: number): boolean
+	return power >= meter.low and power <= meter.high
 end
 
 return CinemaScreen

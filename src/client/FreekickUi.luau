@@ -690,7 +690,7 @@ function FreekickUi.init()
 		holding = false
 		local now = Workspace:GetServerTimeNow()
 		if scene and state.phase == "power" then
-			releasedPower = Freekick.powerAt({ holdAt = localHoldAt } :: any, now)
+			releasedPower = Freekick.powerAt({ holdAt = localHoldAt }, now, state.kick)
 			Net.fire("FreekickRelease", now)
 		end
 	end
@@ -896,13 +896,16 @@ function FreekickUi.init()
 		-- The power meter.
 		local power = if phase == "power"
 			then (releasedPower or (if holding
-				then Freekick.powerAt({ holdAt = localHoldAt } :: any, now)
-				elseif state.holdAt > 0 then Freekick.powerAt(state, now)
+				then Freekick.powerAt({ holdAt = localHoldAt }, now, state.kick)
+				elseif state.holdAt > 0 then Freekick.powerAt(state, now, state.kick)
 				else 0))
 			else 0
 		powerBox.Visible = phase == "power"
+		CinemaScreen.setPowerZone(meter, Freekick.goodZone(state.kick))
 		powerFill.Size = UDim2.fromScale(1, power)
-		powerFill.BackgroundColor3 = if CinemaScreen.powerGood(power) then Style.ui.good else BAD
+		powerFill.BackgroundColor3 = if CinemaScreen.powerGood(meter, power)
+			then Style.ui.good
+			else BAD
 		powerStroke.Color = if holding then Style.ui.good else Style.ui.gold
 
 		-- The texts.
