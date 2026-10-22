@@ -340,7 +340,7 @@ end
 -- in a row behind them. Plot (x, z) is building (bz - 70, 60 - bx): the boosts at x 88, z 75 to 105,
 -- the Store at x 76 to 100, z 124.
 local fixtures = folder("Fixtures")
-for index, id in { "matchSpeed", "hatTrick", "offline" } do
+for index, id in { "matchSpeed", "hatTrick" } do
 	marker("Store_" .. id, id, "store", Vector3.new(-64, FLOOR + 0.1, 146 + (index - 1) * 12), PAD)
 end
 for index, key in { "boost_cash", "boost_tp", "boost_both" } do
