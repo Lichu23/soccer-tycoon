@@ -48,6 +48,9 @@ export type CaseDef = {
 	name: string,
 	floorsComplete: number, -- floors completed to unlock it
 	legendChance: number, -- the share of a pull that is a Legend (fixed, taken off the top)
+	-- The share of a pull that is a x2 cash boost of Config.CaseBoosts instead of a player (also off
+	-- the top). nil for a case of players only.
+	boostChance: number?,
 	-- Shares of the rest: a player of the floors reached, of the next floor, of the floors further on.
 	odds: { reached: number, nextFloor: number, further: number },
 }
@@ -468,6 +471,7 @@ Config.Cases = {
 		name = "Standard Case",
 		floorsComplete = 1,
 		legendChance = 0.005,
+		boostChance = 0.5,
 		odds = { reached = 0.70, nextFloor = 0.25, further = 0.05 },
 	},
 	elite = {
@@ -478,6 +482,44 @@ Config.Cases = {
 		odds = { reached = 0.40, nextFloor = 0.40, further = 0.20 },
 	},
 } :: { [string]: CaseDef }
+
+export type CaseBoost = {
+	id: string,
+	label: string,
+	detail: string,
+	seconds: number, -- added to the paid x2 cash timer (Boosts.addCaseBoost), never cut
+	weight: number, -- the relative chance within the case's boost share
+}
+
+-- The boosts of a case that has a boostChance: x2 cash, all longer than the 10 minutes a Robux pad sells.
+Config.CaseBoosts = {
+	{
+		id = "caseBoost15",
+		label = "x2 Cash",
+		detail = "15 minutes",
+		seconds = 15 * 60,
+		weight = 60,
+	},
+	{
+		id = "caseBoost30",
+		label = "x2 Cash",
+		detail = "30 minutes",
+		seconds = 30 * 60,
+		weight = 30,
+	},
+	{
+		id = "caseBoost60",
+		label = "x2 Cash",
+		detail = "60 minutes",
+		seconds = 60 * 60,
+		weight = 10,
+	},
+} :: { CaseBoost }
+
+Config.CaseBoostsById = {} :: { [string]: CaseBoost }
+for _, boost in Config.CaseBoosts do
+	Config.CaseBoostsById[boost.id] = boost
+end
 
 Config.CaseRules = {
 	slotDecay = 0.7,

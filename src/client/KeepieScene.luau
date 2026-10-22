@@ -1,7 +1,8 @@
 --!strict
 -- The 3D scene of the keepie-uppies (client/KeepieUi drives it): the centre circle of a small stadium
 -- built far from the map, only on this client, with a clone of the player's own avatar
--- (client/AvatarActor) keeping a ball up. The ball is drawn from the server's streak with the same
+-- (client/AvatarActor) keeping a ball up. The rarity reveal (client/Reveal) uses the same scene with
+-- the footballer just won in place of the avatar. The ball is drawn from the server's streak with the same
 -- Juggle functions the server judges with: it leaves a foot at each beat, flies up and comes back to
 -- the other foot on the next one, and after a drop it falls and rolls away. The legs follow the same
 -- beats: the foot of the next touch comes up to meet the ball as it falls, and on a touch it flicks
@@ -13,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local AvatarActor = require(script.Parent.AvatarActor)
+local Config = require(ReplicatedStorage.Shared.Config)
 local Juggle = require(ReplicatedStorage.Shared.Juggle)
 
 -- The pitch, in studs, from ORIGIN: the player stands on the centre spot and faces +z, towards the
@@ -294,11 +296,12 @@ local function legJoints(lifts: { [string]: number }): { [string]: CFrame }
 	return joints
 end
 
-function KeepieScene.new(): Scene
+-- The scene with the player's own avatar, or with this footballer when `def` is given.
+function KeepieScene.new(def: Config.PlayerDef?): Scene
 	local folder = new("Folder", { Name = "KeepiePitch" })
 	buildField(folder)
 	folder.Parent = Workspace
-	local actor = AvatarActor.new(folder)
+	local actor = if def then AvatarActor.forPlayer(folder, def) else AvatarActor.new(folder)
 	local feet = ORIGIN + Vector3.new(0, 0.1, 0)
 	local facing = CFrame.lookAt(feet, feet + Vector3.new(0, 0, 1))
 	actor.place(facing)

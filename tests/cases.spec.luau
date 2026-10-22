@@ -75,12 +75,31 @@ end)
 T.test("the shares follow the table when every bucket has a floor", function()
 	-- Nothing owned: floor 1 is the open floor, floor 2 the next, floor 3 further on.
 	local _, standard = Cases.odds(profile(0), "standard")
-	T.near(standard.reached, 0.995 * 0.70, 1e-9)
-	T.near(standard.nextFloor, 0.995 * 0.25, 1e-9)
-	T.near(standard.further, 0.995 * 0.05, 1e-9)
+	-- Standard: half the pulls are boosts and 0.5% Legends, the rest is split by the table.
+	T.near(standard.reached, 0.495 * 0.70, 1e-9)
+	T.near(standard.nextFloor, 0.495 * 0.25, 1e-9)
+	T.near(standard.further, 0.495 * 0.05, 1e-9)
+	T.near(standard.boost, 0.5, 1e-12)
 	local _, elite = Cases.odds(profile(0), "elite")
 	T.near(elite.reached, 0.98 * 0.40, 1e-9)
 	T.near(elite.further, 0.98 * 0.20, 1e-9)
+	T.near(elite.boost, 0, 1e-12)
+end)
+
+T.test("Standard is half x2 cash boosts, Elite is players only", function()
+	local entries = Cases.odds(profile(1), "standard")
+	local boosts = 0
+	for _, entry in entries do
+		if Cases.isBoost(entry.id) then
+			boosts += entry.chance
+		end
+	end
+	T.near(boosts, 0.5, 1e-9)
+	T.near(chanceOf(entries, "caseBoost15"), 0.5 * 0.6, 1e-9)
+	T.near(chanceOf(entries, "caseBoost60"), 0.5 * 0.1, 1e-9)
+	for _, entry in Cases.odds(profile(2), "elite") do
+		T.eq(Cases.isBoost(entry.id), false, entry.id)
+	end
 end)
 
 T.test(
@@ -88,7 +107,7 @@ T.test(
 	function()
 		local entries, summary = Cases.odds(profile(2), "standard")
 		T.near(summary.further, 0, 1e-12)
-		T.near(summary.reached + summary.nextFloor, 0.995, 1e-9)
+		T.near(summary.reached + summary.nextFloor, 0.495, 1e-9)
 		T.near(total(entries), 1, 1e-9)
 	end
 )
@@ -135,14 +154,16 @@ T.test("seeded rolls land on the table's shares", function()
 		end,
 	}
 	local rolls = 40000
-	local counts = { reached = 0, legend = 0 }
+	local counts = { reached = 0, legend = 0, boost = 0 }
 	local floorOf = {}
 	for _, def in Config.Players do
 		floorOf[def.id] = def.floor
 	end
 	for _ = 1, rolls do
 		local id = Cases.pick(entries, random:NextNumber())
-		if floorOf[id] == Config.LegendFloor then
+		if Cases.isBoost(id) then
+			counts.boost += 1
+		elseif floorOf[id] == Config.LegendFloor then
 			counts.legend += 1
 		elseif floorOf[id] <= 2 then
 			counts.reached += 1
@@ -150,6 +171,7 @@ T.test("seeded rolls land on the table's shares", function()
 	end
 	T.near(counts.reached / rolls, summary.reached, 0.01)
 	T.near(counts.legend / rolls, 0.005, 0.003)
+	T.near(counts.boost / rolls, 0.5, 0.015)
 end)
 
 T.test("pick returns the first player at 0 and the last just below 1", function()
@@ -201,6 +223,25 @@ T.test("a case gives the rolled player at once and records the receipt", functio
 	T.eq(Roster.owns(data, result.playerId), true)
 	T.eq(data.receipts.p1.result.playerId, result.playerId)
 	T.eq(#data.pendingReveals, 1)
+end)
+
+T.test("a Standard boost adds its time to the bought cash timer, past the pads' cap", function()
+	local data = profile(1)
+	data.boosts.cashBoostLeft = Config.Boost.paidMaxSeconds
+	local cash = data.cash
+	local owned = Roster.ownedCount(data)
+	local result = Grants.apply(data, Config.Products.caseStandard, "b1", 1, 0.9999)
+	T.eq(result.kind, "case")
+	T.eq(result.boostId, "caseBoost60")
+	T.eq(result.playerId, nil)
+	T.eq(data.boosts.cashBoostLeft, Config.Boost.paidMaxSeconds + 3600)
+	T.eq(data.cash, cash)
+	T.eq(Roster.ownedCount(data), owned)
+	T.eq(#data.pendingReveals, 0)
+	T.eq(ProfileSchema.validate(data), true)
+	local _, again = Grants.apply(data, Config.Products.caseStandard, "b1", 2, 0.9999)
+	T.eq(again, false)
+	T.eq(data.boosts.cashBoostLeft, Config.Boost.paidMaxSeconds + 3600)
 end)
 
 T.test("a resent receipt grants nothing again and returns the same result", function()

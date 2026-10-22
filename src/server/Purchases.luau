@@ -47,6 +47,9 @@ local function announce(
 		runtime.sessionCases += 1
 	end
 	Analytics.event(session, "robux_" .. product.kind)
+	-- The notice goes first: for a case it opens the roulette, which holds the reveal sent next
+	-- until the strip has landed (remotes to one client arrive in order).
+	Remotes.fireClient("Notice", session.player, { kind = "purchaseDone", result = result })
 	local playerId = result.playerId
 	if type(playerId) == "string" then
 		Actions.onChange(session, "case", playerId)
@@ -55,7 +58,6 @@ local function announce(
 	else
 		Sync.all(session)
 	end
-	Remotes.fireClient("Notice", session.player, { kind = "purchaseDone", result = result })
 end
 
 -- Grants and saves one purchase. Returns true once the grant is stored, so the receipt may be

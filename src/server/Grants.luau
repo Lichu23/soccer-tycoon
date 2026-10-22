@@ -39,21 +39,29 @@ function Grants.apply(
 	if product.kind == "case" then
 		local entries = Cases.odds(data, product.caseId or "")
 		local id = Cases.pick(entries, roll)
-		local before = data.players[id]
-		local wasMaxed = before ~= nil and before.stars >= Config.Stars.maxStars
-		Reveals.grant(data, id, true)
-		result = {
-			kind = "case",
-			caseId = product.caseId,
-			playerId = id,
-			isNew = before == nil,
-			stars = data.players[id].stars,
-		}
-		if wasMaxed then
-			-- A duplicate past the star cap is never dead: it pays a few minutes of income.
-			local cash = Daily.caseCash(data, Config.CaseRules.duplicateCashMinutes)
-			Economy.grant(data, cash)
-			result.cash = cash
+		local boost = Config.CaseBoostsById[id]
+		if boost then
+			-- A x2 cash boost: its time adds to the bought cash timer.
+			Boosts.addCaseBoost(data, boost.seconds)
+			result =
+				{ kind = "case", caseId = product.caseId, boostId = id, seconds = boost.seconds }
+		else
+			local before = data.players[id]
+			local wasMaxed = before ~= nil and before.stars >= Config.Stars.maxStars
+			Reveals.grant(data, id, true)
+			result = {
+				kind = "case",
+				caseId = product.caseId,
+				playerId = id,
+				isNew = before == nil,
+				stars = data.players[id].stars,
+			}
+			if wasMaxed then
+				-- A duplicate past the star cap is never dead: it pays a few minutes of income.
+				local cash = Daily.caseCash(data, Config.CaseRules.duplicateCashMinutes)
+				Economy.grant(data, cash)
+				result.cash = cash
+			end
 		end
 	elseif product.kind == "boost" then
 		-- Granted in full even when the bank has filled up since the prompt.

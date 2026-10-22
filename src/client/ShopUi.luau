@@ -443,9 +443,22 @@ function ShopUi.init()
 		end
 		if product.kind == "case" then
 			local def = Config.Cases[product.caseId or ""]
-			local _, odds = Cases.odds(State.data, product.caseId or "")
+			local entries, odds = Cases.odds(State.data, product.caseId or "")
 			built.setTitle(def.name)
-			line("One random player. The odds below are the real ones.")
+			if odds.boost > 0 then
+				line("A random player or x2 cash boost. The odds below are the real ones.")
+				for _, boost in Config.CaseBoosts do
+					local chance = 0
+					for _, entry in entries do
+						if entry.id == boost.id then
+							chance = entry.chance
+						end
+					end
+					line(`{boost.label} for {boost.detail}: {percent(chance)}`)
+				end
+			else
+				line("One random player. The odds below are the real ones.")
+			end
 			line(`A player from the floors open: {percent(odds.reached)}`)
 			if odds.nextFloor > 0 then
 				line(`From the next floor: {percent(odds.nextFloor)}`)
@@ -544,8 +557,9 @@ function ShopUi.init()
 			waiting = false
 			local result = info.result
 			if type(result) == "table" and result.kind == "case" then
-				-- The reveal plays by itself; the shop gets out of its way.
+				-- The case's roulette plays, then the reward card or the reveal; the shop gets out of its way.
 				close()
+				CaseModal.openPaid(result)
 			else
 				-- The sign (RewardCard) says what was bought.
 				view = nil

@@ -223,9 +223,10 @@ local function cloneAvatar(parent: Instance): Actor?
 	}
 end
 
--- The stand-in when the avatar cannot be cloned: a mannequin in the player's best colours.
-local function mannequinActor(parent: Instance): Actor
-	local model = Mannequin.build(Config.Players[1], Color3.fromRGB(90, 170, 255), false)
+-- A mannequin as the actor: a footballer in his own kit, or the stand-in when the avatar cannot be
+-- cloned (in the player's best colours).
+local function mannequinActor(parent: Instance, def: Config.PlayerDef, color: Color3?): Actor
+	local model = Mannequin.build(def, color, false)
 	model.Parent = parent
 	local at = CFrame.identity
 	local speed = 0
@@ -262,7 +263,13 @@ end
 
 -- The player in a scene: the own avatar, or the mannequin when it cannot be cloned.
 function AvatarActor.new(parent: Instance): Actor
-	return cloneAvatar(parent) or mannequinActor(parent)
+	return cloneAvatar(parent)
+		or mannequinActor(parent, Config.Players[1], Color3.fromRGB(90, 170, 255))
+end
+
+-- A footballer of the roster in a scene, in his own kit (the rarity reveal).
+function AvatarActor.forPlayer(parent: Instance, def: Config.PlayerDef): Actor
+	return mannequinActor(parent, def, nil)
 end
 
 return AvatarActor
