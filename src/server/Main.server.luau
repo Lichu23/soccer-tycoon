@@ -23,6 +23,7 @@ local Purchases = require(script.Parent.Purchases)
 local RevealActions = require(script.Parent.RevealActions)
 local Session = require(script.Parent.Session)
 local Stadium = require(script.Parent.Stadium)
+local StadiumName = require(script.Parent.StadiumName)
 local TileBadges = require(ReplicatedStorage.Shared.TileBadges)
 local Training = require(script.Parent.Training)
 local TrainingActions = require(script.Parent.TrainingActions)
@@ -173,6 +174,37 @@ Remotes.on("BuyCosmetic", function(player: Player, ...: any)
 	else
 		-- The Locker room shows why (the same notice as a refused Robux purchase).
 		Remotes.fireClient("Notice", player, { kind = "purchaseRefused", reason = reason })
+	end
+end)
+
+Remotes.on("RenameStadium", function(player: Player, ...: any)
+	local raw = select(1, ...)
+	local session = Session.get(player)
+	if session == nil or type(raw) ~= "string" then
+		return
+	end
+	local text = StadiumName.clean(raw)
+	local ok, reason = StadiumName.check(session.data, text)
+	local filtered = if ok then StadiumName.filter(player, text) else nil
+	session = Session.get(player) -- the filter yields; the player may have left
+	if session == nil then
+		return
+	end
+	if ok and filtered == nil then
+		ok, reason = false, "unavailable"
+	end
+	if ok and filtered then
+		session.runtime.stadiumName = filtered
+		ok, reason = Actions.renameStadium(session, text, filtered)
+		if not ok then
+			session.runtime.stadiumName = nil
+			Stadium.ensure(session) -- filters the saved name again
+		end
+	end
+	if ok then
+		Analytics.event(session, "stadium_renamed")
+	else
+		Remotes.fireClient("Notice", player, { kind = "renameRefused", reason = reason })
 	end
 end)
 

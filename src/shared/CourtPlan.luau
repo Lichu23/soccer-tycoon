@@ -1,10 +1,9 @@
 --!strict
 -- The shape of the pitch for each stadium tier (docs/PLAN.md, Step 7), as plain data so it can be
 -- unit tested. The six tiers are a street cage court, a walled F5 hall with a gate, a small stadium
--- with stands and a crowd, a bigger one with roofs and floodlight towers, a full bowl arena with lamps
--- round its roofs, and the same bowl under a retractable roof with the towers outside. Each tier has
--- its own floodlights: LED street lights, twin flood panels, banks of round lamps, square towers, then
--- rings of lamps under the roofs. The server
+-- with stands and a crowd, a bigger one with roofs, a full bowl arena with lamps round its roofs, and
+-- the same bowl under a retractable roof. Every tier has floodlight masts; the model on them is the
+-- player's Locker room choice (LED light, twin panels, lamp bank, towers, halo). The server
 -- builds these boxes under the plot (server/Stadium) and the client lifts them out of the ground
 -- during the upgrade cinematic. Coordinates are in plot space: x across the plot, z from the street
 -- gate (0) towards the back, y up from the ground reference.
@@ -32,6 +31,7 @@ export type PartSpec = {
 	tilt: number?, -- degrees, after the yaw: below 0 the front looks down
 	image: string?, -- an image on `face` instead of text (the crest), set by the Locker room style
 	slide: { number }?, -- a retractable roof panel: how far it moves (x, y, z) from open to closed
+	lamp: boolean?, -- part of a floodlight on a mast (the Locker room swaps the model)
 }
 
 local CourtPlan = {}
@@ -63,6 +63,7 @@ local SEAT_A = { 32, 72, 150 }
 local SEAT_B = { 150, 32, 62 }
 local LIGHT = { 255, 244, 214 }
 local ROOF = { 226, 229, 236 }
+local HALO = { 150, 90, 220 } -- the frame of the halo floodlight
 local ROOF_PANEL = { 190, 220, 248 } -- the retractable roof, a light blue so it reads apart from the ring
 local BOARD = { 25, 25, 30 }
 local GOAL = { 245, 245, 245 }
@@ -319,16 +320,26 @@ local function lampBank(list: { PartSpec }, x: number, z: number, height: number
 	end
 end
 
--- Tiers 4 and 6: a tall tower with a square frame of four by four round lamps.
-local function lampTower(list: { PartSpec }, x: number, z: number, height: number)
+-- A tall tower with a square frame of `size` by `size` round lamps, in `frame` colour.
+local function gridTower(
+	list: { PartSpec },
+	x: number,
+	z: number,
+	height: number,
+	size: number,
+	frame: { number }
+)
 	local yaw = aimAtPitch(x, z)
 	local tilt = -15
-	pole(list, x, z, height, 1.2)
-	local cy = FLOOR + height + 3.6
-	turned(list, "LightArm", x, cy, z, 8.6, 8.6, 0.5, yaw, tilt, STEEL)
-	for row = 1, 4 do
-		for col = 1, 4 do
-			local px, py, pz = rotate(yaw, tilt, (col - 2.5) * 2.05, (row - 2.5) * 2.05, -0.35)
+	local half = size * 2.05 / 2 + 0.25
+	box(list, "LightPole", x - 0.6, x + 0.6, FLOOR, FLOOR + height, z - 0.6, z + 0.6, frame)
+	local cy = FLOOR + height + half
+	turned(list, "LightArm", x, cy, z, half * 2, half * 2, 0.5, yaw, tilt, frame)
+	local middle = (size + 1) / 2
+	for row = 1, size do
+		for col = 1, size do
+			local px, py, pz =
+				rotate(yaw, tilt, (col - middle) * 2.05, (row - middle) * 2.05, -0.35)
 			turned(
 				list,
 				"LightHead",
@@ -347,6 +358,62 @@ local function lampTower(list: { PartSpec }, x: number, z: number, height: numbe
 		end
 	end
 end
+
+local function lampTower(list: { PartSpec }, x: number, z: number, height: number)
+	gridTower(list, x, z, height, 4, STEEL)
+end
+
+local function arenaTower(list: { PartSpec }, x: number, z: number, height: number)
+	gridTower(list, x, z, height, 5, STEEL)
+end
+
+local function goldTower(list: { PartSpec }, x: number, z: number, height: number)
+	gridTower(list, x, z, height, 5, GOLD)
+end
+
+-- A pole with a round purple frame, eight lamps round its rim and one in the middle.
+local function halo(list: { PartSpec }, x: number, z: number, height: number)
+	local yaw = aimAtPitch(x, z)
+	local tilt = -15
+	pole(list, x, z, height, 0.9)
+	local cy = FLOOR + height + 3.2
+	turned(list, "LightArm", x, cy, z, 6.6, 6.6, 0.5, yaw, tilt, HALO, nil, "disc")
+	for i = 0, 8 do
+		local lx, ly = 0, 0
+		if i > 0 then
+			local angle = (i - 1) * math.pi / 4
+			lx, ly = math.cos(angle) * 2.3, math.sin(angle) * 2.3
+		end
+		local px, py, pz = rotate(yaw, tilt, lx, ly, -0.35)
+		turned(
+			list,
+			"LightHead",
+			x + px,
+			cy + py,
+			z + pz,
+			1.5,
+			1.5,
+			0.3,
+			yaw,
+			tilt,
+			LIGHT,
+			"Neon",
+			"disc"
+		)
+	end
+end
+
+-- The floodlight models the Locker room sells (Config, slot "lamps"), by id.
+local LAMPS: { [string]: (list: { PartSpec }, x: number, z: number, height: number) -> () } = {
+	led = streetLight,
+	twin = twinLight,
+	bank = lampBank,
+	tower = lampTower,
+	arena = arenaTower,
+	gold = goldTower,
+	halo = halo,
+}
+CourtPlan.LAMP_MODELS = { "led", "twin", "bank", "tower", "arena", "gold", "halo" }
 
 -- Four walls round a rectangle (`l`, `r` along x, `n`, `f` along z; n is the near side, the one with
 -- the gate). `gateHalf` > 0 opens the near wall that far each side of x 0.
@@ -593,7 +660,7 @@ local function canopy(
 	if lights then
 		-- A row of round lamps under the front edge, looking down at the pitch (one part each, there
 		-- are many).
-		local count = math.max(1, math.floor((a1 - a0) / 8))
+		local count = math.max(1, math.floor((a1 - a0) / 10))
 		for i = 1, count do
 			local along = a0 + (a1 - a0) * (i - 0.5) / count
 			local across = front + dir * 1.2
@@ -704,8 +771,52 @@ local function arch(list: { PartSpec }, z: number, text: string, height: number)
 	list[#list].face = "Front"
 end
 
--- All the parts of the pitch of `tier` (1 to 6).
-function CourtPlan.parts(tier: number): { PartSpec }
+-- Where the floodlight masts of `tier` stand: x, z and the height of the pole.
+local function lampSites(index: number): { { x: number, z: number, height: number } }
+	local def = Config.StadiumTiers[index]
+	local length, width = def.courtLength, def.courtWidth
+	local z0, z1 = CENTER_Z - width / 2, CENTER_Z + width / 2
+	local sites = {}
+	for _, side in { -1, 1 } do
+		if index == 1 then
+			table.insert(sites, { x = side * (length / 2 + 5), z = z0 - 5, height = 13 })
+		elseif index == 2 then
+			table.insert(sites, { x = side * (length / 2 + 3), z = z0 - 3.5, height = 15 })
+		elseif index == 3 then
+			for _, z in { z0 - 4, z1 + 4 } do
+				table.insert(sites, { x = side * (length / 2 + 10), z = z, height = 18 })
+			end
+		elseif index == 4 then
+			for _, z in { z0 - 6, z1 + 6 } do
+				table.insert(sites, { x = side * (length / 2 + 6), z = z, height = 22 })
+			end
+		else
+			-- Outside the bowl, at its corners.
+			local x = length / 2 + 6 + 8 * STAND_DEPTH + 5
+			for _, z in { z0 - 5 - 5 * STAND_DEPTH + 2, z1 + 6 + 6 * STAND_DEPTH - 3 } do
+				table.insert(sites, { x = side * x, z = z, height = 26 })
+			end
+		end
+	end
+	return sites
+end
+
+-- The floodlights of `tier` in `model` (an id of CourtPlan.LAMP_MODELS; an unknown one is the LED).
+function CourtPlan.lamps(tier: number, model: string?): { PartSpec }
+	local index = clamp(math.floor(tier), 1, #Config.StadiumTiers)
+	local build = LAMPS[model or "led"] or LAMPS.led
+	local list: { PartSpec } = {}
+	for _, site in lampSites(index) do
+		build(list, site.x, site.z, site.height)
+	end
+	for _, spec in list do
+		spec.lamp = true
+	end
+	return list
+end
+
+-- All the parts of the pitch of `tier` (1 to 6), with the floodlights in `model`.
+function CourtPlan.parts(tier: number, model: string?): { PartSpec }
 	local index = clamp(math.floor(tier), 1, #Config.StadiumTiers)
 	local def = Config.StadiumTiers[index]
 	local length, width = def.courtLength, def.courtWidth
@@ -875,9 +986,6 @@ function CourtPlan.parts(tier: number): { PartSpec }
 			"Front",
 			WHITE
 		)
-		for _, side in { -1, 1 } do
-			streetLight(list, side * (length / 2 + o + 2), n - 2, 13)
-		end
 		box(list, "BenchSeat", 12, 24, FLOOR, FLOOR + 1.1, n - 3, n - 1, WOOD, "Wood")
 		box(list, "BenchBack", 12, 24, FLOOR + 1.1, FLOOR + 2.6, n - 3, n - 2.6, WOOD, "Wood")
 		for side, colour in { [-1] = MURAL_A, [1] = MURAL_B } do
@@ -948,9 +1056,6 @@ function CourtPlan.parts(tier: number): { PartSpec }
 			"Front",
 			GOLD
 		)
-		for _, side in { -1, 1 } do
-			twinLight(list, side * (length / 2 + o - 1), n + 0.5, 15)
-		end
 	else
 		-- Tier 3 and up: advertising boards round the pitch, benches, an entrance arch and stands.
 		local o = 5
@@ -1023,11 +1128,6 @@ function CourtPlan.parts(tier: number): { PartSpec }
 				STEEL,
 				"Metal"
 			)
-			for _, side in { -1, 1 } do
-				for _, lz in { z0 - 4, z1 + 4 } do
-					lampBank(list, side * (length / 2 + 10), lz, 18)
-				end
-			end
 		elseif index == 4 then
 			-- A bigger stadium: stands on every side, a roof over the main one, floodlights.
 			local reach = length / 2 + 8
@@ -1050,11 +1150,6 @@ function CourtPlan.parts(tier: number): { PartSpec }
 				"Front",
 				GOLD
 			)
-			for _, side in { -1, 1 } do
-				for _, mz in { z0 - 6, z1 + 6 } do
-					lampTower(list, side * (length / 2 + 6), mz, 22)
-				end
-			end
 		else
 			-- Tier 5, the arena: a full bowl of stands with roofs all round, lamps under the roofs, big
 			-- screens. Tier 6 is the same bowl under one ring of roof, with a retractable roof over the
@@ -1065,10 +1160,9 @@ function CourtPlan.parts(tier: number): { PartSpec }
 			local endLo, endHi = nearStart - 5 * STAND_DEPTH, farStart + 6 * STAND_DEPTH
 			local farY, nearY, endY = 15, 12, 17
 			-- Under one ring the long roofs stop where the end roofs begin, so no two roofs overlap.
-			-- The roof ring makes the arena heavier, so its end stands have fans on fewer rows.
-			local inset, fans = 0, 2
+			-- The end stands have fans on every third row (the arenas are the heaviest pitches).
+			local inset, fans = 0, 3
 			if dome then
-				fans = 3
 				farY, nearY, endY, inset = 22, 22, 22, 3
 			end
 			stand(list, "z", 1, farStart, 6, -sideX, sideX, 2, 0)
@@ -1156,16 +1250,9 @@ function CourtPlan.parts(tier: number): { PartSpec }
 					WHITE
 				)
 			end
-			-- Fireworks launch from the near corners: off the end roofs, or off the towers outside.
-			local towerX = sideX + 8 * STAND_DEPTH + 5
+			-- Fireworks launch from the two near floodlight masts outside the bowl.
 			for _, side in { -1, 1 } do
-				local fx, fy, fz = side * (sideX + 12), FLOOR + endY + 1.5, endLo + 4
-				if dome then
-					for _, tz in { endLo + 2, endHi - 3 } do
-						lampTower(list, side * towerX, tz, 26)
-					end
-					fx, fy, fz = side * towerX, FLOOR + 36, endLo + 2
-				end
+				local fx, fy, fz = side * (sideX + 8 * STAND_DEPTH + 5), FLOOR + 38, endLo + 2
 				box(list, "Firework", fx - 0.5, fx + 0.5, fy, fy + 1, fz - 0.5, fz + 0.5, LIGHT)
 				list[#list].emitter = true
 				list[#list].transparency = 1
@@ -1173,6 +1260,9 @@ function CourtPlan.parts(tier: number): { PartSpec }
 		end
 	end
 
+	for _, spec in CourtPlan.lamps(index, model) do
+		table.insert(list, spec)
+	end
 	return list
 end
 

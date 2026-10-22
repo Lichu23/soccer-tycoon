@@ -78,6 +78,8 @@ export type CosmeticDef = {
 	accent: { number }?, -- the text on the part (scoreboard, banners), nil = the part's own
 	brands: { string }?, -- the made-up sponsors the banner boards show in turn
 	image: string?, -- the crest's picture (an uploaded decal, art in tools/art)
+	model: string?, -- a floodlight model (CourtPlan.LAMPS)
+	design: string?, -- a scoreboard design (shared/StadiumLook)
 	cash: number?, -- a cash price; with neither price the style is free
 	robux: number?,
 }
@@ -568,11 +570,20 @@ Config.CosmeticSlots = {
 	{ id = "kit", name = "Kit", tier = 1 },
 	{ id = "crest", name = "Crest", tier = 2 },
 	{ id = "banners", name = "Banners", tier = 3 },
-	{ id = "floodlights", name = "Floodlights", tier = 4 },
+	{ id = "lamps", name = "Floodlights", tier = 3 },
+	{ id = "floodlights", name = "Light colour", tier = 4 },
 	{ id = "scoreboard", name = "Scoreboard", tier = 5 },
+	{ id = "stadium", name = "Stadium", tier = 6 },
 } :: { CosmeticSlotDef }
 
-type Look = { pattern: { { number } }?, accent: { number }?, brands: { string }?, image: string? }
+type Look = {
+	pattern: { { number } }?,
+	accent: { number }?,
+	brands: { string }?,
+	image: string?,
+	model: string?,
+	design: string?,
+}
 type Price = { cash: number?, robux: number? }
 
 local function style(
@@ -592,6 +603,8 @@ local function style(
 		accent = look and look.accent,
 		brands = look and look.brands,
 		image = look and look.image,
+		model = look and look.model,
+		design = look and look.design,
 		cash = price and price.cash,
 		robux = price and price.robux,
 	}
@@ -667,38 +680,93 @@ Config.Cosmetics = {
 		brands = { "NEON NOVA", "ZAPP" },
 		accent = NAVY,
 	}),
-	style("floodlights_white", "floodlights", "White", { 255, 244, 214 }),
-	style("floodlights_warm", "floodlights", "Warm", { 255, 214, 150 }),
-	style("floodlights_cool", "floodlights", "Cool", { 170, 210, 255 }),
-	style("floodlights_gold", "floodlights", "Gold", { 255, 200, 80 }, { cash = 3_000_000 }),
-	style("floodlights_ice", "floodlights", "Ice", { 200, 240, 255 }, { cash = 8_000_000 }),
-	style("floodlights_aurora", "floodlights", "Aurora", { 120, 255, 190 }, { robux = 149 }),
-	style("floodlights_rose", "floodlights", "Rose", { 255, 140, 190 }, { robux = 149 }),
-	style("scoreboard_classic", "scoreboard", "Classic", { 40, 44, 60 }, nil, { accent = GOLD }),
-	style("scoreboard_light", "scoreboard", "Light", { 225, 228, 238 }, nil, { accent = NAVY }),
-	style("scoreboard_retro", "scoreboard", "Retro", { 70, 160, 80 }, nil, { accent = WHITE }),
+	-- The floodlight models, on the masts of every tier (shared/CourtPlan).
 	style(
-		"scoreboard_navy",
-		"scoreboard",
-		"Navy",
-		NAVY,
-		{ cash = 60_000_000 },
-		{ accent = { 120, 235, 140 } }
+		"lamps_led",
+		"lamps",
+		"LED light",
+		{ 32, 38, 56 },
+		nil,
+		{ model = "led", accent = { 255, 244, 214 } }
 	),
 	style(
-		"scoreboard_ruby",
-		"scoreboard",
-		"Ruby",
-		{ 150, 32, 62 },
-		{ cash = 150_000_000 },
-		{ accent = WHITE }
+		"lamps_twin",
+		"lamps",
+		"Twin panels",
+		{ 32, 38, 56 },
+		nil,
+		{ model = "twin", accent = { 255, 244, 214 } }
 	),
+	style(
+		"lamps_bank",
+		"lamps",
+		"Lamp bank",
+		{ 82, 88, 100 },
+		nil,
+		{ model = "bank", accent = { 255, 244, 214 } }
+	),
+	style("lamps_tower", "lamps", "Tower", { 82, 88, 100 }, { cash = 1_000_000 }, {
+		model = "tower",
+		accent = { 255, 244, 214 },
+	}),
+	style("lamps_arena", "lamps", "Arena tower", { 82, 88, 100 }, { cash = 2_500_000 }, {
+		model = "arena",
+		accent = { 255, 244, 214 },
+	}),
+	style("lamps_halo", "lamps", "Halo", { 150, 90, 220 }, { robux = 149 }, {
+		model = "halo",
+		accent = { 255, 244, 214 },
+	}),
+	style("lamps_gold", "lamps", "Gold tower", { 235, 190, 50 }, { robux = 149 }, {
+		model = "gold",
+		accent = { 255, 244, 214 },
+	}),
+	-- The colour the floodlights glow (the lamp faces and the lamps under the roofs).
+	style("floodlights_white", "floodlights", "White", { 255, 250, 235 }),
+	style("floodlights_warm", "floodlights", "Sunny", { 255, 200, 90 }),
+	style("floodlights_cool", "floodlights", "Sky blue", { 110, 190, 255 }),
+	style("floodlights_gold", "floodlights", "Red", { 255, 80, 80 }, { cash = 3_000_000 }),
+	style("floodlights_ice", "floodlights", "Green", { 90, 240, 120 }, { cash = 8_000_000 }),
+	style("floodlights_aurora", "floodlights", "Aurora", { 80, 255, 210 }, { robux = 149 }),
+	style("floodlights_rose", "floodlights", "Pink", { 255, 110, 200 }, { robux = 149 }),
+	-- Each scoreboard is its own design (shared/StadiumLook) in its own colours.
+	style("scoreboard_classic", "scoreboard", "Classic", { 40, 44, 60 }, nil, {
+		design = "classic",
+		accent = GOLD,
+	}),
+	style("scoreboard_light", "scoreboard", "Framed", { 225, 228, 238 }, nil, {
+		design = "framed",
+		accent = { 60, 120, 230 },
+	}),
+	style("scoreboard_retro", "scoreboard", "Retro", { 50, 120, 70 }, nil, {
+		design = "retro",
+		accent = WHITE,
+	}),
+	style("scoreboard_navy", "scoreboard", "Neon", NAVY, { cash = 60_000_000 }, {
+		design = "neon",
+		accent = { 120, 235, 140 },
+	}),
+	style("scoreboard_ruby", "scoreboard", "Derby", { 200, 50, 70 }, { cash = 150_000_000 }, {
+		design = "split",
+		pattern = { { 200, 50, 70 }, { 40, 110, 210 } },
+		accent = WHITE,
+	}),
 	style("scoreboard_gold", "scoreboard", "Gold", { 235, 190, 50 }, { robux = 199 }, {
+		design = "framed",
 		accent = NAVY,
 	}),
-	style("scoreboard_crystal", "scoreboard", "Crystal", { 150, 220, 250 }, { robux = 199 }, {
-		accent = NAVY,
+	style("scoreboard_crystal", "scoreboard", "Crystal", { 20, 30, 60 }, { robux = 199 }, {
+		design = "neon",
+		accent = { 120, 220, 255 },
 	}),
+	-- The outside of the roof arena: its roofs, pillars and stands.
+	style("stadium_white", "stadium", "White", { 226, 229, 236 }),
+	style("stadium_silver", "stadium", "Silver", { 170, 176, 190 }),
+	style("stadium_sky", "stadium", "Sky", { 120, 180, 240 }),
+	style("stadium_red", "stadium", "Red", { 210, 60, 70 }, { cash = 300_000_000 }),
+	style("stadium_green", "stadium", "Green", { 60, 170, 100 }, { cash = 800_000_000 }),
+	style("stadium_gold", "stadium", "Gold", { 235, 190, 50 }, { robux = 199 }),
+	style("stadium_midnight", "stadium", "Midnight", { 40, 44, 70 }, { robux = 199 }),
 } :: { CosmeticDef }
 
 Config.CosmeticsById = {} :: { [string]: CosmeticDef }
@@ -715,6 +783,14 @@ for _, def in Config.Cosmetics do
 		}
 	end
 end
+
+-- The roof arena's name (tier 6), typed by the player: filtered by Roblox on the server before
+-- anyone sees it, and paid for each time it changes.
+Config.StadiumName = {
+	price = 100_000_000,
+	minLength = 3,
+	maxLength = 20,
+}
 
 Config.Season = {
 	bonusPerSeason = 0.5, -- permanent multiplier: season 2 = x1.5, season 3 = x2.0

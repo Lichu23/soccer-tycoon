@@ -91,6 +91,14 @@ RemoteSpec.remotes = {
 		ratePerSecond = 1,
 		burst = 2,
 	},
+	-- The roof arena's new name as typed. The server tidies it, checks the tier and the price, and
+	-- filters it before anyone sees it.
+	RenameStadium = {
+		direction = "toServer",
+		args = { { kind = "string", maxLength = 60 } },
+		ratePerSecond = 0.2,
+		burst = 1,
+	},
 	SetNotifications = {
 		direction = "toServer",
 		args = { { kind = "boolean" } },

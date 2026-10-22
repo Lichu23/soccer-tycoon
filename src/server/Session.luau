@@ -25,6 +25,8 @@ export type Runtime = {
 	firstRevealWait: number, -- seconds the first match has waited for the first reveal
 	firstMatchShown: boolean, -- the first-match camera was sent
 	upgrading: boolean, -- a stadium upgrade is waiting to build its pitch
+	stadiumName: string?, -- the saved name as the filter returned it this visit (nil until filtered)
+	nameFiltering: boolean, -- the saved name is being filtered
 	sessionCases: number, -- Robux cases bought in this visit, for the confirm screen total
 	sessionRobux: number, -- Robux spent in this visit
 }
@@ -133,6 +135,8 @@ local function startOne(player: Player): Session?
 			firstRevealWait = 0,
 			firstMatchShown = false,
 			upgrading = false,
+			stadiumName = nil,
+			nameFiltering = false,
 			sessionCases = 0,
 			sessionRobux = 0,
 		},

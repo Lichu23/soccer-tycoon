@@ -74,29 +74,29 @@ T.test("each tier is a bigger, more real stadium", function()
 	T.eq(count(CourtPlan.parts(2), "BenchSeat"), 1)
 	T.eq(count(CourtPlan.parts(2), "BoxFront"), 2)
 	T.eq(count(CourtPlan.parts(2), "StandRow"), 0)
-	-- Tier 3: a stadium with stands, a crowd, a scoreboard and four banks of round lamps.
+	-- Tier 3: a stadium with stands, a crowd, a scoreboard and four floodlight masts.
 	T.eq(count(CourtPlan.parts(3), "WallNearA"), 0)
 	T.eq(count(CourtPlan.parts(3), "StandRow"), 5 + 4 + 4)
 	T.truthy(count(CourtPlan.parts(3), "Fan") > 20)
 	T.truthy(count(CourtPlan.parts(3), "AdBoard") > 20)
 	T.eq(count(CourtPlan.parts(3), "Scoreboard"), 1)
 	T.eq(count(CourtPlan.parts(3), "LightPole"), 4)
-	T.eq(count(CourtPlan.parts(3), "LightHead"), 4 * 12)
+	T.eq(count(CourtPlan.parts(3, "bank"), "LightHead"), 4 * 12)
 	T.eq(count(CourtPlan.parts(3), "Roof"), 0)
-	-- Tier 4: stands on every side, a roof over the main one, four towers of 16 lamps.
+	-- Tier 4: stands on every side, a roof over the main one, four floodlight masts.
 	T.eq(count(CourtPlan.parts(4), "StandRow"), 6 + 4 + 4 + 4 + 4)
 	T.eq(count(CourtPlan.parts(4), "LightPole"), 4)
-	T.eq(count(CourtPlan.parts(4), "LightHead"), 4 * 16)
+	T.eq(count(CourtPlan.parts(4, "tower"), "LightHead"), 4 * 16)
 	T.eq(count(CourtPlan.parts(4), "Roof"), 1)
-	-- Tier 5: the arena, roofs all round with lamps under them (no towers), screens and fireworks.
+	-- Tier 5: the arena, roofs all round with lamps under them, masts outside, screens and fireworks.
 	T.eq(count(CourtPlan.parts(5), "Roof"), 5)
 	T.eq(count(CourtPlan.parts(5), "Scoreboard"), 1)
 	T.eq(count(CourtPlan.parts(5), "Screen"), 2)
-	T.eq(count(CourtPlan.parts(5), "LightPole"), 0)
+	T.eq(count(CourtPlan.parts(5), "LightPole"), 4)
 	T.truthy(count(CourtPlan.parts(5), "LightHead") > 40)
 	T.eq(count(CourtPlan.parts(5), "Firework"), 2)
 	T.truthy(count(CourtPlan.parts(5), "Fan") > 60)
-	-- Tier 6: the roof arena, one ring of roof, eight retractable panels, the towers back outside.
+	-- Tier 6: the roof arena, one ring of roof, eight retractable panels, masts outside.
 	T.eq(count(CourtPlan.parts(6), "RoofPanel"), 8)
 	T.eq(count(CourtPlan.parts(6), "LightPole"), 4)
 	T.eq(count(CourtPlan.parts(6), "Firework"), 2)
@@ -206,6 +206,45 @@ T.test("every slot the Locker room paints has parts from the tier that opens it"
 				end
 				T.truthy(found > 0, slot.id .. " has nothing to paint at tier " .. tier)
 			end
+		end
+	end
+end)
+
+T.test("every floodlight model fits the plot and the part budget at every tier", function()
+	for tier = 1, #Config.StadiumTiers do
+		for _, model in CourtPlan.LAMP_MODELS do
+			local parts = CourtPlan.parts(tier, model)
+			T.truthy(#parts <= 700, model .. " at tier " .. tier .. ": " .. #parts .. " parts")
+			local lamps = 0
+			for _, part in parts do
+				if part.lamp then
+					lamps += 1
+					T.truthy(part.x0 >= -Config.Plot.width / 2 and part.x1 <= Config.Plot.width / 2)
+					T.truthy(part.z0 >= CourtPlan.FRONT_Z and part.z1 <= Config.Plot.depth - 2)
+					T.truthy(part.y1 <= 40, model .. " too tall at tier " .. tier)
+				end
+			end
+			T.truthy(lamps > 0, model .. " has no parts at tier " .. tier)
+		end
+	end
+end)
+
+T.test("every floodlight style is a model the plan can build", function()
+	for _, def in Config.Cosmetics do
+		if def.slot == "lamps" then
+			T.truthy(table.find(CourtPlan.LAMP_MODELS, def.model) ~= nil, def.id)
+		end
+	end
+end)
+
+T.test("each scoreboard style is its own design or colours", function()
+	local seen = {}
+	for _, def in Config.Cosmetics do
+		if def.slot == "scoreboard" then
+			T.truthy(def.design ~= nil, def.id)
+			local key = def.design .. table.concat(def.color, ",")
+			T.eq(seen[key], nil, def.id .. " looks like another style")
+			seen[key] = true
 		end
 	end
 end)

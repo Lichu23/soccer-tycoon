@@ -1,11 +1,14 @@
 --!strict
--- The Locker room (docs/PLAN.md, Step 3): each stadium tier opens one slot of team styles (kit, crest,
--- banners, floodlights, scoreboard), with free styles, a few bought with cash and a few with Robux.
+-- The Locker room (docs/PLAN.md, Step 3): the stadium tiers open slots of team styles (kit, crest,
+-- banners, floodlight models and colour, scoreboard, the roof arena's colour and name), with free
+-- styles, a few bought with cash and a few with Robux. A slot that is not open yet shows its tier on
+-- every card, never "In use".
 -- One icon in the dock opens it. The panel docks at the left and the camera shows the player's own
 -- stadium on the right (client/LockerView); tapping a style paints it there at once, for free, and the
 -- one button under the cards uses or buys it. Defaults look good, so nobody has to use it; a new slot
 -- only shows a small note beside the icon that fades by itself. The server checks every choice and
--- every purchase; this only asks (SetCosmetic, BuyCosmetic, RequestPurchase) and shows the answer.
+-- every purchase; this only asks (SetCosmetic, BuyCosmetic, RequestPurchase, RenameStadium) and
+-- shows the answer. The name typed for the stadium is shown only once the server has filtered it.
 
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
@@ -42,6 +45,9 @@ local REFUSALS: { [string]: string } = {
 	cannotAfford = "Not enough cash yet.",
 	unavailable = "Not available right now.",
 	unknown = "Not available right now.",
+	length = `Use {Config.StadiumName.minLength} to {Config.StadiumName.maxLength} letters.`,
+	same = "That is already the name.",
+	filtered = "That name is not allowed. Try another one.",
 }
 
 local LockerUi = {}
@@ -265,7 +271,7 @@ function LockerUi.init()
 		}, row)
 	end
 
-	-- The five slots as icon tabs; a closed one is greyed with its tier under it.
+	-- The slots as icon tabs; a closed one is greyed with its tier under it.
 	local function tabs()
 		local row = new("Frame", {
 			Name = "Tabs",
@@ -286,12 +292,18 @@ function LockerUi.init()
 			local tab = new("ImageButton", {
 				Name = "Tab_" .. slot.id,
 				LayoutOrder = index,
-				Size = UDim2.fromOffset(TAB_SIZE, TAB_SIZE),
+				-- All the tabs share the row; on a narrow panel they shrink and stay square.
+				Size = UDim2.new(1 / #Config.CosmeticSlots, -6, 0, TAB_SIZE),
 				BackgroundColor3 = if isOpen then Style.ui.panel else DISABLED,
 				Image = Icons.id("slot_" .. slot.id),
 				ImageTransparency = if isOpen then 0 else 0.5,
 				ZIndex = 8,
 			}, row)
+			new("UIAspectRatioConstraint", {
+				AspectRatio = 1,
+				DominantAxis = Enum.DominantAxis.Width,
+			}, tab)
+			new("UISizeConstraint", { MaxSize = Vector2.new(TAB_SIZE, TAB_SIZE) }, tab)
 			new("UICorner", { CornerRadius = UDim.new(0, 10) }, tab)
 			new("UIStroke", {
 				Color = if current then Style.ui.good else Style.ui.dark,
@@ -322,9 +334,16 @@ function LockerUi.init()
 		end
 	end
 
-	-- What a card says under the style's name.
-	local function status(def: Config.CosmeticDef, using: boolean): (string, Color3, Color3?)
-		if using then
+	-- What a card says under the style's name. In a slot that is not open yet nothing is in use.
+	local function status(
+		def: Config.CosmeticDef,
+		using: boolean,
+		isOpen: boolean,
+		tier: number
+	): (string, Color3, Color3?)
+		if not isOpen then
+			return `Tier {tier}`, Panel.MUTED, nil
+		elseif using then
 			return "In use", Panel.GOOD, nil
 		elseif Cosmetics.owns(State.data, def.id) then
 			return if Cosmetics.isFree(def) then "Free" else "Owned", Panel.MUTED, nil
@@ -349,7 +368,8 @@ function LockerUi.init()
 			CellPadding = UDim2.fromOffset(8, 8),
 			SortOrder = Enum.SortOrder.LayoutOrder,
 		}, grid)
-		local chosen = Cosmetics.chosen(State.data, slotId)
+		local chosen = if isOpen then Cosmetics.chosen(State.data, slotId) else nil
+		local slot = slotDef(slotId)
 		for index, def in Cosmetics.styles(slotId) do
 			local using = chosen ~= nil and chosen.id == def.id
 			local looking = def.id == selected
@@ -384,7 +404,8 @@ function LockerUi.init()
 				TextColor3 = Panel.TEXT,
 				ZIndex = 8,
 			}, item)
-			local text, textColor, chipColor = status(def, using)
+			local text, textColor, chipColor =
+				status(def, using, isOpen, if slot then slot.tier else 0)
 			local price = new("TextLabel", {
 				Name = "Price",
 				Position = UDim2.fromOffset(58, 34),
@@ -413,6 +434,118 @@ function LockerUi.init()
 				end)
 			end
 		end
+	end
+
+	-- The roof arena's name: a box to type it and a button that pays for it. While the box has the
+	-- focus the screen is not redrawn, so the typing is never lost.
+	local draft = ""
+	local typing = false
+	local renaming = false
+	local function nameEditor()
+		local current = player:GetAttribute("stadiumName")
+		local shown = if type(current) == "string" and current ~= "" then current else "No name yet"
+		line(`Stadium name: {shown}`, Panel.TEXT, 15)
+		local row = new("Frame", {
+			Name = "NameRow",
+			LayoutOrder = nextOrder(),
+			Size = UDim2.new(1, 0, 0, 40),
+			BackgroundTransparency = 1,
+			ZIndex = 7,
+		}, card)
+		local box = new("TextBox", {
+			Name = "NameBox",
+			Size = UDim2.new(0.62, -6, 1, 0),
+			BackgroundColor3 = CARD_COLOR,
+			Text = draft,
+			PlaceholderText = "Type a name",
+			PlaceholderColor3 = Panel.MUTED,
+			ClearTextOnFocus = false,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			Font = Style.font,
+			TextSize = 16,
+			TextColor3 = Panel.TEXT,
+			ZIndex = 8,
+		}, row)
+		new("UICorner", { CornerRadius = UDim.new(0, 8) }, box)
+		new("UIStroke", {
+			Color = Style.ui.dark,
+			Thickness = 2,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		}, box)
+		new("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) }, box)
+		local price = Config.StadiumName.price
+		local button = new("TextButton", {
+			Name = "Rename",
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.fromScale(1, 0),
+			Size = UDim2.fromScale(0.38, 1),
+			TextScaled = true,
+			Font = Style.font,
+			TextColor3 = Style.ui.dark,
+			ZIndex = 8,
+		}, row)
+		new("UICorner", { CornerRadius = UDim.new(0, 8) }, button)
+		new("UIStroke", {
+			Color = Style.ui.dark,
+			Thickness = 2,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		}, button)
+		new("UIPadding", {
+			PaddingLeft = UDim.new(0, 6),
+			PaddingRight = UDim.new(0, 6),
+			PaddingTop = UDim.new(0, 6),
+			PaddingBottom = UDim.new(0, 6),
+		}, button)
+		-- The button follows the typing (the screen is not redrawn while the box has the focus).
+		local function ready(): boolean
+			return not renaming
+				and State.data.cash >= price
+				and #draft >= Config.StadiumName.minLength
+		end
+		local function paintButton()
+			local short = price - State.data.cash
+			local enabled = ready()
+			button.BackgroundColor3 = if enabled then Style.ui.good else DISABLED
+			button.AutoButtonColor = enabled
+			button.Text = if renaming
+				then "Checking..."
+				elseif short > 0 then `Need {NumberFormat.money(short)}`
+				else `Rename {NumberFormat.money(price)}`
+		end
+		paintButton()
+		box:GetPropertyChangedSignal("Text"):Connect(function()
+			local text = box.Text
+			if #text > Config.StadiumName.maxLength then
+				text = string.sub(text, 1, Config.StadiumName.maxLength)
+				box.Text = text
+			end
+			draft = text
+			paintButton()
+		end)
+		box.Focused:Connect(function()
+			typing = true
+		end)
+		box.FocusLost:Connect(function()
+			typing = false
+		end)
+		button.Activated:Connect(function()
+			if not ready() then
+				return
+			end
+			renaming, message = true, nil
+			Net.fire("RenameStadium", draft)
+			render()
+			task.delay(WAIT_SECONDS * 2, function()
+				if renaming then
+					renaming = false
+					if open then
+						render()
+					end
+				end
+			end)
+		end)
+		line("Everyone sees the name over your gate. Roblox checks it first.", Panel.MUTED, 13)
 	end
 
 	-- The one button under the cards, for the style being looked at (or the one in use).
@@ -473,6 +606,9 @@ function LockerUi.init()
 			line(`Unlocks at stadium tier {slot.tier}.`, Panel.MUTED)
 		else
 			line("Tap a style to see it on your stadium.", Panel.MUTED, 14)
+		end
+		if slotView == "stadium" and isOpen then
+			nameEditor()
 		end
 		cards(slotView, isOpen)
 		line(
@@ -581,7 +717,7 @@ function LockerUi.init()
 			end)
 		end
 		lastTier = tier
-		if open then
+		if open and not typing then
 			-- A style just bought or put on is the one in use now.
 			local chosen = Cosmetics.chosen(State.data, slotView)
 			if waitingFor and Cosmetics.owns(State.data, waitingFor) then
@@ -594,12 +730,31 @@ function LockerUi.init()
 		end
 	end
 	State.onChange(refresh)
+	-- The new name arrives filtered from the server: show it on the Locker room's stadium too.
+	player:GetAttributeChangedSignal("stadiumName"):Connect(function()
+		local name = player:GetAttribute("stadiumName")
+		if renaming then
+			renaming, draft = false, ""
+		end
+		if open then
+			LockerView.showName(if type(name) == "string" then name else "")
+			if not typing then
+				render()
+			end
+		end
+	end)
 
 	Net.on("Notice", function(info: any)
 		if type(info) ~= "table" then
 			return
 		end
-		if info.kind == "purchaseRefused" then
+		if info.kind == "renameRefused" then
+			renaming = false
+			message = REFUSALS[info.reason] or REFUSALS.unavailable
+			if open and not typing then
+				render()
+			end
+		elseif info.kind == "purchaseRefused" then
 			if waitingFor then
 				waitingFor = nil
 				message = REFUSALS[info.reason] or REFUSALS.unavailable

@@ -28,6 +28,7 @@ export type Profile = {
 	staminaLeft: number, -- seconds left in the current training session
 	lastSeen: number, -- os.time(), for offline earnings
 	stadiumTier: number,
+	stadiumName: string, -- the roof arena's name as typed ("" = none); filtered again before it is shown
 	storeLevels: { matchSpeed: number, hatTrick: number, offline: number },
 	fieldStarted: boolean,
 	players: { [string]: { level: number, stars: number } }, -- owned only, Legends included
@@ -87,6 +88,7 @@ function ProfileSchema.newProfile(): Profile
 		staminaLeft = Config.Training.staminaSeconds,
 		lastSeen = 0,
 		stadiumTier = 1,
+		stadiumName = "",
 		storeLevels = { matchSpeed = 0, hatTrick = 0, offline = 0 },
 		fieldStarted = false,
 		players = {},
@@ -278,6 +280,12 @@ function ProfileSchema.validate(profile: { [string]: any }): (boolean, string?)
 	end
 	if not isCount(profile.stadiumTier, #Config.StadiumTiers) or profile.stadiumTier < 1 then
 		return false, "profile.stadiumTier is out of range"
+	end
+	if
+		type(profile.stadiumName) ~= "string"
+		or #profile.stadiumName > Config.StadiumName.maxLength * 4
+	then
+		return false, "profile.stadiumName is not a short string"
 	end
 	for id, def in Config.Store do
 		local level = profile.storeLevels[id]

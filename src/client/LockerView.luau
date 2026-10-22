@@ -15,6 +15,7 @@ local Workspace = game:GetService("Workspace")
 local CinemaScreen = require(script.Parent.CinemaScreen)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
+local CourtParts = require(ReplicatedStorage.Shared.CourtParts)
 local CourtPlan = require(ReplicatedStorage.Shared.CourtPlan)
 local Mannequin = require(ReplicatedStorage.Shared.Mannequin)
 local StadiumLook = require(ReplicatedStorage.Shared.StadiumLook)
@@ -107,8 +108,9 @@ local function copyGate(): BasePart?
 	return if copy then gateOf(copy) else nil
 end
 
--- The first part named `name` on the pitch (by its place in the plan), or nil.
-local function firstPart(gate: BasePart, name: string): BasePart?
+-- The first part named `name` on the pitch (by its place in the plan), or nil. With `lampOnly`, only
+-- a part of a floodlight mast counts (not the lamps under the roofs).
+local function firstPart(gate: BasePart, name: string, lampOnly: boolean?): BasePart?
 	local plot = gate.Parent
 	local court = plot and plot:FindFirstChild("Court")
 	local best: BasePart? = nil
@@ -116,7 +118,14 @@ local function firstPart(gate: BasePart, name: string): BasePart?
 	if court then
 		for _, child in court:GetChildren() do
 			local index = tonumber(child:GetAttribute("PlanIndex"))
-			if child:IsA("BasePart") and child.Name == name and index and index < bestIndex then
+			local fits = not lampOnly or child:GetAttribute("Lamp") == true
+			if
+				child:IsA("BasePart")
+				and child.Name == name
+				and fits
+				and index
+				and index < bestIndex
+			then
 				best, bestIndex = child, index
 			end
 		end
@@ -142,15 +151,19 @@ local function shotFor(gate: BasePart, slotId: string): Shot
 					- Vector3.new(0, if slotId == "crest" then part.Size.Y * 0.6 else 0, 0),
 			}
 		end
-	elseif slotId == "floodlights" then
-		-- One mast, seen from high over the pitch (clear of the stands and roofs at every tier).
-		local head = firstPart(gate, "LightHead")
+	elseif slotId == "floodlights" or slotId == "lamps" then
+		-- One mast, close up from the pitch side at the height of its lamps (above the roofs at every
+		-- tier), with the sky behind it.
+		local head = firstPart(gate, "LightHead", true)
 		if head then
 			local middle = (gate.CFrame * CFrame.new(0, CourtPlan.FLOOR, CourtPlan.CENTER_Z)).Position
-			local out = Vector3.new(head.Position.X - middle.X, 0, head.Position.Z - middle.Z)
+			local inward = Vector3.new(middle.X - head.Position.X, 0, middle.Z - head.Position.Z)
+			if inward.Magnitude > 0 then
+				inward = inward.Unit
+			end
 			return {
-				eye = middle + out * 0.3 + Vector3.new(0, head.Position.Y - middle.Y + 14, 0),
-				at = head.Position - Vector3.new(0, 6, 0),
+				eye = head.Position + inward * 20 + Vector3.new(0, 3, 0),
+				at = head.Position - Vector3.new(0, 3, 0),
 			}
 		end
 	end
@@ -162,6 +175,10 @@ local function shotFor(gate: BasePart, slotId: string): Shot
 	local eye, at
 	if slotId == "kit" then
 		eye, at = Vector3.new(0, floor + 5, center - 11), Vector3.new(0, floor + 2.6, center)
+	elseif slotId == "stadium" then
+		-- The roof arena from outside, high over the near corner, with the sign over the gate.
+		eye = Vector3.new(-length * 0.55, floor + 48, near - 70)
+		at = Vector3.new(0, floor + 8, center - 10)
 	elseif slotId == "banners" then
 		-- Low inside the pitch, along the far boards (the near roofs of the big stadiums hide them).
 		eye = Vector3.new(-length * 0.3, floor + 6, center - width * 0.1)
@@ -272,6 +289,28 @@ function LockerView.focus(slotId: string)
 	end
 end
 
+-- The floodlight model the player has on (the LED light until the slot opens).
+local function chosenModel(): string
+	local def = if Cosmetics.slotOpen(State.data, "lamps")
+		then Cosmetics.chosen(State.data, "lamps")
+		else nil
+	return def and def.model or "led"
+end
+
+-- Builds floodlights in `model` on the copy and lights them in the chosen colour.
+local function showLamps(model: string)
+	local gate = copyGate()
+	local court = copy and copy:FindFirstChild("Court")
+	if gate == nil or court == nil or court:GetAttribute("Lamps") == model then
+		return
+	end
+	CourtParts.setLamps(court, gate, State.data.stadiumTier, model)
+	local colour = Cosmetics.chosen(State.data, "floodlights")
+	if colour and Cosmetics.slotOpen(State.data, "floodlights") then
+		StadiumLook.paint(court, "floodlights", colour)
+	end
+end
+
 -- Paints style `def` of its slot on the copy.
 function LockerView.preview(def: Config.CosmeticDef)
 	local gate = copyGate()
@@ -280,6 +319,9 @@ function LockerView.preview(def: Config.CosmeticDef)
 	end
 	if def.slot == "kit" then
 		showFigure(gate, Color3.fromRGB(def.color[1], def.color[2], def.color[3]))
+		return
+	elseif def.slot == "lamps" then
+		showLamps(def.model or "led")
 		return
 	end
 	local court = copy:FindFirstChild("Court")
@@ -291,6 +333,7 @@ end
 -- Paints the chosen style back on every slot of the copy (after browsing another slot).
 function LockerView.restore()
 	local court = copy and copy:FindFirstChild("Court")
+	showLamps(chosenModel())
 	if court then
 		for _, slot in Config.CosmeticSlots do
 			local chosen = Cosmetics.chosen(State.data, slot.id)
@@ -304,6 +347,14 @@ function LockerView.restore()
 		end
 	end
 	hideFigures() -- the next focus on the kit shows the chosen one again
+end
+
+-- Writes the stadium's (filtered) name on the copy's gate sign, after a rename.
+function LockerView.showName(name: string)
+	local court = copy and copy:FindFirstChild("Court")
+	if court and Cosmetics.slotOpen(State.data, "stadium") then
+		StadiumLook.setName(court, name)
+	end
 end
 
 -- Everything back as it was: the copy goes, the camera, the controls and the other screens come back.

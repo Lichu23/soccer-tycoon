@@ -15,6 +15,7 @@ local Notifications = require(ReplicatedStorage.Shared.Notifications)
 local ProfileSchema = require(script.Parent.ProfileSchema)
 local Progress = require(ReplicatedStorage.Shared.Progress)
 local Reveals = require(script.Parent.Reveals)
+local StadiumName = require(script.Parent.StadiumName)
 
 export type ActionSession = { data: ProfileSchema.Profile }
 
@@ -91,6 +92,29 @@ function Actions.buyCosmetic(session: ActionSession, id: string): (boolean, stri
 	Cosmetics.grant(data, id)
 	Cosmetics.choose(data, id)
 	Actions.onChange(session, "cosmetic", id)
+	return true, nil
+end
+
+-- Renames the roof arena: `text` is the clean typed name and `filtered` what Roblox's filter made of
+-- it (Main filters before calling). A name the filter changed is refused without charging.
+function Actions.renameStadium(
+	session: ActionSession,
+	text: string,
+	filtered: string
+): (boolean, string?)
+	local data = session.data
+	local ok, reason = StadiumName.check(data, text)
+	if not ok then
+		return false, reason
+	end
+	if filtered ~= text then
+		return false, "filtered"
+	end
+	if not Economy.spend(data, Config.StadiumName.price) then
+		return false, "cannotAfford"
+	end
+	data.stadiumName = text
+	Actions.onChange(session, "stadiumName", nil)
 	return true, nil
 end
 

@@ -87,7 +87,7 @@ There is no separate expensive cash route: everyone pays the cash price and comp
 | 5 | Pro stadium: roof, crowd, scoreboard, fireworks | 11 | $45M |
 | 6 | Roof arena: one ring of roof with a retractable roof over the pitch, towers outside (same pitch) | 11 | $1.5B (*provisional*) |
 
-- **Each tier has its own floodlights:** tier 1 an LED street light, tier 2 twin flood panels, tier 3 banks of round lamps, tier 4 square towers of round lamps, tier 5 rows of lamps under the roofs, tier 6 the roof lamps plus the towers outside. The Locker room floodlight style changes only the colour of the light. The tier 6 upgrade cinematic raises the arena with its roof closed, then opens it. Tier 6 multiplies match cash x8 (*provisional*, tune in the simulation).
+- **Every tier has floodlight masts; the model on them is bought in the Locker room** (slot "Floodlights", from tier 3): LED light, twin panels and lamp bank are free, the tower and the arena tower cost cash, the halo and the gold tower Robux. Until then every tier shows the LED light. A separate "Light colour" slot (tier 4) colours the lamps, including the rows of lamps under the roofs of tiers 5 and 6. The tier 6 upgrade cinematic raises the arena with its roof closed, then opens it. Tier 6 multiplies match cash x8 (*provisional*, tune in the simulation).
 
 - **Each stadium upgrade gives a free x2 income boost for 5 minutes.** The timer counts only while the player is online (it waits if they leave), and a HUD badge shows the time left ("x2 · 4:32"). A new upgrade resets the timer, it does not add up. It stacks with other boosts inside the total x4 cap. It is free, never a Robux item, and repeats each New Season when the tiers are bought again.
 - The stadium tier costs cash only. Floors and stadium tier are two separate tracks (floors by completion, tier by cash). The price is taken from the player's cash, and the server charges and applies the upgrade in one step.
@@ -270,9 +270,13 @@ Each stadium tier unlocks a new thing to customise, so a tier is more than a big
 | 3 | Fence banners, stand colours | Premium stand and banner sets |
 | 4 | Floodlight colour, flags | Premium floodlight and flag sets |
 | 5 | Scoreboard style, crowd chant style, fireworks colour | Premium stadium themes |
+| 6 | Outside colour of the roof arena; its name (typed, paid in cash each time) | Premium outside colours |
 
 - **Each tier has several free styles, a few bought with cash and a few with Robux** (counts are *provisional*). Cash prices are about 10 to 20 minutes of income at the slot's tier, so late tiers keep a cash sink. Bought styles are purely cosmetic: no income, no capacity, no advantage.
 - **The Locker room shows a copy of the player's stadium:** the panel docks at the left and the camera frames the slot on a copy of the pitch lifted high above the map, so the match going on below never gets in the way (one of the player's team in the kit at the centre circle, the crest over the gate, the boards, a floodlight, the scoreboard). Tapping a style paints it on the copy only, for free; one button under the cards uses or buys it, and closing throws the copy away. The server paints the choices on the real pitch for everyone (`shared/StadiumLook`).
+- **Each scoreboard style is its own design** (classic, framed, retro tiles, neon, split home and away), not only a colour.
+- **The roof arena's name is typed by the player** and costs $100M (*provisional*) each time. The server tidies it (3 to 20 letters, digits, spaces, a little punctuation), filters it with Roblox's text filter before anyone sees it, and refuses a name the filter changes, without charging. The typed text is saved and filtered again on every join; only the filtered text is shown (over the gate).
+- **A slot that is not open yet** shows its tier on every card ("Tier 5"), never "In use".
 - **Crests are pictures** (flat cartoon shields drawn by `tools/art/crests.py` and uploaded as decals). **Banner sets are made-up sponsors** on wedge-shaped boards (never real brands: Roblox does not allow unlicensed trademarks, and betting ads are not allowed at all).
 - A premium style is shown only for tiers the player has reached, with a preview before buying. It is a direct purchase of a visible style: no random cosmetic crates. Offers live only in the Locker room, with no popups and nothing in the first 30 minutes. Prices are placeholders (set in Step 8).
 - Bought styles (cash or Robux) are kept across New Seasons. Free choices are also kept and re-apply as the player reaches each tier again.

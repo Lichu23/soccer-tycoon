@@ -161,3 +161,26 @@ T.test(
 		T.deepEq(changes, {})
 	end
 )
+
+T.test(
+	"the roof arena's name is tidied, checked and paid for, and a filtered name is refused",
+	function()
+		local StadiumName = T.load("server/StadiumName")
+		T.eq(StadiumName.clean("  Thunder   Park!  "), "Thunder Park!")
+		T.eq(StadiumName.clean("Bad<>Name\n"), "BadName")
+		local session = newSession(Config.StadiumName.price)
+		T.eq(select(2, Actions.renameStadium(session, "Thunder Park", "Thunder Park")), "tier")
+		session.data.stadiumTier = #Config.StadiumTiers
+		T.eq(select(2, Actions.renameStadium(session, "TP", "TP")), "length")
+		T.eq(select(2, Actions.renameStadium(session, "Thunder Park", "Thunder ####")), "filtered")
+		T.eq(session.data.cash, Config.StadiumName.price) -- nothing charged
+		T.eq(Actions.renameStadium(session, "Thunder Park", "Thunder Park"), true)
+		T.eq(session.data.stadiumName, "Thunder Park")
+		T.eq(session.data.cash, 0)
+		T.eq(select(2, Actions.renameStadium(session, "Thunder Park", "Thunder Park")), "same")
+		T.eq(
+			select(2, Actions.renameStadium(session, "Golden Dome", "Golden Dome")),
+			"cannotAfford"
+		)
+	end
+)

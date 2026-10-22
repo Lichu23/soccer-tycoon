@@ -33,8 +33,10 @@ Icons.ids = {
 	slot_kit = "rbxassetid://85241712062584",
 	slot_crest = "rbxassetid://125907228919138",
 	slot_banners = "rbxassetid://134767133460346",
-	slot_floodlights = "rbxassetid://111556608763634",
+	slot_lamps = "rbxassetid://111556608763634", -- the floodlight models
+	slot_floodlights = "rbxassetid://135541995662083", -- the light colour (tools/art/light_icon.py)
 	slot_scoreboard = "rbxassetid://128404299109983",
+	slot_stadium = "rbxassetid://108981510454492", -- the same tile as the HUD stadium
 } :: { [string]: string }
 
 function Icons.id(name: string): string

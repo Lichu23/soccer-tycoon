@@ -23,6 +23,7 @@ function Sync.scalars(session: Session.Session)
 	local player, data = session.player, session.data
 	Economy.publish(player, data)
 	player:SetAttribute("stadiumTier", data.stadiumTier)
+	player:SetAttribute("stadiumName", session.runtime.stadiumName or "") -- filtered, safe to show
 	player:SetAttribute("seasonNumber", data.season.number)
 	player:SetAttribute("fieldStarted", data.fieldStarted)
 	player:SetAttribute("notificationsOn", data.flags.notificationsOn)
