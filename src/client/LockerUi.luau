@@ -296,6 +296,7 @@ function LockerUi.init()
 				Size = UDim2.new(1 / #Config.CosmeticSlots, -6, 0, TAB_SIZE),
 				BackgroundColor3 = if isOpen then Style.ui.panel else DISABLED,
 				Image = Icons.id("slot_" .. slot.id),
+				AutoButtonColor = isOpen,
 				ImageTransparency = if isOpen then 0 else 0.5,
 				ZIndex = 8,
 			}, row)
@@ -325,7 +326,11 @@ function LockerUi.init()
 				}, tab)
 			end
 			tab.Activated:Connect(function()
-				if slotView ~= slot.id then
+				if not isOpen then
+					-- A slot of a tier not reached yet has nothing to show: the view stays put.
+					message = `{slot.name} opens at stadium tier {slot.tier}.`
+					render()
+				elseif slotView ~= slot.id then
 					LockerView.restore()
 					slotView, selected, message = slot.id, nil, nil
 					render()
@@ -640,11 +645,16 @@ function LockerUi.init()
 		end
 	end)
 
-	-- Controller: the shoulder buttons change slot, B closes.
+	-- Controller: the shoulder buttons go to the next open slot (closed ones are skipped), B closes.
 	local function step(direction: number)
 		for index, slot in Config.CosmeticSlots do
 			if slot.id == slotView then
-				local nextSlot = Config.CosmeticSlots[index + direction]
+				local at = index + direction
+				local nextSlot = Config.CosmeticSlots[at]
+				while nextSlot and not Cosmetics.slotOpen(State.data, nextSlot.id) do
+					at += direction
+					nextSlot = Config.CosmeticSlots[at]
+				end
 				if nextSlot then
 					LockerView.restore()
 					slotView, selected, message = nextSlot.id, nil, nil

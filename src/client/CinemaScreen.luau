@@ -134,7 +134,6 @@ function CinemaScreen.takeover(): Takeover
 		take = function()
 			local camera = Workspace.CurrentCamera
 			savedCamera = {
-				CameraType = camera.CameraType,
 				FieldOfView = camera.FieldOfView,
 			}
 			camera.CameraType = Enum.CameraType.Scriptable
@@ -149,7 +148,10 @@ function CinemaScreen.takeover(): Takeover
 		end,
 		give = function()
 			local camera = Workspace.CurrentCamera
-			camera.CameraType = savedCamera.CameraType or Enum.CameraType.Custom
+			-- Always back to following the player: a takeover can start in the same tap that ends
+			-- another cinematic (the first-match camera ends on any tap), and putting its Scriptable
+			-- camera back would leave the view frozen where this one left it.
+			camera.CameraType = Enum.CameraType.Custom
 			camera.FieldOfView = savedCamera.FieldOfView or 70
 			local character = player.Character
 			local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
