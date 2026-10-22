@@ -128,6 +128,7 @@ local function publishKick(player: Player, state: Freekick.State?)
 	player:SetAttribute("freekickOutcome", if state then state.outcome else "")
 	player:SetAttribute("freekickStreak", if state then state.streak else 0)
 	player:SetAttribute("freekickOverAt", if state then state.overAt else 0)
+	player:SetAttribute("freekickPractice", if state then state.practice else false)
 end
 
 -- Keeps the longest keepie-uppies streak as it grows.
@@ -213,7 +214,8 @@ local function step(session: Session.Session, dt: number)
 		local state = kicks[player]
 		if state == nil then
 			local intro = if DevFlags.skipIntros() then 0 else Config.Training.freekickIntroSeconds
-			state = Freekick.new(now + intro)
+			-- Until the first goal ever, the first attack is practice (its move waits for the key).
+			state = Freekick.new(now + intro, data.gym.freekickBestStreak <= 0)
 			kicks[player] = state
 		end
 		handleKickEvents(session, Freekick.normalize(state, now))

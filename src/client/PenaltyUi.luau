@@ -632,6 +632,7 @@ function PenaltyUi.init()
 				outcome = state.outcome,
 				streak = 0,
 				overAt = 0,
+				practice = false,
 			},
 			now = now,
 			reticleX = reticleX,

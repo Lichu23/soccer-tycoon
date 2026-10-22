@@ -8,6 +8,8 @@
 -- streak; a lost dribble or a shot that does not go in ends it, and the longest streak is kept.
 -- Every goal makes the next attack harder: a shorter move window, a keeper who reaches further, and
 -- a power meter that fills faster with a narrower green zone (a release outside it misses).
+-- Until the player's first goal ever the first attack is practice: its move waits for the key with no
+-- time limit and a wrong key is ignored, so a new player has time to read what to press.
 -- The moves, the reticle and the meter run on the server clock from the start of their step, so the
 -- server and the client agree without a message per frame: the server keeps the state and judges
 -- every input (one may be stamped a little in the past for a slow connection), the client reads it
@@ -32,6 +34,7 @@ export type State = {
 	outcome: string, -- the attack's outcome while its film plays, "" before
 	streak: number, -- goals in a row
 	overAt: number, -- when the streak ended
+	practice: boolean, -- the first attack waits for its move (until the first goal ever)
 }
 
 -- Where the keeper stands for one attack, in goal units (the posts are at -1 and 1).
@@ -71,8 +74,9 @@ local function attack(state: State, kick: number, startAt: number)
 	state.outcome = ""
 end
 
--- A fresh streak that starts at `now`; the first move shows after the through-ball.
-function Freekick.new(now: number): State
+-- A fresh streak that starts at `now`; the first move shows after the through-ball. With `practice`
+-- (the player has never scored) its first move waits for the key.
+function Freekick.new(now: number, practice: boolean?): State
 	local state: State = {
 		phase = "dribble",
 		seed = now,
@@ -86,6 +90,7 @@ function Freekick.new(now: number): State
 		outcome = "",
 		streak = 0,
 		overAt = 0,
+		practice = practice == true,
 	}
 	attack(state, 1, now + Config.Training.freekickLeadSeconds)
 	return state
@@ -125,6 +130,11 @@ function Freekick.filmSeconds(outcome: string): number
 	return if outcome == "tackled"
 		then training.freekickTackleSeconds
 		else training.freekickFilmSeconds
+end
+
+-- Whether the move in play waits for its key with no time limit (the practice attack).
+function Freekick.untimed(state: State): boolean
+	return state.practice and state.kick == 1
 end
 
 -- Up and down between 0 and 1: 0 at `t` = 0, 1 after `seconds`, 0 again after twice that.
@@ -246,6 +256,9 @@ function Freekick.normalize(state: State, now: number): { Event }
 	local training = Config.Training
 	for _ = 1, 16 do -- a bounded loop: a long gap is caught up a step at a time
 		if state.phase == "dribble" then
+			if Freekick.untimed(state) then
+				break -- the practice move waits for the player
+			end
 			local deadline = state.stageAt + Freekick.moveWindow(state.kick)
 			if now < deadline + training.freekickGraceSeconds then
 				break
@@ -271,7 +284,8 @@ function Freekick.normalize(state: State, now: number): { Event }
 			if now < nextAt then
 				break
 			end
-			local fresh = Freekick.new(nextAt)
+			-- Still practice only when this streak scored nothing.
+			local fresh = Freekick.new(nextAt, state.practice and state.streak == 0)
 			for key, value in fresh do
 				(state :: any)[key] = value
 			end
@@ -293,14 +307,20 @@ end
 
 -- A skill move pressed at `now` (stamped `stamp`). The right one in time beats the defender; the
 -- wrong one, or one too late, loses the ball. Returns "beat", "tackled" or "ignored" (another step,
--- or the move has not shown yet).
+-- the move has not shown yet, or a wrong key in the practice attack).
 function Freekick.move(state: State, now: number, move: number, stamp: number): string
 	Freekick.normalize(state, now)
 	if state.phase ~= "dribble" or now < state.stageAt then
 		return "ignored"
 	end
+	local untimed = Freekick.untimed(state)
+	if untimed and move ~= state.move then
+		return "ignored"
+	end
 	local at = inputTime(now, stamp, state.stageAt)
-	if move == state.move and at <= state.stageAt + Freekick.moveWindow(state.kick) then
+	if
+		move == state.move and (untimed or at <= state.stageAt + Freekick.moveWindow(state.kick))
+	then
 		state.phase = "aim"
 		state.stageAt = now
 		return "beat"

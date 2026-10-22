@@ -721,3 +721,32 @@ T.test("a tap during how-to-play skips it: the countdown starts at once", functi
 	T.eq(Juggle.skipIntro(state, 100.5), false) -- the countdown itself is not skipped
 	T.eq(state.startedAt, 100 + lead)
 end)
+
+T.test("the practice attack waits for its move and ignores a wrong key, until a goal", function()
+	local state = Freekick.new(100, true)
+	local start = state.stageAt
+	local late = start + 30 -- far past any move window
+	Freekick.normalize(state, late)
+	T.eq(state.phase, "dribble") -- no tackle by time
+	local wrong = state.move % 3 + 1
+	T.eq(Freekick.move(state, late, wrong, late), "ignored")
+	T.eq(state.phase, "dribble")
+	T.eq(Freekick.move(state, late, state.move, late), "beat")
+
+	-- A practice streak that scored nothing stays practice; the normal one keeps its window.
+	local missed = Freekick.new(100, true)
+	missed.phase, missed.outcome, missed.stageAt, missed.streak = "shot", "saved", 200, 0
+	Freekick.normalize(missed, 200 + Freekick.filmSeconds("saved") + FK.freekickOverSeconds)
+	T.eq(missed.practice, true)
+	local scored = Freekick.new(100, true)
+	scored.phase, scored.outcome, scored.stageAt, scored.kick, scored.streak =
+		"shot", "saved", 200, 2, 1
+	Freekick.normalize(scored, 200 + Freekick.filmSeconds("saved") + FK.freekickOverSeconds)
+	T.eq(scored.practice, false)
+	local normal = Freekick.new(100)
+	Freekick.normalize(
+		normal,
+		normal.stageAt + Freekick.moveWindow(1) + FK.freekickGraceSeconds + 0.1
+	)
+	T.eq(normal.outcome, "tackled")
+end)

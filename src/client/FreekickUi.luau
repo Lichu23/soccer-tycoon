@@ -12,7 +12,8 @@
 -- Then the attack plays as a film (the dribble, the strike in slow motion, the goal or the save). A
 -- goal adds to the streak and pays TP; a lost dribble or a shot that does not go in ends it. The
 -- medals are streak milestones and the longest streak is kept. Until the first goal ever a short hint
--- guides each step (the tutorial). The server judges every input and pays; this only shows it. The
+-- guides each step (the tutorial), and the first attack is practice: the move has no bar and waits for
+-- its key, and the hint names the key to press. The server judges every input and pays; this only shows it. The
 -- red X (or walking off the spot) leaves.
 
 local GuiService = game:GetService("GuiService")
@@ -95,6 +96,8 @@ local STEP_NAMES: { [string]: string } = {
 local COACH_TEXT: { [string]: string } = {
 	waiting = "Your first attack! Get ready...",
 	dribble = "Press the move shown before its bar runs out!",
+	practice = "Press %s or tap %s to %s. Take your time!",
+	practiceTouch = "Tap %s to %s. Take your time!",
 	aim = "Tap to lock your aim on the goal.",
 	power = "Tap when the marker is on the green to shoot!",
 }
@@ -586,6 +589,7 @@ function FreekickUi.init()
 		state.outcome = if type(outcome) == "string" then outcome else ""
 		state.streak = number("freekickStreak")
 		state.overAt = number("freekickOverAt")
+		state.practice = player:GetAttribute("freekickPractice") == true
 	end
 	readServerState()
 	for _, name in
@@ -601,6 +605,7 @@ function FreekickUi.init()
 			"freekickOutcome",
 			"freekickStreak",
 			"freekickOverAt",
+			"freekickPractice",
 		}
 	do
 		player:GetAttributeChangedSignal(name):Connect(readServerState)
@@ -659,6 +664,15 @@ function FreekickUi.init()
 		end
 		pressedMove = move
 		pulse(promptScale, 0.85)
+		if Freekick.untimed(state) and move ~= state.move then
+			-- Practice: a wrong key only flashes red, and the move keeps waiting.
+			task.delay(0.4, function()
+				if pressedMove == move then
+					pressedMove = nil
+				end
+			end)
+			return
+		end
 		Net.fire("FreekickMove", move, now)
 	end
 	for index, button in moveButtons do
@@ -863,6 +877,8 @@ function FreekickUi.init()
 		local info = MOVES[state.move] or MOVES[1]
 		promptGlyph.Text = info.glyph
 		promptName.Text = info.name
+		local untimed = Freekick.untimed(state)
+		timer.Visible = not untimed -- the practice move has no time limit
 		local left = math.clamp(1 - (now - state.stageAt) / window, 0, 1)
 		timerFill.Size = UDim2.fromScale(if pressedMove then 1 else left, 1)
 		timerFill.BackgroundColor3 = if left < 0.3 then BAD else Style.ui.gold
@@ -913,7 +929,21 @@ function FreekickUi.init()
 		-- The tutorial, until the first goal ever.
 		local tutorial = state.kick == 1 and (type(record) ~= "number" or record <= 0)
 		local coachStep = if waiting then "waiting" else phase
-		local hint = if tutorial then COACH_TEXT[coachStep] else nil
+		local hint = if not tutorial
+			then nil
+			elseif coachStep == "dribble" and untimed then (if UserInputService.KeyboardEnabled
+				then string.format(
+					COACH_TEXT.practice,
+					info.keyHint,
+					info.glyph,
+					string.lower(info.name)
+				)
+				else string.format(
+					COACH_TEXT.practiceTouch,
+					info.glyph,
+					string.lower(info.name)
+				))
+			else COACH_TEXT[coachStep]
 		coachText.Visible = hint ~= nil
 		coachText.Text = hint or ""
 	end)
