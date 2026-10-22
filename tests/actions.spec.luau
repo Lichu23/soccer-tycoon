@@ -134,3 +134,30 @@ T.test("a failed purchase does not start the matches", function()
 	Actions.buyPlayer(session, "rashford") -- $10, cannot afford
 	T.eq(session.data.fieldStarted, false)
 end)
+
+T.test("a cash style is paid once, owned and put on, and a second tap charges nothing", function()
+	local session = newSession(5_000)
+	local ok = Actions.buyCosmetic(session, "kit_red") -- $2,000
+	T.eq(ok, true)
+	T.eq(session.data.cash, 3_000)
+	T.eq(session.data.cosmetics.owned.kit_red, true)
+	T.eq(session.data.cosmetics.chosen.kit, "kit_red")
+	T.deepEq(changes, { "cosmetic:kit_red" })
+	local again, reason = Actions.buyCosmetic(session, "kit_red")
+	T.eq(again, false)
+	T.eq(reason, "owned")
+	T.eq(session.data.cash, 3_000)
+end)
+
+T.test(
+	"a cash style needs its tier and the cash, and Robux or free styles are not sold for cash",
+	function()
+		local session = newSession(100)
+		T.eq(select(2, Actions.buyCosmetic(session, "kit_red")), "cannotAfford")
+		T.eq(select(2, Actions.buyCosmetic(session, "crest_ruby")), "tier")
+		T.eq(select(2, Actions.buyCosmetic(session, "kit_gold")), "free")
+		T.eq(select(2, Actions.buyCosmetic(session, "kit_blue")), "free")
+		T.eq(session.data.cash, 100)
+		T.deepEq(changes, {})
+	end
+)

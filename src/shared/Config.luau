@@ -73,7 +73,11 @@ export type CosmeticDef = {
 	slot: string,
 	name: string,
 	color: { number }, -- r, g, b (0 to 255): the swatch and, for the kit, the shirt colour
-	robux: number?, -- nil = a free style
+	-- The colours the stadium parts of the slot take in turn (banner boards), nil = all `color`.
+	pattern: { { number } }?,
+	accent: { number }?, -- the text on the part (scoreboard, crest), nil = the part's own
+	cash: number?, -- a cash price; with neither price the style is free
+	robux: number?,
 }
 
 export type TrialGoal = {
@@ -553,10 +557,11 @@ Config.Products = {
 	},
 } :: { [string]: ProductDef }
 
--- Team customization (docs/PLAN.md, Step 3): each stadium tier opens one slot with free styles and a
--- few premium ones. Premium styles are cosmetic only, kept across seasons and bought directly (no
--- random cosmetic crates). The first style of a slot is its default. Counts and prices are
--- provisional; the dashboard product ids are 0 until the products exist.
+-- Team customization (docs/PLAN.md, Step 3): each stadium tier opens one slot with free styles, a
+-- few bought with cash and a few with Robux. Bought styles are cosmetic only, kept across seasons and
+-- bought directly (no random cosmetic crates). The first style of a slot is its default. Cash prices
+-- are about 10 to 20 minutes of income at the slot's tier. Counts and prices are provisional; the
+-- dashboard product ids are 0 until the products exist.
 Config.CosmeticSlots = {
 	{ id = "kit", name = "Kit", tier = 1 },
 	{ id = "crest", name = "Crest", tier = 2 },
@@ -565,36 +570,109 @@ Config.CosmeticSlots = {
 	{ id = "scoreboard", name = "Scoreboard", tier = 5 },
 } :: { CosmeticSlotDef }
 
-local function style(id: string, slot: string, name: string, color: { number }, robux: number?)
-	return { id = id, slot = slot, name = name, color = color, robux = robux } :: CosmeticDef
+type Look = { pattern: { { number } }?, accent: { number }? }
+type Price = { cash: number?, robux: number? }
+
+local function style(
+	id: string,
+	slot: string,
+	name: string,
+	color: { number },
+	price: Price?,
+	look: Look?
+): CosmeticDef
+	return {
+		id = id,
+		slot = slot,
+		name = name,
+		color = color,
+		pattern = look and look.pattern,
+		accent = look and look.accent,
+		cash = price and price.cash,
+		robux = price and price.robux,
+	}
 end
 
+local WHITE = { 240, 240, 240 }
+local NAVY = { 32, 38, 56 }
+local GOLD = { 255, 205, 60 }
+
 Config.Cosmetics = {
-	style("kit_blue", "kit", "Blue", { 60, 120, 230 }, nil),
-	style("kit_white", "kit", "White", { 235, 235, 240 }, nil),
-	style("kit_green", "kit", "Green", { 50, 170, 90 }, nil),
-	style("kit_gold", "kit", "Gold", { 235, 190, 50 }, 99),
-	style("kit_black", "kit", "Midnight", { 35, 38, 50 }, 99),
-	style("crest_shield", "crest", "Shield", { 200, 205, 220 }, nil),
-	style("crest_star", "crest", "Star", { 250, 210, 70 }, nil),
-	style("crest_ball", "crest", "Ball", { 240, 240, 240 }, nil),
-	style("crest_crown", "crest", "Crown", { 240, 180, 40 }, 79),
-	style("crest_flame", "crest", "Flame", { 240, 100, 40 }, 79),
-	style("banners_plain", "banners", "Plain", { 210, 215, 225 }, nil),
-	style("banners_stripes", "banners", "Stripes", { 90, 150, 230 }, nil),
-	style("banners_dots", "banners", "Dots", { 230, 120, 140 }, nil),
-	style("banners_gold", "banners", "Gold set", { 235, 190, 50 }, 129),
-	style("banners_neon", "banners", "Neon set", { 70, 240, 200 }, 129),
-	style("floodlights_white", "floodlights", "White", { 255, 255, 250 }, nil),
-	style("floodlights_warm", "floodlights", "Warm", { 255, 214, 150 }, nil),
-	style("floodlights_cool", "floodlights", "Cool", { 170, 210, 255 }, nil),
-	style("floodlights_aurora", "floodlights", "Aurora", { 120, 255, 190 }, 149),
-	style("floodlights_rose", "floodlights", "Rose", { 255, 140, 190 }, 149),
-	style("scoreboard_classic", "scoreboard", "Classic", { 40, 44, 60 }, nil),
-	style("scoreboard_light", "scoreboard", "Light", { 225, 228, 238 }, nil),
-	style("scoreboard_retro", "scoreboard", "Retro", { 70, 160, 80 }, nil),
-	style("scoreboard_gold", "scoreboard", "Gold", { 235, 190, 50 }, 199),
-	style("scoreboard_crystal", "scoreboard", "Crystal", { 150, 220, 250 }, 199),
+	style("kit_blue", "kit", "Blue", { 60, 120, 230 }),
+	style("kit_white", "kit", "White", { 235, 235, 240 }),
+	style("kit_green", "kit", "Green", { 50, 170, 90 }),
+	style("kit_red", "kit", "Red", { 220, 60, 60 }, { cash = 2_000 }),
+	style("kit_purple", "kit", "Purple", { 150, 90, 220 }, { cash = 6_000 }),
+	style("kit_gold", "kit", "Gold", { 235, 190, 50 }, { robux = 99 }),
+	style("kit_black", "kit", "Midnight", { 35, 38, 50 }, { robux = 99 }),
+	style("crest_shield", "crest", "Shield", { 200, 205, 220 }, nil, { accent = NAVY }),
+	style("crest_star", "crest", "Star", { 250, 210, 70 }, nil, { accent = NAVY }),
+	style("crest_ball", "crest", "Ball", WHITE, nil, { accent = NAVY }),
+	style("crest_ruby", "crest", "Ruby", { 210, 50, 70 }, { cash = 15_000 }, { accent = WHITE }),
+	style(
+		"crest_emerald",
+		"crest",
+		"Emerald",
+		{ 40, 170, 100 },
+		{ cash = 40_000 },
+		{ accent = WHITE }
+	),
+	style("crest_crown", "crest", "Crown", { 240, 180, 40 }, { robux = 79 }, { accent = WHITE }),
+	style("crest_flame", "crest", "Flame", { 240, 100, 40 }, { robux = 79 }, { accent = GOLD }),
+	-- The first banner set keeps the sponsor colours the boards always had.
+	style("banners_plain", "banners", "Sponsors", { 200, 50, 60 }, nil, {
+		pattern = { { 200, 50, 60 }, { 30, 110, 200 }, { 240, 190, 50 }, { 40, 150, 90 } },
+	}),
+	style("banners_stripes", "banners", "Stripes", { 90, 150, 230 }, nil, {
+		pattern = { { 90, 150, 230 }, WHITE },
+	}),
+	style("banners_dots", "banners", "Dots", { 230, 120, 140 }, nil, {
+		pattern = { { 230, 120, 140 }, WHITE },
+	}),
+	style("banners_sunset", "banners", "Sunset", { 245, 140, 40 }, { cash = 300_000 }, {
+		pattern = { { 245, 140, 40 }, { 235, 90, 130 }, { 150, 90, 220 } },
+	}),
+	style("banners_ocean", "banners", "Ocean", { 40, 150, 220 }, { cash = 800_000 }, {
+		pattern = { { 40, 150, 220 }, { 60, 200, 200 }, { 30, 90, 180 } },
+	}),
+	style("banners_gold", "banners", "Gold set", { 235, 190, 50 }, { robux = 129 }, {
+		pattern = { { 235, 190, 50 }, NAVY },
+	}),
+	style("banners_neon", "banners", "Neon set", { 70, 240, 200 }, { robux = 129 }, {
+		pattern = { { 70, 240, 200 }, { 150, 90, 220 } },
+	}),
+	style("floodlights_white", "floodlights", "White", { 255, 244, 214 }),
+	style("floodlights_warm", "floodlights", "Warm", { 255, 214, 150 }),
+	style("floodlights_cool", "floodlights", "Cool", { 170, 210, 255 }),
+	style("floodlights_gold", "floodlights", "Gold", { 255, 200, 80 }, { cash = 3_000_000 }),
+	style("floodlights_ice", "floodlights", "Ice", { 200, 240, 255 }, { cash = 8_000_000 }),
+	style("floodlights_aurora", "floodlights", "Aurora", { 120, 255, 190 }, { robux = 149 }),
+	style("floodlights_rose", "floodlights", "Rose", { 255, 140, 190 }, { robux = 149 }),
+	style("scoreboard_classic", "scoreboard", "Classic", { 40, 44, 60 }, nil, { accent = GOLD }),
+	style("scoreboard_light", "scoreboard", "Light", { 225, 228, 238 }, nil, { accent = NAVY }),
+	style("scoreboard_retro", "scoreboard", "Retro", { 70, 160, 80 }, nil, { accent = WHITE }),
+	style(
+		"scoreboard_navy",
+		"scoreboard",
+		"Navy",
+		NAVY,
+		{ cash = 60_000_000 },
+		{ accent = { 120, 235, 140 } }
+	),
+	style(
+		"scoreboard_ruby",
+		"scoreboard",
+		"Ruby",
+		{ 150, 32, 62 },
+		{ cash = 150_000_000 },
+		{ accent = WHITE }
+	),
+	style("scoreboard_gold", "scoreboard", "Gold", { 235, 190, 50 }, { robux = 199 }, {
+		accent = NAVY,
+	}),
+	style("scoreboard_crystal", "scoreboard", "Crystal", { 150, 220, 250 }, { robux = 199 }, {
+		accent = NAVY,
+	}),
 } :: { CosmeticDef }
 
 Config.CosmeticsById = {} :: { [string]: CosmeticDef }

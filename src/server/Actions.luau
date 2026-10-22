@@ -76,6 +76,24 @@ function Actions.setCosmetic(session: ActionSession, slot: string, id: string): 
 	return true, nil
 end
 
+-- Buys a style sold for cash (the Locker room) and puts it on. The tier must be reached; a second
+-- tap finds it owned and charges nothing.
+function Actions.buyCosmetic(session: ActionSession, id: string): (boolean, string?)
+	local data = session.data
+	local ok, reason = Cosmetics.canBuyCash(data, id)
+	if not ok then
+		return false, reason
+	end
+	local def = Config.CosmeticsById[id]
+	if not Economy.spend(data, def.cash or 0) then
+		return false, "cannotAfford"
+	end
+	Cosmetics.grant(data, id)
+	Cosmetics.choose(data, id)
+	Actions.onChange(session, "cosmetic", id)
+	return true, nil
+end
+
 -- The reminder opt-in. Only records the answer; it opens with the first player bought.
 function Actions.setNotifications(session: ActionSession, on: boolean): boolean
 	if not Notifications.set(session.data, on) then

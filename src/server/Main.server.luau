@@ -161,6 +161,21 @@ Remotes.on("SetCosmetic", function(player: Player, ...: any)
 	end
 end)
 
+Remotes.on("BuyCosmetic", function(player: Player, ...: any)
+	local id = select(1, ...)
+	local session = Session.get(player)
+	if session == nil or type(id) ~= "string" then
+		return
+	end
+	local ok, reason = Actions.buyCosmetic(session, id)
+	if ok then
+		Analytics.event(session, "cosmetic_cash")
+	else
+		-- The Locker room shows why (the same notice as a refused Robux purchase).
+		Remotes.fireClient("Notice", player, { kind = "purchaseRefused", reason = reason })
+	end
+end)
+
 Remotes.on("SetNotifications", function(player: Player, ...: any)
 	local on = select(1, ...)
 	local session = Session.get(player)

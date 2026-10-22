@@ -2,16 +2,20 @@
 -- Builds the pitch of a plot for its stadium tier (docs/PLAN.md, Step 7) from CourtPlan, and runs
 -- the server side of an upgrade: tell the player's client to play the cinematic, build the new
 -- pitch once the camera has arrived, and let the fireworks go off at tier 5. The server finishes
--- the upgrade even if the player leaves or skips; the cinematic only affects that client.
+-- the upgrade even if the player leaves or skips; the cinematic only affects that client. The pitch
+-- also wears the owner's Locker room styles (shared/StadiumLook), painted after every build.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local CourtPlan = require(ReplicatedStorage.Shared.CourtPlan)
 local DevFlags = require(script.Parent.DevFlags)
+local ProfileSchema = require(script.Parent.ProfileSchema)
 local Remotes = require(script.Parent.Remotes)
 local Session = require(script.Parent.Session)
 local StadiumLogic = require(script.Parent.StadiumLogic)
+local StadiumLook = require(ReplicatedStorage.Shared.StadiumLook)
 
 local FIREWORK_SECONDS = 4
 
@@ -37,9 +41,20 @@ local function toColor(rgb: { number }): Color3
 	return Color3.fromRGB(rgb[1], rgb[2], rgb[3])
 end
 
-local function buildPart(gate: BasePart, spec: CourtPlan.PartSpec, parent: Instance)
+-- The part names a Locker room slot paints; they carry their place in the plan (StadiumLook).
+local PAINTED: { [string]: boolean } = {}
+for _, names in StadiumLook.PARTS do
+	for name in names do
+		PAINTED[name] = true
+	end
+end
+
+local function buildPart(gate: BasePart, spec: CourtPlan.PartSpec, parent: Instance, index: number)
 	local part = Instance.new("Part")
 	part.Name = spec.name
+	if PAINTED[spec.name] then
+		part:SetAttribute("PlanIndex", index)
+	end
 	part.Anchored = true
 	part.CanCollide = false -- the pitch is for looking at; nobody gets stuck in a wall
 	part.CanQuery = false
@@ -111,13 +126,30 @@ function Stadium.build(plot: Model, tier: number)
 	local folder = Instance.new("Folder")
 	folder.Name = "Court"
 	folder:SetAttribute("Tier", tier)
-	for _, spec in CourtPlan.parts(tier) do
-		buildPart(gate, spec, folder)
+	for index, spec in CourtPlan.parts(tier) do
+		buildPart(gate, spec, folder, index)
 	end
 	folder.Parent = plot
 end
 
--- Makes the pitch match the player's tier, unless an upgrade is about to build it.
+-- Paints the styles of every open slot on the pitch (the kit is drawn by the match). A slot that is
+-- not open yet keeps the plan's own colours.
+function Stadium.paint(plot: Model, data: ProfileSchema.Profile)
+	local court = plot:FindFirstChild("Court")
+	if court == nil then
+		return
+	end
+	for _, slot in Config.CosmeticSlots do
+		if StadiumLook.PARTS[slot.id] and Cosmetics.slotOpen(data, slot.id) then
+			local def = Cosmetics.chosen(data, slot.id)
+			if def then
+				StadiumLook.paint(court, slot.id, def)
+			end
+		end
+	end
+end
+
+-- Makes the pitch match the player's tier and styles, unless an upgrade is about to build it.
 function Stadium.ensure(session: Session.Session)
 	local plot = session.runtime.plot
 	if plot == nil or session.runtime.upgrading then
@@ -128,6 +160,7 @@ function Stadium.ensure(session: Session.Session)
 	if court == nil or court:GetAttribute("Tier") ~= tier then
 		Stadium.build(plot, tier)
 	end
+	Stadium.paint(plot, session.data)
 end
 
 -- Turns the fireworks on for a few seconds.
@@ -166,6 +199,7 @@ function Stadium.upgraded(session: Session.Session, firstEver: boolean)
 		local plot = runtime.plot
 		if plot and plot.Parent then
 			Stadium.build(plot, session.data.stadiumTier)
+			Stadium.paint(plot, session.data)
 			if session.data.stadiumTier >= #Config.StadiumTiers then
 				Stadium.fireworks(plot)
 			end

@@ -21,6 +21,7 @@ Panel.TEXT = Color3.fromRGB(28, 30, 48) -- body text on the panel
 Panel.MUTED = Color3.fromRGB(70, 74, 100) -- secondary text on the panel
 Panel.GOOD = Color3.fromRGB(14, 110, 48) -- an answer such as "Yours"
 Panel.MAX_WIDTH = 640
+Panel.HEADER_HEIGHT = HEADER_HEIGHT
 
 local function new(className: string, props: { [string]: any }, parent: Instance?): any
 	local instance = Instance.new(className)
@@ -35,6 +36,8 @@ end
 
 export type Built = {
 	backdrop: Frame,
+	panel: Frame, -- the light panel itself (the Locker room docks it at the left)
+	scroll: ScrollingFrame,
 	card: Frame, -- the column the screen fills with rows (a UIListLayout is already on it)
 	setTitle: (text: string) -> (),
 }
@@ -123,6 +126,8 @@ function Panel.build(gui: ScreenGui, title: string, heightScale: number, onClose
 
 	return {
 		backdrop = backdrop,
+		panel = panel,
+		scroll = scroll,
 		card = card,
 		setTitle = function(text: string)
 			titleLabel.Text = text

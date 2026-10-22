@@ -1,6 +1,6 @@
 --!strict
--- Team customization rules (docs/PLAN.md, Step 3): each stadium tier opens one slot, with free styles
--- and a few premium ones. The server checks every choice here, the Locker room draws from the same
+-- Team customization rules (docs/PLAN.md, Step 3): each stadium tier opens one slot, with free styles,
+-- a few bought with cash and a few with Robux. The server checks every choice here, the Locker room draws from the same
 -- answers. Pure on the profile, so it is unit tested.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 
 type Data = {
+	cash: number,
 	stadiumTier: number,
 	cosmetics: { owned: { [string]: boolean }, chosen: { [string]: string } },
 }
@@ -36,13 +37,18 @@ function Cosmetics.styles(slotId: string): { Config.CosmeticDef }
 	return list
 end
 
--- Free styles are always owned; premium ones once bought.
+-- A style with neither a cash nor a Robux price.
+function Cosmetics.isFree(def: Config.CosmeticDef): boolean
+	return def.cash == nil and def.robux == nil
+end
+
+-- Free styles are always owned; the others once bought.
 function Cosmetics.owns(data: Data, id: string): boolean
 	local def = Config.CosmeticsById[id]
 	if def == nil then
 		return false
 	end
-	return def.robux == nil or data.cosmetics.owned[id] == true
+	return Cosmetics.isFree(def) or data.cosmetics.owned[id] == true
 end
 
 -- The style a slot shows: the chosen one while it is still valid, else the slot's first free style.
@@ -53,7 +59,7 @@ function Cosmetics.chosen(data: Data, slotId: string): Config.CosmeticDef?
 		return def
 	end
 	for _, option in Cosmetics.styles(slotId) do
-		if option.robux == nil then
+		if Cosmetics.isFree(option) then
 			return option
 		end
 	end
@@ -75,8 +81,8 @@ function Cosmetics.canChoose(data: Data, id: string): (boolean, string?)
 	return true, nil
 end
 
--- Whether a premium style may be bought: true, or false and the reason ("unknown", "free", "tier",
--- "owned"). Premium styles are shown only for tiers the player has reached.
+-- Whether a Robux style may be bought: true, or false and the reason ("unknown", "free", "tier",
+-- "owned"). "free" also answers a style sold for cash.
 function Cosmetics.canBuy(data: Data, id: string): (boolean, string?)
 	local def = Config.CosmeticsById[id]
 	if def == nil then
@@ -94,6 +100,29 @@ function Cosmetics.canBuy(data: Data, id: string): (boolean, string?)
 	return true, nil
 end
 
+-- Whether a cash style may be bought: true, or false and the reason ("unknown", "free", "tier",
+-- "owned", "cannotAfford"). "free" also answers a style sold for Robux.
+function Cosmetics.canBuyCash(data: Data, id: string): (boolean, string?)
+	local def = Config.CosmeticsById[id]
+	if def == nil then
+		return false, "unknown"
+	end
+	local price = def.cash
+	if price == nil then
+		return false, "free"
+	end
+	if not Cosmetics.slotOpen(data, def.slot) then
+		return false, "tier"
+	end
+	if data.cosmetics.owned[id] == true then
+		return false, "owned"
+	end
+	if data.cash < price then
+		return false, "cannotAfford"
+	end
+	return true, nil
+end
+
 -- Picks a style for its slot. Returns true, or false and the reason.
 function Cosmetics.choose(data: Data, id: string): (boolean, string?)
 	local ok, reason = Cosmetics.canChoose(data, id)
@@ -105,10 +134,10 @@ function Cosmetics.choose(data: Data, id: string): (boolean, string?)
 	return true, nil
 end
 
--- Records a bought premium style as owned (a resent receipt changes nothing).
+-- Records a bought style as owned (a resent receipt changes nothing).
 function Cosmetics.grant(data: Data, id: string)
 	local def = Config.CosmeticsById[id]
-	if def and def.robux ~= nil then
+	if def and not Cosmetics.isFree(def) then
 		data.cosmetics.owned[id] = true
 	end
 end

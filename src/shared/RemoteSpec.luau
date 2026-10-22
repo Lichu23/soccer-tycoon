@@ -84,6 +84,13 @@ RemoteSpec.remotes = {
 		ratePerSecond = 2,
 		burst = 4,
 	},
+	-- A Locker room style sold for cash: its id from Config. The server checks the tier and the price.
+	BuyCosmetic = {
+		direction = "toServer",
+		args = { ID_FIELD },
+		ratePerSecond = 1,
+		burst = 2,
+	},
 	SetNotifications = {
 		direction = "toServer",
 		args = { { kind = "boolean" } },

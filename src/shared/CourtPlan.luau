@@ -451,6 +451,20 @@ local function arch(list: { PartSpec }, z: number, text: string, height: number)
 		"Front",
 		WHITE
 	)
+	-- The club crest on top of the sign, painted with the Locker room crest (shared/StadiumLook).
+	sign(
+		list,
+		"Crest",
+		-2.2,
+		2.2,
+		FLOOR + height,
+		FLOOR + height + 4.4,
+		z - 0.4,
+		z + 0.4,
+		"ST",
+		"Front",
+		WHITE
+	)
 end
 
 -- All the parts of the pitch of `tier` (1 to 5).

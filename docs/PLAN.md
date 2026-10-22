@@ -268,9 +268,10 @@ Each stadium tier unlocks a new thing to customise, so a tier is more than a big
 | 4 | Floodlight colour, flags | Premium floodlight and flag sets |
 | 5 | Scoreboard style, crowd chant style, fireworks colour | Premium stadium themes |
 
-- **Each tier has several free styles and a few premium ones** (counts are *provisional*). Premium styles are purely cosmetic: no income, no capacity, no advantage.
+- **Each tier has several free styles, a few bought with cash and a few with Robux** (counts are *provisional*). Cash prices are about 10 to 20 minutes of income at the slot's tier, so late tiers keep a cash sink. Bought styles are purely cosmetic: no income, no capacity, no advantage.
+- **The Locker room shows the real stadium:** the panel docks at the left and the camera frames the slot on the player's own pitch (the kit on a few players at the centre circle, the crest over the gate, the boards, a floodlight mast, the scoreboard). Tapping a style paints it on that player's screen only, for free; one button under the cards uses or buys it, and closing paints the chosen styles back. The server paints the choices for everyone (`shared/StadiumLook`).
 - A premium style is shown only for tiers the player has reached, with a preview before buying. It is a direct purchase of a visible style: no random cosmetic crates. Offers live only in the Locker room, with no popups and nothing in the first 30 minutes. Prices are placeholders (set in Step 8).
-- Bought styles are kept across New Seasons, like anything bought with Robux. Free choices are also kept and re-apply as the player reaches each tier again.
+- Bought styles (cash or Robux) are kept across New Seasons. Free choices are also kept and re-apply as the player reaches each tier again.
 - The client sends only an option ID from `Config` and the server checks it against what the tier unlocks and what the player owns. No free-text names in version 1 (presets avoid filtering). Purchases follow the Step 1 rule of being safe if a message arrives twice (`roblox-monetization`).
 - Art cost: kit colours and banners are cheap, crowd chants and fireworks are the most expensive. Tier 5 is the first thing to cut if time is short.
 

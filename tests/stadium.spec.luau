@@ -106,7 +106,8 @@ T.test("the way in stays open: nothing blocks the gate or the aisle at the near 
 			local nearSide = part.z0 < CourtPlan.CENTER_Z - Config.StadiumTiers[tier].courtWidth / 2
 			local overGate = part.x0 < gate - 0.8 and part.x1 > -gate + 0.8 -- the gate frame itself is allowed
 			local tall = part.y1 - part.y0 > 1
-			local isGateSign = part.name == "GateSign" and part.y0 > CourtPlan.FLOOR + 5
+			local isGateSign = (part.name == "GateSign" or part.name == "Crest")
+				and part.y0 > CourtPlan.FLOOR + 5
 			if nearSide and overGate and tall and part.z0 >= front and not isGateSign then
 				T.eq(part.name, "an open gate", "tier " .. tier .. " blocks the gate")
 			end
@@ -147,4 +148,22 @@ T.test("the cinematic info shows the field growing and the boost", function()
 	T.truthy(info.maxSeconds > info.seconds)
 	T.eq(StadiumLogic.upgradeInfo(5, false).fieldFrom, 8)
 	T.eq(StadiumLogic.upgradeInfo(5, false).fieldTo, 11)
+end)
+
+T.test("every slot the Locker room paints has parts from the tier that opens it", function()
+	local StadiumLook = T.load("shared/StadiumLook")
+	for _, slot in Config.CosmeticSlots do
+		local names = StadiumLook.PARTS[slot.id]
+		if names then
+			for tier = slot.tier, #Config.StadiumTiers do
+				local found = 0
+				for _, part in CourtPlan.parts(tier) do
+					if names[part.name] then
+						found += 1
+					end
+				end
+				T.truthy(found > 0, slot.id .. " has nothing to paint at tier " .. tier)
+			end
+		end
+	end
 end)
