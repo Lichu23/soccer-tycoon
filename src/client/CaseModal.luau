@@ -17,6 +17,8 @@ local Workspace = game:GetService("Workspace")
 local Cases = require(ReplicatedStorage.Shared.Cases)
 local Config = require(ReplicatedStorage.Shared.Config)
 local DailyInfo = require(ReplicatedStorage.Shared.DailyInfo)
+local Icons = require(script.Parent.Icons)
+local Mannequin = require(ReplicatedStorage.Shared.Mannequin)
 local Net = require(script.Parent.Net)
 local NumberFormat = require(ReplicatedStorage.Shared.NumberFormat)
 local Panel = require(script.Parent.Panel)
@@ -27,22 +29,29 @@ local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
 
-local PANEL_W, PANEL_H = 520, 292
-local PAID_PANEL_H = 182 -- a bought case has no button or time under the strip
-local WINDOW_W, WINDOW_H = 480, 92
-local TILE_W, TILE_H, TILE_GAP = 96, 74, 6
-local TILE_COUNT = 50
-local WIN_INDEX = 40
+local PANEL_W, PANEL_H = 520, 342
+local PAID_PANEL_H = 246 -- a bought case has no button or time under the strip
+local WINDOW_W, WINDOW_H = 480, 156
+local TILE_W, TILE_H, TILE_GAP = 114, 136, 8
+local BAND_H = 34 -- the navy name band at the foot of a tile
+local TILE_COUNT = 40 -- fewer than before: a player tile is a ViewportFrame
+local WIN_INDEX = 32
 local IDLE_CENTER_INDEX = 3 -- the tile under the marker before a spin
 local SPIN_SECONDS = 6
 local HOLD_SECONDS = 0.9 -- the landed tile stays in view this long before the screen closes
 local REPLY_TIMEOUT = 4
+local FIGURE_FOV = 30
 
--- Bright flat colours with dark text, like the cards of the Shop.
+-- Each reward kind is its icon on a tile of the icon's own colour (the boost arrows are green too).
 local KIND_COLORS: { [string]: Color3 } = {
-	cash = Color3.fromRGB(96, 205, 128),
-	boost = Color3.fromRGB(255, 200, 70),
-	tp = Color3.fromRGB(100, 175, 255),
+	cash = Style.ui.good,
+	boost = Style.ui.good,
+	tp = Style.ui.bar,
+}
+local KIND_ICONS: { [string]: string } = {
+	cash = "cash",
+	boost = "boost",
+	tp = "tp",
 }
 
 local CaseModal = {}
@@ -88,81 +97,169 @@ local function randomReward(random: Random): Config.CaseReward
 	return Config.Daily.caseRewards[1]
 end
 
--- What a tile says: the label and a detail line. The winning tile shows the real amount.
-local function tileTexts(reward: Config.CaseReward, prize: any?): (string, string)
+-- The line in a tile's band. The winning tile of the free case shows the real amount.
+local function bandText(reward: Config.CaseReward, prize: any?): string
 	if prize ~= nil and type(prize.amount) == "number" then
 		if prize.kind == "cash" then
-			return reward.label, "+" .. NumberFormat.money(prize.amount)
+			return "+" .. NumberFormat.money(prize.amount)
 		elseif prize.kind == "tp" then
-			return reward.label, "+" .. prize.amount .. " TP"
+			return "+" .. prize.amount .. " TP"
 		end
 	end
-	return reward.label, reward.detail
+	return reward.detail
 end
 
--- What a tile of a bought case shows: a player in his rarity colour, or a boost in gold.
-local function paidTile(id: string): (Color3, string, string)
-	local boost = Config.CaseBoostsById[id]
-	if boost then
-		return KIND_COLORS.boost, boost.label, boost.detail
+-- One figure per player, built the first time a tile shows him and cloned for every other tile.
+local figures: { [string]: Model } = {}
+local function figureOf(def: Config.PlayerDef): Model
+	local figure = figures[def.id]
+	if figure == nil then
+		figure = Mannequin.build(def, nil, false)
+		figures[def.id] = figure
 	end
-	local def = Config.PlayersById[id]
-	if def == nil then
-		return KIND_COLORS.cash, "?", ""
-	end
-	return Style.rarityColors[def.rarity] or Style.rarityColors.Common,
-		def.name,
-		Style.rarityNames[def.rarity] or def.rarity
+	return (figure :: Model):Clone()
 end
 
+-- A rounded tile in `color`, a little lighter at the top, with a navy band at its foot that holds
+-- `bandLine`. Returns the tile and the area above the band.
 local function makeTile(
 	parent: Instance,
 	index: number,
 	color: Color3,
-	label: string,
-	detail: string
-)
+	bandLine: string
+): (Frame, Frame)
 	local tile = new("Frame", {
 		Name = "Tile" .. index,
 		Position = UDim2.fromOffset((index - 1) * (TILE_W + TILE_GAP), (WINDOW_H - TILE_H) / 2),
 		Size = UDim2.fromOffset(TILE_W, TILE_H),
-		BackgroundColor3 = color,
+		BackgroundColor3 = Color3.new(1, 1, 1),
 	}, parent)
-	rounded(tile, 10)
+	rounded(tile, 12)
+	new("UIGradient", {
+		Color = ColorSequence.new(color:Lerp(Color3.new(1, 1, 1), 0.35), color),
+		Rotation = 90,
+	}, tile)
 	new("UIStroke", {
 		Name = "Outline",
 		Color = Style.ui.dark,
 		Thickness = 3,
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 	}, tile)
-	new("TextLabel", {
-		Name = "Label",
-		Position = UDim2.fromOffset(4, 8),
-		Size = UDim2.new(1, -8, 0, 30),
-		BackgroundTransparency = 1,
-		Text = label,
-		TextWrapped = true,
-		Font = Style.font,
-		TextSize = 15,
-		TextColor3 = Style.ui.dark,
+	local band = new("Frame", {
+		Name = "Band",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.new(1, 0, 0, BAND_H),
+		BackgroundColor3 = Style.ui.panel,
+		ZIndex = 3,
 	}, tile)
-	new("TextLabel", {
-		Name = "Detail",
-		Position = UDim2.fromOffset(4, 40),
-		Size = UDim2.new(1, -8, 0, 26),
+	rounded(band, 10)
+	-- Squares off the band's top corners, so only the tile's own corners are round.
+	new("Frame", {
+		Name = "Top",
+		Size = UDim2.new(1, 0, 0, 10),
+		BackgroundColor3 = Style.ui.panel,
+		BorderSizePixel = 0,
+		ZIndex = 3,
+	}, band)
+	local text = new("TextLabel", {
+		Name = "Line",
+		Position = UDim2.fromOffset(5, 2),
+		Size = UDim2.new(1, -10, 1, -4),
 		BackgroundTransparency = 1,
-		Text = detail,
+		Text = bandLine,
 		TextWrapped = true,
+		TextScaled = true,
 		Font = Style.font,
-		TextSize = 13,
-		TextColor3 = Panel.TEXT,
+		TextColor3 = Style.ui.text,
+		ZIndex = 4,
+	}, band)
+	new("UITextSizeConstraint", { MaxTextSize = 15, MinTextSize = 9 }, text)
+	local area = new("Frame", {
+		Name = "Area",
+		Size = UDim2.new(1, 0, 1, -BAND_H),
+		BackgroundTransparency = 1,
+		ZIndex = 2,
 	}, tile)
-	return tile
+	return tile, area
+end
+
+-- The kind's icon in the middle of the area. A boost puts "x2" in front of it.
+local function addIcon(area: Frame, kind: string)
+	local picture = Icons.id(KIND_ICONS[kind] or "")
+	local boost = kind == "boost"
+	local iconSize = if boost then 62 else 74
+	new("ImageLabel", {
+		Name = "Icon",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = if boost then UDim2.new(0.5, 20, 0.5, 2) else UDim2.new(0.5, 0, 0.5, 2),
+		Size = UDim2.fromOffset(iconSize, iconSize),
+		BackgroundTransparency = 1,
+		Image = picture,
+		ZIndex = 2,
+	}, area)
+	if boost then
+		local x2 = new("TextLabel", {
+			Name = "Times",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(0.5, -30, 0.5, 2),
+			Size = UDim2.fromOffset(52, 40),
+			BackgroundTransparency = 1,
+			Text = "x2",
+			Font = Style.font,
+			TextSize = 32,
+			TextColor3 = Style.ui.text,
+			ZIndex = 3,
+		}, area)
+		new("UIStroke", { Color = Style.ui.dark, Thickness = 3 }, x2)
+	end
+end
+
+-- The player from the chest up, turned a little, in the area.
+local function addFigure(area: Frame, def: Config.PlayerDef)
+	local view = new("ViewportFrame", {
+		Name = "Figure",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Ambient = Color3.fromRGB(200, 200, 210),
+		LightColor = Color3.fromRGB(255, 244, 225),
+		LightDirection = Vector3.new(0.4, -0.7, 0.6),
+		ZIndex = 2,
+	}, area)
+	local figure = figureOf(def)
+	figure:PivotTo(CFrame.Angles(0, math.rad(-20), 0))
+	figure.Parent = view
+	-- The torso's middle is the model's origin; the frame runs from the belt to just over the hair.
+	local middle = Vector3.new(0, 1.1, 0)
+	local distance = 2.2 / math.tan(math.rad(FIGURE_FOV / 2))
+	local camera = new("Camera", {
+		FieldOfView = FIGURE_FOV,
+		CFrame = CFrame.lookAt(middle + Vector3.new(0, 0.3, -distance), middle),
+	}, view)
+	view.CurrentCamera = camera
 end
 
 local function freeTile(parent: Instance, reward: Config.CaseReward, index: number, prize: any?)
-	local label, detail = tileTexts(reward, prize)
-	return makeTile(parent, index, KIND_COLORS[reward.kind], label, detail)
+	local _, area = makeTile(parent, index, KIND_COLORS[reward.kind], bandText(reward, prize))
+	addIcon(area, reward.kind)
+end
+
+-- A tile of a bought case: the player on his rarity colour with his full name, or a boost.
+local function paidTile(parent: Instance, index: number, id: string)
+	local boost = Config.CaseBoostsById[id]
+	if boost then
+		local _, area = makeTile(parent, index, KIND_COLORS.boost, boost.detail)
+		addIcon(area, "boost")
+		return
+	end
+	local def = Config.PlayersById[id]
+	if def == nil then
+		makeTile(parent, index, Style.rarityColors.Common, "?")
+		return
+	end
+	local color = Style.rarityColors[def.rarity] or Style.rarityColors.Common
+	local _, area = makeTile(parent, index, color, def.name)
+	addFigure(area, def)
 end
 
 function CaseModal.init()
@@ -368,7 +465,7 @@ function CaseModal.init()
 					title = string.upper(if def then def.name else "Case"),
 					big = boost.label .. " · " .. boost.detail,
 					detail = "Double cash, added to your boost time",
-					icon = "cash",
+					icon = "boost",
 				})
 			end
 			Reveal.release() -- a player won: his reveal plays now
@@ -469,7 +566,7 @@ function CaseModal.init()
 			local id = if index == WIN_INDEX
 				then wonId
 				else Cases.pick(entries, random:NextNumber())
-			makeTile(strip, index, paidTile(id))
+			paidTile(strip, index, id)
 		end
 		spin()
 	end
