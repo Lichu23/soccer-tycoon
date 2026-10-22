@@ -21,6 +21,7 @@ export type Info = {
 	lines: { Line }?, -- extra rows under the price (the goals of a Legend)
 	state: string, -- "ready", "cannotAfford", "locked", "owned", "maxed" or "info"
 	icon: string?, -- the name of a picture shown above the text (client/Icons), for the Robux packs
+	stars: number?, -- the stars of an owned player (from case duplicates), shown above the price
 }
 
 local STORE_NAMES: { [string]: string } = {
@@ -53,6 +54,7 @@ function PadInfo.levelUp(data: ProgressData, def: Config.PlayerDef): Info
 	local owned = data.players[def.id]
 	local cap = Config.Rarities[def.rarity].levelCap
 	local level = if owned then owned.level else 0
+	local stars = if owned then owned.stars else 0
 	local levelText = "Lv " .. level .. "/" .. cap
 	local benched = table.find(Roster.field(data), def.id) == nil
 	local status = Progress.levelStatus(data, def.id)
@@ -66,6 +68,7 @@ function PadInfo.levelUp(data: ProgressData, def: Config.PlayerDef): Info
 			price = "MAX",
 			note = if benched then levelText .. " · on the bench" else levelText,
 			state = "maxed",
+			stars = stars,
 		}
 	elseif status == "cannotAfford" then
 		local short = NumberFormat.short(cost - data.tp)
@@ -74,6 +77,7 @@ function PadInfo.levelUp(data: ProgressData, def: Config.PlayerDef): Info
 			price = NumberFormat.short(cost) .. " TP",
 			note = levelText .. " · need " .. short .. " TP",
 			state = status,
+			stars = stars,
 		}
 	end
 	return {
@@ -81,6 +85,7 @@ function PadInfo.levelUp(data: ProgressData, def: Config.PlayerDef): Info
 		price = NumberFormat.short(cost) .. " TP",
 		note = note,
 		state = status,
+		stars = stars,
 	}
 end
 
@@ -95,7 +100,14 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 		local status = Progress.playerStatus(data, padId)
 		if status == "owned" then
 			if not Progress.trainingUnlocked(data) then
-				return { title = def.name, price = "OWNED", note = "", state = "owned" }
+				local owned = data.players[padId]
+				return {
+					title = def.name,
+					price = "OWNED",
+					note = "",
+					state = "owned",
+					stars = if owned then owned.stars else 0,
+				}
 			end
 			return PadInfo.levelUp(data, def)
 		elseif status == "locked" then
@@ -122,7 +134,14 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 		local status = Legends.status(data, padId)
 		if status == "owned" then
 			if not Progress.trainingUnlocked(data) then
-				return { title = def.name, price = "OWNED", note = "", state = "owned" }
+				local owned = data.players[padId]
+				return {
+					title = def.name,
+					price = "OWNED",
+					note = "",
+					state = "owned",
+					stars = if owned then owned.stars else 0,
+				}
 			end
 			return PadInfo.levelUp(data, def)
 		end

@@ -57,6 +57,7 @@ local ICON_SIZE = 64
 local PRICE_COLOR = Color3.fromRGB(150, 214, 160)
 local BAD_COLOR = Color3.fromRGB(232, 142, 138)
 local GOAL_DONE_COLOR = Color3.fromRGB(150, 214, 160)
+local STAR_COLOR = Style.ui.gold
 local OUTLINE_COLOR = Color3.fromRGB(0, 0, 0)
 
 type Entry = {
@@ -64,6 +65,7 @@ type Entry = {
 	billboard: BillboardGui,
 	disc: BasePart?,
 	title: TextLabel,
+	stars: TextLabel,
 	price: TextLabel,
 	note: TextLabel,
 	lines: { TextLabel },
@@ -117,6 +119,7 @@ local function buildBillboard(
 	TextLabel,
 	TextLabel,
 	TextLabel,
+	TextLabel,
 	{ TextLabel },
 	Frame,
 	Frame
@@ -162,14 +165,18 @@ local function buildBillboard(
 	local scale = if compact then PACK_SCALE else 1
 	local title = label(frame, "Title", math.floor(24 * scale), TITLE_COLOR)
 	title.LayoutOrder = 1
+	-- The stars of an owned player (one per case duplicate), between the name and the price.
+	local stars = label(frame, "Stars", math.floor(26 * scale), STAR_COLOR)
+	stars.LayoutOrder = 2
+	stars.Visible = false
 	local price = label(frame, "Price", math.floor(30 * scale), PRICE_COLOR)
-	price.LayoutOrder = 2
+	price.LayoutOrder = 3
 	local note = label(frame, "Note", math.floor(18 * scale), NOTE_COLOR)
-	note.LayoutOrder = 3
+	note.LayoutOrder = 4
 	local lines: { TextLabel } = {}
 	for index = 1, MAX_LINES do
 		local line = label(frame, "Line" .. index, 18, NOTE_COLOR)
-		line.LayoutOrder = 3 + index
+		line.LayoutOrder = 4 + index
 		table.insert(lines, line)
 	end
 
@@ -189,7 +196,7 @@ local function buildBillboard(
 	fill.Parent = track
 
 	billboard.Parent = part
-	return billboard, title, price, note, lines, track, fill
+	return billboard, title, stars, price, note, lines, track, fill
 end
 
 -- A flat round disc on top of the pad part, which is hidden for this player.
@@ -234,6 +241,9 @@ local function refresh(entry: Entry)
 	-- The name of a player is on the plaque of his capsule, so the pad shows only the price.
 	entry.title.Text = string.upper(info.title)
 	entry.title.Visible = not isPlayer
+	local stars = info.stars or 0
+	entry.stars.Text = string.rep("★", stars)
+	entry.stars.Visible = stars > 0
 	entry.price.Text = info.price
 	entry.price.Visible = info.price ~= ""
 	entry.price.TextColor3 = if info.state == "cannotAfford" then BAD_COLOR else PRICE_COLOR
@@ -292,7 +302,8 @@ local function track(part: Instance)
 	if ownerId ~= 0 and ownerId ~= player.UserId then
 		return
 	end
-	local billboard, title, price, note, lines, bar, fill = buildBillboard(part, kind == "robux")
+	local billboard, title, stars, price, note, lines, bar, fill =
+		buildBillboard(part, kind == "robux")
 	if kind == "stadium" then
 		billboard.MaxDistance = STADIUM_MAX_DISTANCE -- only shown once the player is close to it
 	end
@@ -301,6 +312,7 @@ local function track(part: Instance)
 		billboard = billboard,
 		disc = if DISC_KINDS[kind] then buildDisc(part) else nil,
 		title = title,
+		stars = stars,
 		price = price,
 		note = note,
 		lines = lines,

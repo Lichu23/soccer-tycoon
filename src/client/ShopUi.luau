@@ -67,8 +67,9 @@ local function rounded(parent: Instance, radius: number)
 	new("UICorner", { CornerRadius = UDim.new(0, radius) }, parent)
 end
 
+-- "30%" or "36.5%": the decimal only when it is not zero.
 local function percent(share: number): string
-	return string.format("%.1f%%", share * 100)
+	return (string.gsub(string.format("%.1f%%", share * 100), "%.0%%$", "%%"))
 end
 
 local function attribute(name: string): number
@@ -147,6 +148,56 @@ function ShopUi.init()
 			item.Activated:Connect(onClick)
 		end
 		return item
+	end
+
+	-- One row of a case's odds: the name on the left, the chance on the right. A group row (`accent`)
+	-- has a coloured dot and a bigger text; the rows under it are indented.
+	local function oddsRow(text: string, share: number, accent: Color3?)
+		order += 1
+		local size = if accent then 16 else 15
+		local row = new("Frame", {
+			Name = "Odds",
+			LayoutOrder = order,
+			Size = UDim2.new(1, 0, 0, size + 6),
+			BackgroundTransparency = 1,
+			ZIndex = 7,
+		}, card)
+		local indent = 22
+		if accent then
+			local dot = new("Frame", {
+				Name = "Dot",
+				AnchorPoint = Vector2.new(0, 0.5),
+				Position = UDim2.new(0, 2, 0.5, 0),
+				Size = UDim2.fromOffset(12, 12),
+				BackgroundColor3 = accent,
+				ZIndex = 7,
+			}, row)
+			rounded(dot, 6)
+			new("UIStroke", { Color = Style.ui.dark, Thickness = 2 }, dot)
+		else
+			indent = 38
+		end
+		local textProps = {
+			BackgroundTransparency = 1,
+			Font = Style.font,
+			TextSize = size,
+			TextColor3 = Panel.TEXT,
+			ZIndex = 7,
+		}
+		local name = new("TextLabel", textProps, row)
+		name.Name = "Name"
+		name.Position = UDim2.fromOffset(indent, 0)
+		name.Size = UDim2.new(1, -indent - 70, 1, 0)
+		name.Text = text
+		name.TextXAlignment = Enum.TextXAlignment.Left
+		name.TextTruncate = Enum.TextTruncate.AtEnd
+		local chance = new("TextLabel", textProps, row)
+		chance.Name = "Chance"
+		chance.AnchorPoint = Vector2.new(1, 0)
+		chance.Position = UDim2.fromScale(1, 0)
+		chance.Size = UDim2.new(0, 70, 1, 0)
+		chance.Text = percent(share)
+		chance.TextXAlignment = Enum.TextXAlignment.Right
 	end
 
 	-- The views --------------------------------------------------------------------------------
@@ -437,16 +488,13 @@ function ShopUi.init()
 
 	local function renderDetail(key: string)
 		local product = Config.Products[key]
-		local back = function()
-			view = nil
-			render()
-		end
 		if product.kind == "case" then
 			local def = Config.Cases[product.caseId or ""]
 			local entries, odds = Cases.odds(State.data, product.caseId or "")
 			built.setTitle(def.name)
+			-- The real odds, as rolled (Cases.odds): a group per kind of prize, its parts under it.
 			if odds.boost > 0 then
-				line("A random player or x2 cash boost. The odds below are the real ones.")
+				oddsRow("x2 Cash boost", odds.boost, Style.ui.gold)
 				for _, boost in Config.CaseBoosts do
 					local chance = 0
 					for _, entry in entries do
@@ -454,24 +502,20 @@ function ShopUi.init()
 							chance = entry.chance
 						end
 					end
-					line(`{boost.label} for {boost.detail}: {percent(chance)}`)
+					oddsRow((string.gsub(boost.detail, "minutes", "min")), chance)
 				end
-			else
-				line("One random player. The odds below are the real ones.")
 			end
-			line(`A player from the floors open: {percent(odds.reached)}`)
+			oddsRow("Player", 1 - odds.boost, Style.ui.good)
+			oddsRow("Floors you've opened", odds.reached)
 			if odds.nextFloor > 0 then
-				line(`From the next floor: {percent(odds.nextFloor)}`)
+				oddsRow("Next floor", odds.nextFloor)
 			end
 			if odds.further > 0 then
-				line(`From floors further on: {percent(odds.further)}`)
+				oddsRow("Floors further on", odds.further)
 			end
-			line(`A Legend: {percent(odds.legend)}`)
-			line(`A player you already own: {percent(odds.duplicate)}`, {
-				TextColor3 = Panel.TEXT,
-			})
+			oddsRow("Legend", odds.legend)
 			line(
-				`A duplicate adds a star (+{math.floor(Config.Stars.bonusPerStar * 100)}% income, up to {Config.Stars.maxStars}). After that it gives cash.`,
+				`Duplicate? +1 star (+{math.floor(Config.Stars.bonusPerStar * 100)}% income, max {Config.Stars.maxStars}), then cash.`,
 				{ TextColor3 = Panel.MUTED }
 			)
 		else
@@ -495,7 +539,6 @@ function ShopUi.init()
 				end
 			end)
 		end)
-		button("Back", "Back", Style.ui.idle, back)
 	end
 
 	function render()
