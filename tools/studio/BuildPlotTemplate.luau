@@ -40,8 +40,9 @@ local Def = {
 	-- building (x 50 to 130, z 20 to 160, door at x 50, z 90) is on their left, training on the right.
 	ToPlot = { A = -70, B = 60 },
 	Path = { Half = 20, Length = 172 }, -- the central path from the gate to the stadium pad
-	-- The training yard on the right, reached by a walkway from the path.
-	Training = { X0 = -130, X1 = -50, Z0 = 60, Z1 = 140, WalkHalf = 8 },
+	-- The training yard on the right, reached by a walkway from the path. It is centred on the
+	-- building's door (z 90), so the two walkways face each other across the path.
+	Training = { X0 = -130, X1 = -50, Z0 = 50, Z1 = 130, WalkHalf = 8 },
 	Stadium = { Z0 = 182, Z1 = 296 }, -- the lawn of the stadium zone at the back
 	-- A capsule stands against a wall (CapsuleInset from the wall's inner face to its middle) and
 	-- its pad is PadOffset further into the room.

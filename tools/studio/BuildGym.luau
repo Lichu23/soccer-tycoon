@@ -1,6 +1,8 @@
--- Builds the Training Gym in ServerStorage.PlotTemplate: a real gym on the training yard. The yard
--- (x -130 to -50, z 60 to 140, the entrance is the gap in the wall at x -50, z 92 to 108, the path
--- side is +x) is split in two: an indoor GYM HALL next to the entrance (x -90 to -50) with a roof,
+-- Builds the Training Gym in ServerStorage.PlotTemplate: a real gym on the training yard. The gym is
+-- laid out below at z 60 to 140 and then moved SHIFT_Z along the path, so it stands on the yard
+-- (x -130 to -50, z 50 to 130, the entrance is the gap in the wall at x -50, z 82 to 98, the path
+-- side is +x) with its door facing the building's door (z 90). All the z values below are before
+-- that move. The yard is split in two: an indoor GYM HALL next to the entrance (x -90 to -50) with a roof,
 -- ceiling lights, a glass front, mirrors, dumbbell racks and benches, holding the two conditioning
 -- stations; and an OUTDOOR YARD behind it (x -130 to -90) with striped turf, a fence, floodlights and
 -- a small goal, holding the two skill stations. A wide doorway joins the two. Run through the Studio
@@ -43,6 +45,7 @@ local gym = Instance.new("Folder")
 gym.Name = "Gym"
 gym.Parent = template
 
+local SHIFT_Z = -10 -- the move from the layout below to the yard (BuildPlotTemplate Def.Training)
 local GROUND = 0.5
 local TOP = 0.6 -- the walking height of the yard floor
 local H_TOP = 14 -- the height of the hall walls, under the roof
@@ -351,5 +354,19 @@ marker("TrainingFreekick", "trainingFreekick", -110, 120)
 -- The conditioning pads only cover their machine: training needs the belt or the bench seat anyway.
 marker("TrainingTreadmill", "trainingTreadmill", -70, 80, 15, 7.2)
 marker("TrainingBench", "trainingBench", -70, 120, 8, 10)
+
+-- Move the whole gym and its markers onto the yard.
+local shift = CFrame.new(0, 0, SHIFT_Z)
+for _, item in gym:GetChildren() do
+	if item:IsA("BasePart") then
+		item.CFrame = shift * item.CFrame
+	elseif item:IsA("Model") then
+		item:PivotTo(shift * item:GetPivot())
+	end
+end
+for _, name in { "TrainingKeepie", "TrainingFreekick", "TrainingTreadmill", "TrainingBench" } do
+	local pad = markers[name] :: BasePart
+	pad.CFrame = shift * pad.CFrame
+end
 
 return "Gym built: " .. #gym:GetChildren() .. " parts, " .. #markers:GetChildren() .. " markers in total"
