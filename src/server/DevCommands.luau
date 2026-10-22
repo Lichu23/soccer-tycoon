@@ -29,7 +29,7 @@ DevCommands.commands = {
 --   resetDaily:   the free case and the penalty kicks are ready again
 --   quickStart:   the opening is done: floor 1 owned, its cheapest player at level 1 (the level-up
 --                 tutorial is over), the plot counts as claimed before (no tour) and the Kick button
---                 as seen (the penalty screen never opens by itself). DevTools claims the plot.
+--                 as seen. DevTools claims the plot.
 --   resetProfile: back to a brand-new profile
 function DevCommands.apply(data: ProfileSchema.Profile, command: string, amount: number): boolean
 	if command == "grantFloor" then

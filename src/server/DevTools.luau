@@ -63,7 +63,7 @@ function DevTools.start()
 			end
 		elseif command == "quickStart" then
 			-- Skips the opening: claims a plot (no tour), floor 1, the level-up tutorial done, the
-			-- first match without its camera and the penalty screen that opens by itself.
+			-- first match without its camera.
 			DevCommands.apply(session.data, "quickStart", 0)
 			session.runtime.firstMatchShown = true
 			session.runtime.nextMatchAt = 0

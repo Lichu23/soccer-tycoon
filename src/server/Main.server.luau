@@ -65,19 +65,11 @@ Actions.onChange = function(session, what, id)
 		local owned = session.data.players[id]
 		Analytics.milestone(session, "first_level") -- opens the other training stations for good
 		if owned then
-			-- The first level any player ever gets ends the level-up tutorial (the penalties follow).
-			local firstEver = owned.level == 1
-			for otherId, other in session.data.players do
-				if otherId ~= id and other.level > 0 then
-					firstEver = false
-				end
-			end
 			Remotes.fireClient("Notice", session.player, {
 				kind = "levelUp",
 				playerId = id,
 				level = owned.level,
 				stars = owned.stars,
-				tutorialDone = firstEver,
 			})
 		end
 	elseif what == "store" then
