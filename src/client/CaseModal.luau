@@ -39,6 +39,7 @@ local WIN_INDEX = 32
 local IDLE_CENTER_INDEX = 3 -- the tile under the marker before a spin
 local SPIN_SECONDS = 6
 local HOLD_SECONDS = 0.9 -- the landed tile stays in view this long before the screen closes
+local WIN_ZOOM, WIN_ZOOM_SECONDS = 1.08, 0.25 -- the landed tile grows to this (it still fits the window)
 local REPLY_TIMEOUT = 4
 local FIGURE_FOV = 30
 
@@ -361,7 +362,7 @@ function CaseModal.init()
 			Text = arrow.text,
 			Font = Enum.Font.GothamBold,
 			TextSize = 24,
-			TextColor3 = Color3.fromRGB(232, 64, 96),
+			TextColor3 = Panel.MUTED, -- grey, so the only red on the screen stays the X
 			ZIndex = 6,
 		}, marker)
 	end
@@ -490,22 +491,27 @@ function CaseModal.init()
 		mode = "spinning"
 		token += 1
 		local myToken = token
-		-- The strip has landed: the winning tile is outlined in gold, then the screen closes and the
-		-- reward card says what was won.
+		-- The strip has landed: the winning tile grows a little (a short zoom over its neighbours),
+		-- then the screen closes and the reward card says what was won.
 		local function finish()
-			local tile = strip:FindFirstChild("Tile" .. WIN_INDEX)
-			if tile then
-				local outline = tile:FindFirstChild("Outline")
-				if outline and outline:IsA("UIStroke") then
-					outline.Color = Color3.fromRGB(232, 64, 96)
-					outline.Thickness = 5
-				end
-			end
 			strip.Position = UDim2.fromOffset(landed, 0)
 			mode = "idle"
 			if GuiService.ReducedMotionEnabled then
 				close_()
 				return
+			end
+			local tile = strip:FindFirstChild("Tile" .. WIN_INDEX)
+			if tile and tile:IsA("GuiObject") then
+				tile.ZIndex = 2
+				-- A UIScale grows around the anchor: from the centre, so it stays inside the window.
+				tile.AnchorPoint = Vector2.new(0.5, 0.5)
+				tile.Position += UDim2.fromOffset(TILE_W / 2, TILE_H / 2)
+				local zoom = new("UIScale", { Name = "Zoom" }, tile)
+				TweenService:Create(
+					zoom,
+					TweenInfo.new(WIN_ZOOM_SECONDS, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+					{ Scale = WIN_ZOOM }
+				):Play()
 			end
 			task.delay(HOLD_SECONDS, function()
 				if token == myToken and gui.Enabled then

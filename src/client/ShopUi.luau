@@ -151,9 +151,25 @@ function ShopUi.init()
 		return item
 	end
 
-	-- One row of a case's odds: the name on the left, the chance on the right. A group row (`accent`)
-	-- has a coloured dot and a bigger text; the rows under it are indented.
-	local function oddsRow(text: string, share: number, accent: Color3?)
+	-- A block of odds rows, close together so a case's whole detail and its Buy button fit without
+	-- scrolling. `width` is its share of the parent (the boosts sit in two columns).
+	local function oddsBlock(parent: Instance, width: number): Frame
+		order += 1
+		local block = new("Frame", {
+			Name = "OddsBlock",
+			LayoutOrder = order,
+			Size = UDim2.fromScale(width, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundTransparency = 1,
+			ZIndex = 7,
+		}, parent)
+		new("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder }, block)
+		return block
+	end
+
+	-- One row of a case's odds in `block`: the name on the left, the chance on the right. A group row
+	-- (`accent`) has a coloured dot and a bigger text; the rows under it are indented.
+	local function oddsRow(block: Frame, text: string, share: number, accent: Color3?)
 		order += 1
 		local size = if accent then 16 else 15
 		local row = new("Frame", {
@@ -162,7 +178,7 @@ function ShopUi.init()
 			Size = UDim2.new(1, 0, 0, size + 6),
 			BackgroundTransparency = 1,
 			ZIndex = 7,
-		}, card)
+		}, block)
 		local indent = 22
 		if accent then
 			local dot = new("Frame", {
@@ -188,7 +204,7 @@ function ShopUi.init()
 		local name = new("TextLabel", textProps, row)
 		name.Name = "Name"
 		name.Position = UDim2.fromOffset(indent, 0)
-		name.Size = UDim2.new(1, -indent - 70, 1, 0)
+		name.Size = UDim2.new(1, -indent - 56, 1, 0)
 		name.Text = text
 		name.TextXAlignment = Enum.TextXAlignment.Left
 		name.TextTruncate = Enum.TextTruncate.AtEnd
@@ -196,7 +212,7 @@ function ShopUi.init()
 		chance.Name = "Chance"
 		chance.AnchorPoint = Vector2.new(1, 0)
 		chance.Position = UDim2.fromScale(1, 0)
-		chance.Size = UDim2.new(0, 70, 1, 0)
+		chance.Size = UDim2.new(0, 56, 1, 0)
 		chance.Text = percent(share)
 		chance.TextXAlignment = Enum.TextXAlignment.Right
 	end
@@ -498,8 +514,24 @@ function ShopUi.init()
 			local def = Config.Cases[product.caseId or ""]
 			local entries, odds = Cases.odds(State.data, product.caseId or "")
 			built.setTitle(def.name)
-			-- The real odds, as rolled (Cases.odds): a group per kind of prize, its parts under it.
+			-- The real odds, as rolled (Cases.odds): a group per kind of prize, its parts under it. The
+			-- two boosts sit side by side.
 			if odds.boost > 0 then
+				order += 1
+				local boosts = new("Frame", {
+					Name = "Boosts",
+					LayoutOrder = order,
+					Size = UDim2.fromScale(1, 0),
+					AutomaticSize = Enum.AutomaticSize.Y,
+					BackgroundTransparency = 1,
+					ZIndex = 7,
+				}, card)
+				new("UIListLayout", {
+					FillDirection = Enum.FillDirection.Horizontal,
+					HorizontalAlignment = Enum.HorizontalAlignment.Center,
+					Padding = UDim.new(0.06, 0),
+					SortOrder = Enum.SortOrder.LayoutOrder,
+				}, boosts)
 				for _, kind in { "cash", "tp" } do
 					local rows = {}
 					local share = 0
@@ -514,26 +546,29 @@ function ShopUi.init()
 						end
 					end
 					if #rows > 0 then
+						local block = oddsBlock(boosts, 0.47)
 						oddsRow(
+							block,
 							rows[1].boost.label,
 							share,
 							if kind == "cash" then Style.ui.gold else Style.ui.bar
 						)
 						for _, row in rows do
-							oddsRow((string.gsub(row.boost.detail, "minutes", "min")), row.chance)
+							oddsRow(block, (string.gsub(row.boost.detail, "minutes", "min")), row.chance)
 						end
 					end
 				end
 			end
-			oddsRow("Player", 1 - odds.boost, Style.ui.good)
-			oddsRow("Floors you've opened", odds.reached)
+			local players = oddsBlock(card, 1)
+			oddsRow(players, "Player", 1 - odds.boost, Style.ui.good)
+			oddsRow(players, "Floors you've opened", odds.reached)
 			if odds.nextFloor > 0 then
-				oddsRow("Next floor", odds.nextFloor)
+				oddsRow(players, "Next floor", odds.nextFloor)
 			end
 			if odds.further > 0 then
-				oddsRow("Floors further on", odds.further)
+				oddsRow(players, "Floors further on", odds.further)
 			end
-			oddsRow("Legend", odds.legend)
+			oddsRow(players, "Legend", odds.legend)
 			line(
 				if def.newOnly and odds.duplicate == 0
 					then "Only players you don't have yet."
