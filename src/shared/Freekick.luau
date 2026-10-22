@@ -159,7 +159,7 @@ end
 function Freekick.goodZone(kick: number): (number, number)
 	local training = Config.Training
 	local low = math.min(
-		training.freekickWeakPower + (kick - 1) * training.freekickGoodLowStep,
+		training.freekickGoodLow + (kick - 1) * training.freekickGoodLowStep,
 		training.freekickGoodLowMax
 	)
 	local high = math.max(
@@ -167,6 +167,11 @@ function Freekick.goodZone(kick: number): (number, number)
 		training.freekickGoodHighMin
 	)
 	return low, high
+end
+
+-- The green zone of the daily penalty's meter, bottom and top: always the same, wider than the 1v1's.
+function Freekick.penaltyZone(): (number, number)
+	return Config.Training.freekickWeakPower, Config.Daily.penaltyGoodHigh
 end
 
 -- The power meter at time `at` once it moves: it fills, then empties again, faster on a later

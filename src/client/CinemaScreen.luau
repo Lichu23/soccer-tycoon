@@ -9,13 +9,15 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local Freekick = require(ReplicatedStorage.Shared.Freekick)
 local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
 
 local WHITE = Color3.fromRGB(255, 255, 255)
+local MISS = Color3.fromRGB(232, 142, 138) -- the screens' red for a miss
 local POWER_WIDTH = 30
+local MARKER_HEIGHT = 8 -- the power meter's moving indicator, wider than the meter
+local MARKER_OVERHANG = 18
 
 -- The other screens hidden while the stadium shows: the HUD and its dock, the menu buttons down the
 -- left, the floor buttons, the guide and the pad hint.
@@ -209,7 +211,7 @@ end
 
 export type PowerMeter = {
 	box: Frame,
-	fill: Frame,
+	marker: Frame,
 	stroke: UIStroke,
 	zone: Frame,
 	edges: { Frame },
@@ -217,10 +219,9 @@ export type PowerMeter = {
 	high: number,
 }
 
--- The power meter on the right: it fills from the bottom, with the green zone of the first attack
--- marked (`setPowerZone` narrows it).
-function CinemaScreen.powerMeter(parent: Instance): PowerMeter
-	local low, high = Freekick.goodZone(1)
+-- The power meter on the right: an indicator slides up and down it over the green zone from `low`
+-- to `high` (`setPowerZone` moves the zone, `setPower` the indicator).
+function CinemaScreen.powerMeter(parent: Instance, low: number, high: number): PowerMeter
 	local box = new("Frame", {
 		Name = "Power",
 		AnchorPoint = Vector2.new(1, 0.5),
@@ -238,7 +239,7 @@ function CinemaScreen.powerMeter(parent: Instance): PowerMeter
 		Position = UDim2.fromScale(0, 1 - low),
 		Size = UDim2.fromScale(1, high - low),
 		BackgroundColor3 = Style.ui.good,
-		BackgroundTransparency = 0.6,
+		BackgroundTransparency = 0,
 		BorderSizePixel = 0,
 		ZIndex = 5,
 	}, box)
@@ -256,14 +257,16 @@ function CinemaScreen.powerMeter(parent: Instance): PowerMeter
 			}, box)
 		)
 	end
-	local fill = new("Frame", {
-		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.fromScale(0, 1),
-		Size = UDim2.fromScale(1, 0),
-		BackgroundColor3 = Style.ui.gold,
-		ZIndex = 6,
+	local marker = new("Frame", {
+		Name = "Marker",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 1),
+		Size = UDim2.new(1, MARKER_OVERHANG, 0, MARKER_HEIGHT),
+		BackgroundColor3 = WHITE,
+		ZIndex = 8,
 	}, box)
-	rounded(fill, 8)
+	rounded(marker, MARKER_HEIGHT // 2)
+	new("UIStroke", { Color = Style.ui.panel, Thickness = 2 }, marker)
 	local label = new("TextLabel", {
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 0, -4),
@@ -282,7 +285,7 @@ function CinemaScreen.powerMeter(parent: Instance): PowerMeter
 	}, label)
 	return {
 		box = box,
-		fill = fill,
+		marker = marker,
 		stroke = stroke,
 		zone = zone,
 		edges = edges,
@@ -332,9 +335,14 @@ function CinemaScreen.walkOff(name: string, step: number)
 	humanoid:MoveTo(spot.Position + away.Unit * reach)
 end
 
--- The meter's fill colour for `power`: green inside the good zone of `meter`, red outside it.
-function CinemaScreen.powerGood(meter: PowerMeter, power: number): boolean
-	return power >= meter.low and power <= meter.high
+-- Puts the indicator of `meter` at `power`: white while it moves; once `stopped`, green on the
+-- green zone and red off it.
+function CinemaScreen.setPower(meter: PowerMeter, power: number, stopped: boolean)
+	meter.marker.Position = UDim2.fromScale(0.5, 1 - power)
+	meter.marker.BackgroundColor3 = if not stopped
+		then WHITE
+		elseif power >= meter.low and power <= meter.high then Style.ui.good
+		else MISS
 end
 
 return CinemaScreen

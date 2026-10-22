@@ -271,6 +271,8 @@ Config.Daily = {
 	penaltyLeadSeconds = 1.2,
 	penaltyFilmSeconds = 5.2,
 	penaltyKeeperReach = 0.5,
+	-- The penalty's green zone: from the breakaway's weak power up to this (wider than the 1v1's).
+	penaltyGoodHigh = 0.82,
 	-- The free daily case: five small rewards (never players, never large amounts). `weight` is the
 	-- relative chance. Cash is worth `minutes` of normal income, a boost is x2 for `seconds`, `tp`
 	-- is a few training points. The roulette on screen spins through exactly these.
@@ -396,33 +398,34 @@ Config.Training = {
 	-- `freekickKeeperReachMax` more).
 	freekickLeadSeconds = 1.2,
 	freekickIntroSeconds = 1.5, -- extra time before the first attack after stepping on the spot, to get ready
-	freekickMoveSeconds = 1.4,
-	freekickMoveStep = 0.06,
-	freekickMoveMin = 0.6,
+	freekickMoveSeconds = 1.1,
+	freekickMoveStep = 0.05,
+	freekickMoveMin = 0.45,
 	freekickAimSeconds = 1.5,
 	freekickAimUpSeconds = 1.05,
 	freekickAimRange = 1.25, -- the reticle glides from -this to +this (a little past the posts)
 	freekickAimLow = 0.1, -- the reticle's lowest and highest height
 	freekickAimHigh = 0.92,
-	freekickPowerSeconds = 0.9,
+	freekickPowerSeconds = 0.7,
 	-- The meter starts to move this long after the aim is locked (a double tap does not shoot).
 	freekickPowerDelay = 0.3,
 	-- The meter fills faster with every goal of the streak: `freekickPowerStep` less, down to
 	-- `freekickPowerMin`.
-	freekickPowerStep = 0.03,
-	freekickPowerMin = 0.6,
+	freekickPowerStep = 0.02,
+	freekickPowerMin = 0.5,
 	freekickPowerSweet = 0.7,
 	freekickPowerLift = 1.2,
 	freekickWeakPower = 0.3, -- below this the shot rolls to the keeper
-	-- The green zone of the meter: from the weak power up to `freekickGoodHigh` on the first attack,
-	-- narrower with every goal (its bottom `freekickGoodLowStep` higher up to `freekickGoodLowMax`,
-	-- its top `freekickGoodHighStep` lower down to `freekickGoodHighMin`). A free kick released
-	-- under it rolls to the keeper, over it flies over the bar.
-	freekickGoodHigh = 0.82,
-	freekickGoodLowStep = 0.03,
-	freekickGoodLowMax = 0.58,
-	freekickGoodHighStep = 0.008,
-	freekickGoodHighMin = 0.78,
+	-- The green zone of the meter: from `freekickGoodLow` up to `freekickGoodHigh` on the first
+	-- attack, narrower with every goal (its bottom `freekickGoodLowStep` higher up to
+	-- `freekickGoodLowMax`, its top `freekickGoodHighStep` lower down to `freekickGoodHighMin`). A
+	-- free kick stopped under it rolls to the keeper, over it flies over the bar.
+	freekickGoodLow = 0.42,
+	freekickGoodHigh = 0.8,
+	freekickGoodLowStep = 0.02,
+	freekickGoodLowMax = 0.61,
+	freekickGoodHighStep = 0.003,
+	freekickGoodHighMin = 0.77,
 	freekickGraceSeconds = 0.2,
 	freekickFilmSeconds = 6,
 	freekickTackleSeconds = 3,

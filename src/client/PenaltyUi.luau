@@ -3,7 +3,8 @@
 -- whole screen becomes the breakaway's stadium in penalty mode (client/BreakawayScene) with the
 -- player's own avatar on the penalty spot. Each kick has two inputs, and only the one in play shows:
 --   1. the aim: a reticle glides over the goal mouth; tap (click, Space or the A button) to lock it;
---   2. the power: the meter fills and empties again by itself; tap when it is in the green to shoot.
+--   2. the power: an indicator slides up and down the meter by itself; tap when it is on the green
+--      to shoot.
 -- Then the kick plays as a film (the run-up, the strike in slow motion, the goal or the save) and the
 -- next kick comes, until the day's kicks are used up; then the screen closes and the reward card
 -- says what the goals earned. The kick pips at the top show the day's kicks. The server judges every
@@ -36,6 +37,7 @@ local CLOSE_FADE_SECONDS = 1 -- every sound fades out this long when the screen 
 local DONE_HOLD_SECONDS = 1.2 -- the last film's last frame stays this long before the reward card
 local START_TIMEOUT = 4 -- the screen closes if the server never answers the start
 local LETTERBOX = 0.08 -- the share of the screen height of each film bar
+local POWER_LINGER = 0.8 -- the meter stays this long into the film, its indicator where it stopped
 local PIP_SIZE = 30
 local PIP_GAP = 10
 local COACH_BOTTOM = 40
@@ -65,7 +67,7 @@ local STEP_NAMES: { [string]: string } = {
 local COACH_TEXT: { [string]: string } = {
 	waiting = "Penalty time! Get ready...",
 	aim = "Tap to lock your aim on the goal.",
-	power = "Tap when the bar is in the green to shoot!",
+	power = "Tap when the marker is on the green to shoot!",
 }
 
 local OUTCOME_TEXT: { [string]: string } = {
@@ -267,8 +269,8 @@ function PenaltyUi.init()
 	fitted(stepText, 26)
 
 	-- The power meter, on the right.
-	local meter = CinemaScreen.powerMeter(gui)
-	local powerBox, powerFill, powerStroke = meter.box, meter.fill, meter.stroke
+	local meter = CinemaScreen.powerMeter(gui, Freekick.penaltyZone())
+	local powerBox, powerStroke = meter.box, meter.stroke
 
 	-- The words of a result, in the middle.
 	local feedback = outlined({
@@ -664,15 +666,14 @@ function PenaltyUi.init()
 				else Style.ui.gold
 		end
 
-		-- The power meter.
+		-- The power meter, and for a moment into the film where the shot stopped it.
+		local struck = phase == "shot" and now - state.stageAt < POWER_LINGER
 		local power = if phase == "power"
 			then releasedPower or Freekick.powerAt({ holdAt = meterStart() }, now)
+			elseif struck then state.power
 			else 0
-		powerBox.Visible = ready and phase == "power"
-		powerFill.Size = UDim2.fromScale(1, power)
-		powerFill.BackgroundColor3 = if CinemaScreen.powerGood(meter, power)
-			then Style.ui.good
-			else BAD
+		powerBox.Visible = ready and (phase == "power" or struck)
+		CinemaScreen.setPower(meter, power, releasedPower ~= nil or struck)
 		powerStroke.Color = if releasedPower then Style.ui.good else Style.ui.gold
 
 		-- The texts.

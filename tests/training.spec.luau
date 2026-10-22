@@ -584,8 +584,11 @@ T.test("the power meter fills faster and its green zone narrows with every goal"
 	T.near(Freekick.powerSeconds(2), FK.freekickPowerSeconds - FK.freekickPowerStep, 1e-9)
 	T.near(Freekick.powerSeconds(200), FK.freekickPowerMin, 1e-9)
 	local low, high = Freekick.goodZone(1)
-	T.near(low, FK.freekickWeakPower, 1e-9)
+	T.near(low, FK.freekickGoodLow, 1e-9)
 	T.near(high, FK.freekickGoodHigh, 1e-9)
+	-- The daily penalty's zone is its own, wider than the 1v1's first one.
+	local penaltyLow, penaltyHigh = Freekick.penaltyZone()
+	T.truthy(penaltyLow < low and penaltyHigh > high)
 	local low2, high2 = Freekick.goodZone(2)
 	T.truthy(low2 > low and high2 < high)
 	local lowMax, highMin = Freekick.goodZone(200)
@@ -614,7 +617,8 @@ T.test("a free kick stopped outside the green zone misses", function()
 	local low, high = Freekick.goodZone(11)
 	T.eq(at(11, low - 0.05), "saved") -- too soft: it rolls to the keeper
 	T.eq(at(11, high + 0.02), "over") -- too hard: over the bar, though the reticle was low
-	T.eq(at(1, 0.4), "goal") -- the same soft shot is green on the first attack
+	local firstLow = Freekick.goodZone(1)
+	T.eq(at(1, firstLow + 0.15), "goal") -- the same aim, stopped on the first attack's green
 end)
 
 T.test("a goal brings the next attack, a miss ends the streak and a new one starts", function()

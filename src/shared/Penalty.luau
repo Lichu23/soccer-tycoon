@@ -1,8 +1,8 @@
 --!strict
 -- The daily penalty kicks (docs/PLAN.md, Step 7), played like the shot of the 1v1 breakaway
 -- (shared/Freekick) without the defender: an aim reticle glides over the goal mouth and a tap locks
--- it, then the power meter fills and empties again by itself and a second tap shoots. The server judges the shot at once with
--- the breakaway's maths and a calmer keeper of its own, then the client plays the kick as a film
+-- it, then the power meter's indicator slides up and down by itself and a second tap shoots. The
+-- server judges the shot at once with the breakaway's maths and a calmer keeper of its own, then the client plays the kick as a film
 -- (the run-up, the strike in slow motion, the goal or the save). After the film the next kick's
 -- reticle comes, until the kicks of the day are used up. Like the breakaway everything runs on the
 -- server clock from the start of its step, so the client draws the same reticle and the same shot

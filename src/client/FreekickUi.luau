@@ -7,7 +7,8 @@
 --      matching key (the arrows, A/S/D or the D-pad) or tap its button at the bottom to beat the
 --      defender;
 --   2. the aim: a reticle glides over the goal mouth; tap (click, Space or the A button) to lock it;
---   3. the power: the meter fills and empties again by itself; tap when it is in the green to shoot.
+--   3. the power: an indicator slides up and down the meter by itself; tap when it is on the green
+--      to shoot.
 -- Then the attack plays as a film (the dribble, the strike in slow motion, the goal or the save). A
 -- goal adds to the streak and pays TP; a lost dribble or a shot that does not go in ends it. The
 -- medals are streak milestones and the longest streak is kept. Until the first goal ever a short hint
@@ -43,6 +44,7 @@ local COACH_HEIGHT = 30
 local LETTERBOX = 0.08 -- the share of the screen height of each film bar
 local SPEED_LINES = 12
 local LEAVE_STEP = 5 -- the X walks the character this far past the edge of the spot
+local POWER_LINGER = 0.8 -- the meter stays this long into the film, its indicator where it stopped
 local MEDAL_NAMES = { [0] = "No medal", [1] = "BRONZE", [2] = "SILVER", [3] = "GOLD" }
 local MEDAL_COLORS = {
 	[0] = Color3.fromRGB(150, 155, 170),
@@ -94,7 +96,7 @@ local COACH_TEXT: { [string]: string } = {
 	waiting = "Your first attack! Get ready...",
 	dribble = "Press the move shown before its bar runs out!",
 	aim = "Tap to lock your aim on the goal.",
-	power = "Tap when the bar is in the green to shoot!",
+	power = "Tap when the marker is on the green to shoot!",
 }
 
 local OUTCOME_TEXT: { [string]: string } = {
@@ -413,8 +415,8 @@ function FreekickUi.init()
 	end
 
 	-- The power meter, on the right.
-	local meter = CinemaScreen.powerMeter(gui)
-	local powerBox, powerFill, powerStroke = meter.box, meter.fill, meter.stroke
+	local meter = CinemaScreen.powerMeter(gui, Freekick.goodZone(1))
+	local powerBox, powerStroke = meter.box, meter.stroke
 
 	-- The words of a result, in the middle.
 	local feedback = outlined({
@@ -874,16 +876,17 @@ function FreekickUi.init()
 				else Style.ui.bar
 		end
 
-		-- The power meter.
+		-- The power meter, and for a moment into the film where the shot stopped it.
+		local struck = phase == "shot"
+			and state.outcome ~= "tackled"
+			and now - state.stageAt < POWER_LINGER
 		local power = if phase == "power"
 			then releasedPower or Freekick.powerAt({ holdAt = meterStart() }, now, state.kick)
+			elseif struck then state.power
 			else 0
-		powerBox.Visible = phase == "power"
+		powerBox.Visible = phase == "power" or struck
 		CinemaScreen.setPowerZone(meter, Freekick.goodZone(state.kick))
-		powerFill.Size = UDim2.fromScale(1, power)
-		powerFill.BackgroundColor3 = if CinemaScreen.powerGood(meter, power)
-			then Style.ui.good
-			else BAD
+		CinemaScreen.setPower(meter, power, releasedPower ~= nil or struck)
 		powerStroke.Color = if releasedPower then Style.ui.good else Style.ui.gold
 
 		-- The texts.
