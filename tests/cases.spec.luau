@@ -86,7 +86,7 @@ T.test("the shares follow the table when every bucket has a floor", function()
 	T.near(elite.boost, 0, 1e-12)
 end)
 
-T.test("Standard is half x2 cash boosts, Elite is players only", function()
+T.test("Standard is half x2 boosts (half cash, half TP), Elite is players only", function()
 	local entries = Cases.odds(profile(1), "standard")
 	local boosts = 0
 	for _, entry in entries do
@@ -95,8 +95,10 @@ T.test("Standard is half x2 cash boosts, Elite is players only", function()
 		end
 	end
 	T.near(boosts, 0.5, 1e-9)
-	T.near(chanceOf(entries, "caseBoost15"), 0.5 * 0.6, 1e-9)
-	T.near(chanceOf(entries, "caseBoost60"), 0.5 * 0.1, 1e-9)
+	T.near(chanceOf(entries, "caseBoost15"), 0.5 * 0.3, 1e-9)
+	T.near(chanceOf(entries, "caseBoost60"), 0.5 * 0.05, 1e-9)
+	T.near(chanceOf(entries, "caseBoostTp15"), 0.5 * 0.3, 1e-9)
+	T.near(chanceOf(entries, "caseBoostTp60"), 0.5 * 0.05, 1e-9)
 	for _, entry in Cases.odds(profile(2), "elite") do
 		T.eq(Cases.isBoost(entry.id), false, entry.id)
 	end
@@ -223,6 +225,16 @@ T.test("a case gives the rolled player at once and records the receipt", functio
 	T.eq(Roster.owns(data, result.playerId), true)
 	T.eq(data.receipts.p1.result.playerId, result.playerId)
 	T.eq(#data.pendingReveals, 1)
+end)
+
+T.test("a Standard TP boost adds its time to the bought TP timer, not the cash one", function()
+	local data = profile(1)
+	-- Players take the first half of the roll, then the TP boosts (15, 30, 60 min) and the cash ones.
+	local result = Grants.apply(data, Config.Products.caseStandard, "t1", 1, 0.74)
+	T.eq(result.boostId, "caseBoostTp60")
+	T.eq(data.boosts.tpBoostLeft, 3600)
+	T.eq(data.boosts.cashBoostLeft, 0)
+	T.eq(ProfileSchema.validate(data), true)
 end)
 
 T.test("a Standard boost adds its time to the bought cash timer, past the pads' cap", function()

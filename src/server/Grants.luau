@@ -41,8 +41,8 @@ function Grants.apply(
 		local id = Cases.pick(entries, roll)
 		local boost = Config.CaseBoostsById[id]
 		if boost then
-			-- A x2 cash boost: its time adds to the bought cash timer.
-			Boosts.addCaseBoost(data, boost.seconds)
+			-- A x2 cash or TP boost: its time adds to the bought timer of that kind.
+			Boosts.addCaseBoost(data, boost.kind, boost.seconds)
 			result =
 				{ kind = "case", caseId = product.caseId, boostId = id, seconds = boost.seconds }
 		else

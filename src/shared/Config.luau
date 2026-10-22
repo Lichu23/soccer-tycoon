@@ -48,7 +48,7 @@ export type CaseDef = {
 	name: string,
 	floorsComplete: number, -- floors completed to unlock it
 	legendChance: number, -- the share of a pull that is a Legend (fixed, taken off the top)
-	-- The share of a pull that is a x2 cash boost of Config.CaseBoosts instead of a player (also off
+	-- The share of a pull that is a x2 cash or TP boost of Config.CaseBoosts instead of a player (also off
 	-- the top). nil for a case of players only.
 	boostChance: number?,
 	-- Shares of the rest: a player of the floors reached, of the next floor, of the floors further on.
@@ -493,36 +493,34 @@ Config.Cases = {
 
 export type CaseBoost = {
 	id: string,
+	kind: "cash" | "tp", -- what it doubles: the match cash or the TP of the Training Gym
 	label: string,
 	detail: string,
-	seconds: number, -- added to the paid x2 cash timer (Boosts.addCaseBoost), never cut
+	seconds: number, -- added to the paid x2 cash or TP timer (Boosts.addCaseBoost), never cut
 	weight: number, -- the relative chance within the case's boost share
 }
 
--- The boosts of a case that has a boostChance: x2 cash, all longer than the 10 minutes a Robux pad sells.
-Config.CaseBoosts = {
-	{
-		id = "caseBoost15",
-		label = "x2 Cash",
-		detail = "15 minutes",
-		seconds = 15 * 60,
-		weight = 60,
-	},
-	{
-		id = "caseBoost30",
-		label = "x2 Cash",
-		detail = "30 minutes",
-		seconds = 30 * 60,
-		weight = 30,
-	},
-	{
-		id = "caseBoost60",
-		label = "x2 Cash",
-		detail = "60 minutes",
-		seconds = 60 * 60,
-		weight = 10,
-	},
-} :: { CaseBoost }
+-- The boosts of a case that has a boostChance: half x2 TP, half x2 cash, all longer than the 10
+-- minutes a Robux pad sells. The cash ones keep their first ids (saved receipts name them).
+Config.CaseBoosts = {} :: { CaseBoost }
+for _, kind in { "tp", "cash" } :: { "cash" | "tp" } do
+	for _, step in
+		{
+			{ minutes = 15, weight = 30 },
+			{ minutes = 30, weight = 15 },
+			{ minutes = 60, weight = 5 },
+		}
+	do
+		table.insert(Config.CaseBoosts, {
+			id = (if kind == "cash" then "caseBoost" else "caseBoostTp") .. step.minutes,
+			kind = kind,
+			label = if kind == "cash" then "x2 Cash" else "x2 TP",
+			detail = step.minutes .. " minutes",
+			seconds = step.minutes * 60,
+			weight = step.weight,
+		})
+	end
+end
 
 Config.CaseBoostsById = {} :: { [string]: CaseBoost }
 for _, boost in Config.CaseBoosts do

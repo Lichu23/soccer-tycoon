@@ -1,6 +1,6 @@
 --!strict
 -- The Robux cases (docs/PLAN.md, Step 3): who can open one, the exact chance of every player (and of
--- every x2 cash boost in a case that has them) and the pick from a roll. The server rolls with this and the screen shows the same numbers before the
+-- every x2 cash or TP boost in a case that has them) and the pick from a roll. The server rolls with this and the screen shows the same numbers before the
 -- purchase, so what is shown is what is rolled. Pure, so it is unit tested.
 
 local Config = require(script.Parent.Config)
@@ -16,7 +16,7 @@ export type Summary = {
 	nextFloor: number,
 	further: number,
 	legend: number,
-	boost: number, -- the chance of a x2 cash boost instead of a player (0 in a case of players only)
+	boost: number, -- the chance of a x2 cash or TP boost instead of a player (0 in a case of players only)
 	duplicate: number, -- the chance of a player the player already owns
 }
 

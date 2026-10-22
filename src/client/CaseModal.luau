@@ -185,9 +185,10 @@ local function makeTile(
 end
 
 -- The kind's icon in the middle of the area. A boost puts "x2" in front of it.
-local function addIcon(area: Frame, kind: string)
+-- `times` puts "x2" beside the picture (the boost, or a cash or TP boost of a bought case).
+local function addIcon(area: Frame, kind: string, times: boolean?)
 	local picture = Icons.id(KIND_ICONS[kind] or "")
-	local boost = kind == "boost"
+	local boost = kind == "boost" or times == true
 	local iconSize = if boost then 62 else 74
 	new("ImageLabel", {
 		Name = "Icon",
@@ -248,8 +249,8 @@ end
 local function paidTile(parent: Instance, index: number, id: string)
 	local boost = Config.CaseBoostsById[id]
 	if boost then
-		local _, area = makeTile(parent, index, KIND_COLORS.boost, boost.detail)
-		addIcon(area, "boost")
+		local _, area = makeTile(parent, index, KIND_COLORS[boost.kind], boost.detail)
+		addIcon(area, boost.kind, true)
 		return
 	end
 	local def = Config.PlayersById[id]
@@ -464,8 +465,10 @@ function CaseModal.init()
 				RewardCard.show({
 					title = string.upper(if def then def.name else "Case"),
 					big = boost.label .. " · " .. boost.detail,
-					detail = "Double cash, added to your boost time",
-					icon = "boost",
+					detail = if boost.kind == "tp"
+						then "Double TP, added to your boost time"
+						else "Double cash, added to your boost time",
+					icon = boost.kind,
 				})
 			end
 			Reveal.release() -- a player won: his reveal plays now

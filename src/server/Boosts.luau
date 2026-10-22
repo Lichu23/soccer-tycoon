@@ -66,10 +66,14 @@ function Boosts.addPaid(data: Profile, cash: boolean, tp: boolean)
 	end
 end
 
--- A x2 cash boost won in a Robux case: adds its time to the bought cash timer, never cut (it was paid
--- for, so the paidMaxSeconds cap of the pads does not apply).
-function Boosts.addCaseBoost(data: Profile, seconds: number)
-	data.boosts.cashBoostLeft += seconds
+-- A x2 cash or TP boost won in a Robux case: adds its time to the bought cash or TP timer, never cut
+-- (it was paid for, so the paidMaxSeconds cap of the pads does not apply).
+function Boosts.addCaseBoost(data: Profile, kind: "cash" | "tp", seconds: number)
+	if kind == "tp" then
+		data.boosts.tpBoostLeft += seconds
+	else
+		data.boosts.cashBoostLeft += seconds
+	end
 end
 
 function Boosts.startStadium(data: Profile)

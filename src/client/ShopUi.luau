@@ -494,15 +494,29 @@ function ShopUi.init()
 			built.setTitle(def.name)
 			-- The real odds, as rolled (Cases.odds): a group per kind of prize, its parts under it.
 			if odds.boost > 0 then
-				oddsRow("x2 Cash boost", odds.boost, Style.ui.gold)
-				for _, boost in Config.CaseBoosts do
-					local chance = 0
-					for _, entry in entries do
-						if entry.id == boost.id then
-							chance = entry.chance
+				for _, kind in { "cash", "tp" } do
+					local rows = {}
+					local share = 0
+					for _, boost in Config.CaseBoosts do
+						if boost.kind == kind then
+							for _, entry in entries do
+								if entry.id == boost.id then
+									table.insert(rows, { boost = boost, chance = entry.chance })
+									share += entry.chance
+								end
+							end
 						end
 					end
-					oddsRow((string.gsub(boost.detail, "minutes", "min")), chance)
+					if #rows > 0 then
+						oddsRow(
+							rows[1].boost.label,
+							share,
+							if kind == "cash" then Style.ui.gold else Style.ui.bar
+						)
+						for _, row in rows do
+							oddsRow((string.gsub(row.boost.detail, "minutes", "min")), row.chance)
+						end
+					end
 				end
 			end
 			oddsRow("Player", 1 - odds.boost, Style.ui.good)
