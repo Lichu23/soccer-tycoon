@@ -1,7 +1,7 @@
 --!strict
 -- The daily penalty kicks (docs/PLAN.md, Step 7), played like the shot of the 1v1 breakaway
 -- (shared/Freekick) without the defender: an aim reticle glides over the goal mouth and a tap locks
--- it, a hold fills the power meter and the release shoots. The server judges the shot at once with
+-- it, then the power meter fills and empties again by itself and a second tap shoots. The server judges the shot at once with
 -- the breakaway's maths and a calmer keeper of its own, then the client plays the kick as a film
 -- (the run-up, the strike in slow motion, the goal or the save). After the film the next kick's
 -- reticle comes, until the kicks of the day are used up. Like the breakaway everything runs on the
@@ -19,7 +19,7 @@ export type State = {
 	stageAt: number, -- when the current step started (the reticle glides from here, the film plays from here)
 	aimX: number, -- the locked reticle, across the goal: the posts are at -1 and 1
 	aimY: number, -- and up: the ground is 0, the bar 1
-	holdAt: number, -- when the power hold began, 0 before
+	holdAt: number, -- when the power meter starts to move (a moment after the lock), 0 before
 	power: number, -- 0 to 1
 	outcome: string, -- the kick's outcome while its film plays, "" before
 	kicksLeft: number, -- kicks left today (after the kick in the film)
@@ -104,25 +104,15 @@ function Penalty.lock(state: State, now: number, stamp: number): boolean
 	state.aimX, state.aimY = Freekick.aimAt(state, inputTime(now, stamp, state.stageAt))
 	state.phase = "power"
 	state.stageAt = now
-	state.holdAt = 0
+	state.holdAt = now + Config.Training.freekickPowerDelay -- the meter moves a moment after the lock
 	return true
 end
 
--- The power hold begins at `now` (stamped `stamp`). Returns whether it did.
-function Penalty.hold(state: State, now: number, stamp: number): boolean
+-- A tap at `now` (stamped `stamp`) while the power meter moves: the shot, judged at once. Returns
+-- whether it shot (not before the meter moves). The caller then counts the kick and sets `kicksLeft`.
+function Penalty.strike(state: State, now: number, stamp: number): boolean
 	Penalty.normalize(state, now)
-	if state.phase ~= "power" or state.holdAt > 0 then
-		return false
-	end
-	state.holdAt = inputTime(now, stamp, state.stageAt)
-	return true
-end
-
--- The hold is released at `now` (stamped `stamp`): the shot, judged at once. Returns whether it
--- shot. The caller then counts the kick and sets `kicksLeft`.
-function Penalty.release(state: State, now: number, stamp: number): boolean
-	Penalty.normalize(state, now)
-	if state.phase ~= "power" or state.holdAt <= 0 then
+	if state.phase ~= "power" or state.holdAt <= 0 or now < state.holdAt then
 		return false
 	end
 	state.power = Freekick.powerAt(state, inputTime(now, stamp, state.holdAt))

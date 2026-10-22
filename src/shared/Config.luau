@@ -383,9 +383,9 @@ Config.Training = {
 	-- attack: the through-ball arrives (`freekickLeadSeconds`), then a skill move shows and waits
 	-- `freekickMoveSeconds` for its key (less `freekickMoveStep` with every goal, down to
 	-- `freekickMoveMin`), or the defender wins the ball. Then the aim reticle glides over the goal
-	-- mouth (across in `freekickAimSeconds`, up in `freekickAimUpSeconds`) until a tap locks it, and a
-	-- hold fills the power meter (empty to full in `freekickPowerSeconds`, then back) until the
-	-- release shoots. An input may be stamped up to `freekickGraceSeconds` in the past (a slow
+	-- mouth (across in `freekickAimSeconds`, up in `freekickAimUpSeconds`) until a tap locks it, then
+	-- the power meter fills by itself (empty to full in `freekickPowerSeconds`, then back) until a
+	-- second tap shoots. An input may be stamped up to `freekickGraceSeconds` in the past (a slow
 	-- connection). The film of the attack then plays for `freekickFilmSeconds`
 	-- (`freekickTackleSeconds` when the dribble was lost): a goal adds one to the streak and the next
 	-- attack comes, anything else ends the streak and the result shows for `freekickOverSeconds`.
@@ -405,6 +405,8 @@ Config.Training = {
 	freekickAimLow = 0.1, -- the reticle's lowest and highest height
 	freekickAimHigh = 0.92,
 	freekickPowerSeconds = 0.9,
+	-- The meter starts to move this long after the aim is locked (a double tap does not shoot).
+	freekickPowerDelay = 0.3,
 	-- The meter fills faster with every goal of the streak: `freekickPowerStep` less, down to
 	-- `freekickPowerMin`.
 	freekickPowerStep = 0.03,

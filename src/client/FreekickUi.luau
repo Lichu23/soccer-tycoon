@@ -7,7 +7,7 @@
 --      matching key (the arrows, A/S/D or the D-pad) or tap its button at the bottom to beat the
 --      defender;
 --   2. the aim: a reticle glides over the goal mouth; tap (click, Space or the A button) to lock it;
---   3. the power: hold, the meter fills and empties again; let go in the green to shoot.
+--   3. the power: the meter fills and empties again by itself; tap when it is in the green to shoot.
 -- Then the attack plays as a film (the dribble, the strike in slow motion, the goal or the save). A
 -- goal adds to the streak and pays TP; a lost dribble or a shot that does not go in ends it. The
 -- medals are streak milestones and the longest streak is kept. Until the first goal ever a short hint
@@ -94,7 +94,7 @@ local COACH_TEXT: { [string]: string } = {
 	waiting = "Your first attack! Get ready...",
 	dribble = "Press the move shown before its bar runs out!",
 	aim = "Tap to lock your aim on the goal.",
-	power = "Hold, then let go in the green to shoot.",
+	power = "Tap when the bar is in the green to shoot!",
 }
 
 local OUTCOME_TEXT: { [string]: string } = {
@@ -555,8 +555,7 @@ function FreekickUi.init()
 	local pressedMove: number? = nil
 	local lockedX: number? = nil
 	local lockedY: number? = nil
-	local holding = false
-	local localHoldAt = 0
+	local localStartAt = 0 -- when the meter moves, from our own lock, until the server's arrives
 	local releasedPower: number? = nil
 	local function number(name: string): number
 		local value = player:GetAttribute(name)
@@ -607,7 +606,6 @@ function FreekickUi.init()
 	player:GetAttributeChangedSignal("freekickState"):Connect(function()
 		pressedMove = nil
 		lockedX, lockedY = nil, nil
-		holding = false
 		releasedPower = nil
 		readServerState()
 	end)
@@ -636,7 +634,6 @@ function FreekickUi.init()
 		world.Enabled = false
 		gui.Enabled = false
 		resultCard.Visible = false
-		holding = false
 		takeover.give()
 	end
 
@@ -668,6 +665,11 @@ function FreekickUi.init()
 		end)
 	end
 
+	-- When the power meter moves: the server's time once it is known.
+	local function meterStart(): number
+		return if state.holdAt > 0 then state.holdAt else localStartAt
+	end
+
 	local function press()
 		if scene == nil then
 			return
@@ -675,23 +677,12 @@ function FreekickUi.init()
 		local now = Workspace:GetServerTimeNow()
 		if state.phase == "aim" and lockedX == nil then
 			lockedX, lockedY = Freekick.aimAt(state, now)
+			localStartAt = now + Config.Training.freekickPowerDelay
 			pulse(reticleScale, 1.4)
 			Net.fire("FreekickTap", now)
-		elseif state.phase == "power" and lockedX == nil and state.holdAt <= 0 and not holding then
-			holding = true
-			localHoldAt = now
+		elseif state.phase == "power" and releasedPower == nil and now >= meterStart() then
+			releasedPower = Freekick.powerAt({ holdAt = meterStart() }, now, state.kick)
 			Net.fire("FreekickTap", now)
-		end
-	end
-	local function release()
-		if not holding then
-			return
-		end
-		holding = false
-		local now = Workspace:GetServerTimeNow()
-		if scene and state.phase == "power" then
-			releasedPower = Freekick.powerAt({ holdAt = localHoldAt }, now, state.kick)
-			Net.fire("FreekickRelease", now)
 		end
 	end
 	tapArea.InputBegan:Connect(function(input)
@@ -700,16 +691,6 @@ function FreekickUi.init()
 			or input.UserInputType == Enum.UserInputType.Touch
 		then
 			press()
-		end
-	end)
-	-- The release may land anywhere on the screen, so it is watched globally.
-	UserInputService.InputEnded:Connect(function(input)
-		if
-			input.UserInputType == Enum.UserInputType.MouseButton1
-			or input.UserInputType == Enum.UserInputType.Touch
-			or TAP_KEYS[input.KeyCode]
-		then
-			release()
 		end
 	end)
 	UserInputService.InputBegan:Connect(function(input)
@@ -895,10 +876,7 @@ function FreekickUi.init()
 
 		-- The power meter.
 		local power = if phase == "power"
-			then (releasedPower or (if holding
-				then Freekick.powerAt({ holdAt = localHoldAt }, now, state.kick)
-				elseif state.holdAt > 0 then Freekick.powerAt(state, now, state.kick)
-				else 0))
+			then releasedPower or Freekick.powerAt({ holdAt = meterStart() }, now, state.kick)
 			else 0
 		powerBox.Visible = phase == "power"
 		CinemaScreen.setPowerZone(meter, Freekick.goodZone(state.kick))
@@ -906,7 +884,7 @@ function FreekickUi.init()
 		powerFill.BackgroundColor3 = if CinemaScreen.powerGood(meter, power)
 			then Style.ui.good
 			else BAD
-		powerStroke.Color = if holding then Style.ui.good else Style.ui.gold
+		powerStroke.Color = if releasedPower then Style.ui.good else Style.ui.gold
 
 		-- The texts.
 		local waiting = phase == "dribble" and now < state.stageAt

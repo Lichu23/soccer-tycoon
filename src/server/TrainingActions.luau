@@ -290,27 +290,16 @@ local function kickMove(player: Player, ...: any)
 	publishKick(player, state)
 end
 
--- A tap: locks the reticle, or begins the power hold.
+-- A tap: locks the reticle, or stops the moving power meter and shoots. The shot is judged and
+-- paid at once (the film shows it afterwards).
 local function kickTap(player: Player, ...: any)
 	local stamp = select(1, ...)
 	local session, state, now = kickInput(player, stamp)
 	if session == nil or state == nil then
 		return
 	end
-	if not Freekick.lock(state, now, stamp) then
-		Freekick.hold(state, now, stamp)
-	end
-	publishKick(player, state)
-end
-
--- The release of the power hold: the shot, judged and paid at once (the film shows it afterwards).
-local function kickRelease(player: Player, ...: any)
-	local stamp = select(1, ...)
-	local session, state, now = kickInput(player, stamp)
-	if session == nil or state == nil or not Freekick.release(state, now, stamp) then
-		if state then
-			publishKick(player, state)
-		end
+	if Freekick.lock(state, now, stamp) or not Freekick.strike(state, now, stamp) then
+		publishKick(player, state)
 		return
 	end
 	local paid = 0
@@ -340,7 +329,6 @@ function TrainingActions.start()
 	started = true
 	Remotes.on("TrainingTap", tap)
 	Remotes.on("FreekickTap", kickTap)
-	Remotes.on("FreekickRelease", kickRelease)
 	Remotes.on("FreekickMove", kickMove)
 	Players.PlayerRemoving:Connect(function(player)
 		carries[player] = nil

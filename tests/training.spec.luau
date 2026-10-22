@@ -457,16 +457,16 @@ T.test("a breakaway goes move, aim, hold and release, then the film plays", func
 	T.eq(Freekick.lock(state, start, start), false) -- not the aim step yet
 	T.eq(Freekick.move(state, start + 0.4, state.move, start + 0.4), "beat")
 	T.eq(state.phase, "aim")
-	T.eq(Freekick.release(state, start + 0.5, start + 0.5), false) -- nothing to release
+	T.eq(Freekick.strike(state, start + 0.5, start + 0.5), false) -- not the power step yet
 	local lockAt = state.stageAt + aimTime(-0.8)
 	T.eq(Freekick.lock(state, lockAt, lockAt), true)
 	T.near(state.aimX, -0.8, 1e-9)
 	T.eq(state.phase, "power")
-	T.eq(Freekick.release(state, lockAt + 0.1, lockAt + 0.1), false) -- the tap's own release: no hold yet
-	T.eq(Freekick.hold(state, lockAt + 0.3, lockAt + 0.3), true)
-	T.eq(Freekick.hold(state, lockAt + 0.4, lockAt + 0.4), false) -- already holding
-	local releaseAt = lockAt + 0.3 + FK.freekickPowerSeconds * 0.7
-	T.eq(Freekick.release(state, releaseAt, releaseAt), true)
+	T.near(state.holdAt, lockAt + FK.freekickPowerDelay, 1e-9) -- the meter moves a moment later
+	T.eq(Freekick.strike(state, lockAt + 0.1, lockAt + 0.1), false) -- a double tap does not shoot
+	T.eq(state.phase, "power")
+	local strikeAt = state.holdAt + FK.freekickPowerSeconds * 0.7
+	T.eq(Freekick.strike(state, strikeAt, strikeAt), true)
 	T.near(state.power, 0.7, 1e-9)
 	T.eq(state.phase, "shot")
 	T.truthy(state.outcome ~= "")
@@ -567,15 +567,15 @@ T.test("the keeper stands on both sides and every move comes up", function()
 	T.eq(Freekick.setup(77, 3).keeperX, Freekick.setup(77, 3).keeperX)
 end)
 
--- Plays one attack of `state`: the right move, the reticle locked at `aimX` and a release at `power`.
+-- Plays one attack of `state`: the right move, the reticle locked at `aimX` and the meter stopped
+-- at `power`.
 local function attack(state, aimX, power)
 	local start = state.stageAt
 	Freekick.move(state, start + 0.2, state.move, start + 0.2)
 	local lockAt = state.stageAt + aimTime(aimX)
 	Freekick.lock(state, lockAt, lockAt)
-	Freekick.hold(state, lockAt + 0.2, lockAt + 0.2)
-	local releaseAt = lockAt + 0.2 + Freekick.powerSeconds(state.kick) * power
-	Freekick.release(state, releaseAt, releaseAt)
+	local strikeAt = state.holdAt + Freekick.powerSeconds(state.kick) * power
+	Freekick.strike(state, strikeAt, strikeAt)
 	return state.outcome
 end
 
@@ -598,17 +598,17 @@ T.test("the power meter fills faster and its green zone narrows with every goal"
 	T.near(Freekick.powerAt({ holdAt = 0 }, Freekick.powerSeconds(5), 5), 1, 1e-9)
 end)
 
-T.test("a free kick released outside the green zone misses", function()
-	-- Late in a streak: a release the first attack would take as green is now outside it.
+T.test("a free kick stopped outside the green zone misses", function()
+	-- Late in a streak: a tap the first attack would take as green is now outside it.
 	local function at(kick: number, power: number): string
 		local state = Freekick.new(100)
 		state.kick = kick
 		state.stageAt = 100
 		state.phase = "power"
 		state.aimX, state.aimY = 0.85, 0.3
-		Freekick.hold(state, 100, 100)
-		local releaseAt = 100 + Freekick.powerSeconds(kick) * power
-		Freekick.release(state, releaseAt, releaseAt)
+		state.holdAt = 100
+		local strikeAt = 100 + Freekick.powerSeconds(kick) * power
+		Freekick.strike(state, strikeAt, strikeAt)
 		return state.outcome
 	end
 	local low, high = Freekick.goodZone(11)

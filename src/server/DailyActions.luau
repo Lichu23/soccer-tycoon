@@ -1,7 +1,7 @@
 --!strict
 -- Connects the daily case and the penalty kicks to the client (docs/PLAN.md, Steps 5 and 7). The
 -- rules and the clock live in Daily; the kicks are played like the breakaway's shot (shared/Penalty):
--- this keeps each player's visit to the spot, judges the tap and the release on the server clock,
+-- this keeps each player's visit to the spot, judges the aim and the shot taps on the server clock,
 -- counts the kick and tells the client. Both are opened from the HUD: nobody has to stand anywhere.
 
 local Players = game:GetService("Players")
@@ -55,7 +55,7 @@ end
 
 -- The screen opened: a new visit with the kicks left today, unless a kick's film is still playing
 -- (the screen was closed and opened again), which goes on. Aiming starts over: nothing is used up
--- before the release.
+-- before the shot.
 local function start(player: Player)
 	local session = Session.get(player)
 	if session == nil then
@@ -85,24 +85,16 @@ local function input(player: Player, stamp: any): (Session.Session?, Penalty.Sta
 	return session, state, now
 end
 
--- A tap: locks the reticle, or begins the power hold.
+-- A tap: locks the reticle, or stops the moving power meter and shoots. The shot is judged and
+-- counted at once (the film shows it afterwards).
 local function tap(player: Player, ...: any)
-	local stamp = select(1, ...)
-	local _, state, now = input(player, stamp)
-	if state == nil then
-		return
-	end
-	if not Penalty.lock(state, now, stamp) then
-		Penalty.hold(state, now, stamp)
-	end
-	publish(player, state)
-end
-
--- The release of the power hold: the shot, judged and counted at once (the film shows it afterwards).
-local function release(player: Player, ...: any)
 	local stamp = select(1, ...)
 	local session, state, now = input(player, stamp)
 	if session == nil or state == nil then
+		return
+	end
+	if Penalty.lock(state, now, stamp) or state.phase ~= "power" then
+		publish(player, state)
 		return
 	end
 	if Daily.kicksLeft(session.data, os.time()) <= 0 then
@@ -112,7 +104,7 @@ local function release(player: Player, ...: any)
 		publish(player, state)
 		return
 	end
-	if not Penalty.release(state, now, stamp) then
+	if not Penalty.strike(state, now, stamp) then
 		publish(player, state)
 		return
 	end
@@ -146,7 +138,6 @@ function DailyActions.start()
 	end)
 	Remotes.on("PenaltyStart", start)
 	Remotes.on("PenaltyTap", tap)
-	Remotes.on("PenaltyRelease", release)
 	Players.PlayerRemoving:Connect(function(player)
 		visits[player] = nil
 		revisions[player] = nil

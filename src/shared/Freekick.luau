@@ -2,8 +2,8 @@
 -- The 1v1 breakaway at the free-kick spot of the Training Gym (docs/PLAN.md, Step 4), an endless
 -- streak of goals. Every attack starts with a through-ball, then three quick inputs: a skill move
 -- (left, right or step-over) shows and must be pressed in time to beat the defender; an aim reticle
--- glides over the goal mouth and a tap locks it; a hold fills the power meter and the release shoots
--- (too soft rolls to the keeper, too hard lifts it over the bar). Then the client plays the attack as
+-- glides over the goal mouth and a tap locks it; then the power meter fills and empties again by
+-- itself and a second tap shoots (too soft rolls to the keeper, too hard lifts it over the bar). Then the client plays the attack as
 -- a short film: the dribble, the strike in slow motion, the goal or the save. A goal adds to the
 -- streak; a lost dribble or a shot that does not go in ends it, and the longest streak is kept.
 -- Every goal makes the next attack harder: a shorter move window, a keeper who reaches further, and
@@ -27,7 +27,7 @@ export type State = {
 	move: Move, -- the move this attack asks for
 	aimX: number, -- the locked reticle, across the goal: the posts are at -1 and 1
 	aimY: number, -- and up: the ground is 0, the bar 1
-	holdAt: number, -- when the power hold began, 0 before
+	holdAt: number, -- when the power meter starts to move (a moment after the lock), 0 before
 	power: number, -- 0 to 1
 	outcome: string, -- the attack's outcome while its film plays, "" before
 	streak: number, -- goals in a row
@@ -169,8 +169,8 @@ function Freekick.goodZone(kick: number): (number, number)
 	return low, high
 end
 
--- The power meter at time `at` while the hold goes on: it fills, then empties again, faster on a
--- later attack `kick` of the streak (the first when left out, as for the daily penalty).
+-- The power meter at time `at` once it moves: it fills, then empties again, faster on a later
+-- attack `kick` of the streak (the first when left out, as for the daily penalty).
 function Freekick.powerAt(state: { holdAt: number }, at: number, kick: number?): number
 	return sweep(at - state.holdAt, Freekick.powerSeconds(kick or 1))
 end
@@ -304,7 +304,8 @@ function Freekick.move(state: State, now: number, move: number, stamp: number): 
 	return "tackled"
 end
 
--- A tap at `now` (stamped `stamp`) during the aim step: locks the reticle. Returns whether it did.
+-- A tap at `now` (stamped `stamp`) during the aim step: locks the reticle, and the power meter
+-- starts to move `freekickPowerDelay` later. Returns whether it did.
 function Freekick.lock(state: State, now: number, stamp: number): boolean
 	Freekick.normalize(state, now)
 	if state.phase ~= "aim" then
@@ -313,24 +314,15 @@ function Freekick.lock(state: State, now: number, stamp: number): boolean
 	state.aimX, state.aimY = Freekick.aimAt(state, inputTime(now, stamp, state.stageAt))
 	state.phase = "power"
 	state.stageAt = now
-	state.holdAt = 0
+	state.holdAt = now + Config.Training.freekickPowerDelay
 	return true
 end
 
--- The power hold begins at `now` (stamped `stamp`). Returns whether it did.
-function Freekick.hold(state: State, now: number, stamp: number): boolean
+-- A tap at `now` (stamped `stamp`) while the power meter moves: the shot. Returns whether it shot
+-- (not before the meter moves).
+function Freekick.strike(state: State, now: number, stamp: number): boolean
 	Freekick.normalize(state, now)
-	if state.phase ~= "power" or state.holdAt > 0 then
-		return false
-	end
-	state.holdAt = inputTime(now, stamp, state.stageAt)
-	return true
-end
-
--- The hold is released at `now` (stamped `stamp`): the shot. Returns whether it shot.
-function Freekick.release(state: State, now: number, stamp: number): boolean
-	Freekick.normalize(state, now)
-	if state.phase ~= "power" or state.holdAt <= 0 then
+	if state.phase ~= "power" or state.holdAt <= 0 or now < state.holdAt then
 		return false
 	end
 	state.power = Freekick.powerAt(state, inputTime(now, stamp, state.holdAt), state.kick)

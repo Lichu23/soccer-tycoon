@@ -16,14 +16,13 @@ local function timeAt(x: number): number
 	return if t < 0 then t + FK.freekickAimSeconds * 2 else t
 end
 
--- Locks the reticle at `x`, then holds and releases at the sweet power. Returns the state.
+-- Locks the reticle at `x`, then taps when the moving meter is at the sweet power. Returns the state.
 local function shootAt(state, x: number)
 	local lockAt = state.stageAt + timeAt(x)
 	T.eq(Penalty.lock(state, lockAt, lockAt), true)
-	local holdAt = lockAt + 0.2
-	T.eq(Penalty.hold(state, holdAt, holdAt), true)
-	local releaseAt = holdAt + FK.freekickPowerSweet * FK.freekickPowerSeconds
-	T.eq(Penalty.release(state, releaseAt, releaseAt), true)
+	T.near(state.holdAt, lockAt + FK.freekickPowerDelay, 1e-9) -- the meter moves a moment later
+	local strikeAt = state.holdAt + FK.freekickPowerSweet * FK.freekickPowerSeconds
+	T.eq(Penalty.strike(state, strikeAt, strikeAt), true)
 	return state
 end
 
@@ -47,7 +46,7 @@ T.test("a tap before the reticle moves is ignored; after, it locks the reticle",
 	T.near(state.aimY, y, 1e-9)
 end)
 
-T.test("the release shoots, judged with the penalty keeper", function()
+T.test("the second tap shoots, judged with the penalty keeper", function()
 	local state = Penalty.new(T0, 3)
 	shootAt(state, -0.7)
 	T.eq(state.phase, "shot")
@@ -59,16 +58,17 @@ T.test("the release shoots, judged with the penalty keeper", function()
 	T.eq(saved.outcome, "saved")
 end)
 
-T.test("a release without a hold, or a tap during the film, does nothing", function()
+T.test("a tap before the meter moves, or during the film, does nothing", function()
 	local state = Penalty.new(T0, 3)
 	local at = state.stageAt + 0.1
 	Penalty.lock(state, at, at)
-	T.eq(Penalty.release(state, at + 0.1, at + 0.1), false)
+	T.eq(Penalty.strike(state, at + 0.1, at + 0.1), false) -- a double tap: the meter has not moved
+	T.eq(state.phase, "power")
 	shootAt(Penalty.new(T0, 3), 0.5)
 	local filming = shootAt(Penalty.new(T0, 3), 0.5)
 	local during = filming.stageAt + 1
 	T.eq(Penalty.lock(filming, during, during), false)
-	T.eq(Penalty.hold(filming, during, during), false)
+	T.eq(Penalty.strike(filming, during, during), false)
 	T.eq(filming.phase, "shot")
 end)
 

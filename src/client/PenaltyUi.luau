@@ -3,7 +3,7 @@
 -- whole screen becomes the breakaway's stadium in penalty mode (client/BreakawayScene) with the
 -- player's own avatar on the penalty spot. Each kick has two inputs, and only the one in play shows:
 --   1. the aim: a reticle glides over the goal mouth; tap (click, Space or the A button) to lock it;
---   2. the power: hold, the meter fills and empties again; let go in the green to shoot.
+--   2. the power: the meter fills and empties again by itself; tap when it is in the green to shoot.
 -- Then the kick plays as a film (the run-up, the strike in slow motion, the goal or the save) and the
 -- next kick comes, until the day's kicks are used up; then the screen closes and the reward card
 -- says what the goals earned. The kick pips at the top show the day's kicks. The server judges every
@@ -65,7 +65,7 @@ local STEP_NAMES: { [string]: string } = {
 local COACH_TEXT: { [string]: string } = {
 	waiting = "Penalty time! Get ready...",
 	aim = "Tap to lock your aim on the goal.",
-	power = "Hold, then let go in the green to shoot.",
+	power = "Tap when the bar is in the green to shoot!",
 }
 
 local OUTCOME_TEXT: { [string]: string } = {
@@ -367,8 +367,7 @@ function PenaltyUi.init()
 	-- What the player just did, shown at once until the server's answer arrives.
 	local lockedX: number? = nil
 	local lockedY: number? = nil
-	local holding = false
-	local localHoldAt = 0
+	local localStartAt = 0 -- when the meter moves, from our own lock, until the server's arrives
 	local releasedPower: number? = nil
 	local function readServerState()
 		local phase = player:GetAttribute("penaltyState")
@@ -388,7 +387,6 @@ function PenaltyUi.init()
 		state.kicksLeft = number("penaltyLeft")
 		if state.phase ~= previous then
 			lockedX, lockedY = nil, nil
-			holding = false
 			releasedPower = nil
 		end
 	end
@@ -457,7 +455,6 @@ function PenaltyUi.init()
 		scene = nil
 		world.Enabled = false
 		gui.Enabled = false
-		holding = false
 		hideFeedback()
 		takeover.give()
 		Sounds.fadeOutAll(CLOSE_FADE_SECONDS)
@@ -475,7 +472,6 @@ function PenaltyUi.init()
 		doneAt = nil
 		lastFilm, lastStageAt = -1, -1
 		lockedX, lockedY = nil, nil
-		holding = false
 		releasedPower = nil
 		startRev = revision()
 		startedAt = os.clock()
@@ -499,6 +495,11 @@ function PenaltyUi.init()
 		return scene ~= nil and revision() ~= startRev
 	end
 
+	-- When the power meter moves: the server's time once it is known.
+	local function meterStart(): number
+		return if state.holdAt > 0 then state.holdAt else localStartAt
+	end
+
 	local function press()
 		if not started() then
 			return
@@ -506,23 +507,12 @@ function PenaltyUi.init()
 		local now = Workspace:GetServerTimeNow()
 		if state.phase == "aim" and lockedX == nil and now >= state.stageAt then
 			lockedX, lockedY = Freekick.aimAt(state, now)
+			localStartAt = now + Config.Training.freekickPowerDelay
 			pulse(reticleScale, 1.4)
 			Net.fire("PenaltyTap", now)
-		elseif state.phase == "power" and state.holdAt <= 0 and not holding then
-			holding = true
-			localHoldAt = now
+		elseif state.phase == "power" and releasedPower == nil and now >= meterStart() then
+			releasedPower = Freekick.powerAt({ holdAt = meterStart() }, now)
 			Net.fire("PenaltyTap", now)
-		end
-	end
-	local function release()
-		if not holding then
-			return
-		end
-		holding = false
-		local now = Workspace:GetServerTimeNow()
-		if started() and state.phase == "power" then
-			releasedPower = Freekick.powerAt({ holdAt = localHoldAt }, now)
-			Net.fire("PenaltyRelease", now)
 		end
 	end
 	tapArea.InputBegan:Connect(function(input)
@@ -531,16 +521,6 @@ function PenaltyUi.init()
 			or input.UserInputType == Enum.UserInputType.Touch
 		then
 			press()
-		end
-	end)
-	-- The release may land anywhere on the screen, so it is watched globally.
-	UserInputService.InputEnded:Connect(function(input)
-		if
-			input.UserInputType == Enum.UserInputType.MouseButton1
-			or input.UserInputType == Enum.UserInputType.Touch
-			or TAP_KEYS[input.KeyCode]
-		then
-			release()
 		end
 	end)
 	UserInputService.InputBegan:Connect(function(input)
@@ -686,17 +666,14 @@ function PenaltyUi.init()
 
 		-- The power meter.
 		local power = if phase == "power"
-			then (releasedPower or (if holding
-				then Freekick.powerAt({ holdAt = localHoldAt }, now)
-				elseif state.holdAt > 0 then Freekick.powerAt(state, now)
-				else 0))
+			then releasedPower or Freekick.powerAt({ holdAt = meterStart() }, now)
 			else 0
 		powerBox.Visible = ready and phase == "power"
 		powerFill.Size = UDim2.fromScale(1, power)
 		powerFill.BackgroundColor3 = if CinemaScreen.powerGood(meter, power)
 			then Style.ui.good
 			else BAD
-		powerStroke.Color = if holding then Style.ui.good else Style.ui.gold
+		powerStroke.Color = if releasedPower then Style.ui.good else Style.ui.gold
 
 		-- The texts.
 		stepText.Text = if waiting then "GET READY" else (STEP_NAMES[phase] or "")

@@ -63,7 +63,7 @@ RemoteSpec.remotes = {
 		burst = 2,
 	},
 	-- The daily penalty kicks (shared/Penalty): the screen opens (a new visit to the spot, or the film
-	-- that was playing), then the same tap and release as the breakaway, each stamped with the server
+	-- that was playing), then the same two taps as the breakaway, each stamped with the server
 	-- time the player's screen showed (never trusted more than a fraction of a second into the past).
 	PenaltyStart = {
 		direction = "toServer",
@@ -72,12 +72,6 @@ RemoteSpec.remotes = {
 		burst = 2,
 	},
 	PenaltyTap = {
-		direction = "toServer",
-		args = { { kind = "number", min = 0, max = 4_000_000_000 } },
-		ratePerSecond = 6,
-		burst = 6,
-	},
-	PenaltyRelease = {
 		direction = "toServer",
 		args = { { kind = "number", min = 0, max = 4_000_000_000 } },
 		ratePerSecond = 6,
@@ -119,14 +113,8 @@ RemoteSpec.remotes = {
 	},
 	-- The 1v1 breakaway at the free-kick spot. Each input carries the server time the player's screen
 	-- showed when it was made (the server never trusts it more than a fraction of a second into the
-	-- past). A tap locks the aim reticle, or begins the power hold; a release ends the hold and shoots.
+	-- past). A tap locks the aim reticle, or stops the moving power meter and shoots.
 	FreekickTap = {
-		direction = "toServer",
-		args = { { kind = "number", min = 0, max = 4_000_000_000 } },
-		ratePerSecond = 6,
-		burst = 6,
-	},
-	FreekickRelease = {
 		direction = "toServer",
 		args = { { kind = "number", min = 0, max = 4_000_000_000 } },
 		ratePerSecond = 6,
