@@ -151,15 +151,12 @@ function ShopUi.init()
 
 	-- The views --------------------------------------------------------------------------------
 	local view: string? = nil -- the product key of the open detail, nil = the list
-	local message: string? = nil -- the last answer from the server
-	local hint: string? = nil -- what a greyed card says when tapped (what opens it)
 	local waiting = false
 	local render: () -> ()
 
 	function close()
 		backdrop.Visible = false
 		view = nil
-		message, hint = nil, nil
 	end
 
 	local function total()
@@ -362,9 +359,7 @@ function ShopUi.init()
 		local product = Config.Products[key]
 		if not ok and product.kind == "case" and (reason == "early" or reason == "locked") then
 			card_(parent, key, name, iconName, false, `{product.robux} Robux`, function()
-				hint = caseHint(product, reason)
-				message = nil
-				render()
+				built.toast(caseHint(product, reason))
 			end, true)
 			return
 		end
@@ -378,7 +373,6 @@ function ShopUi.init()
 			if ok
 				then function()
 					view = key
-					message = nil
 					render()
 				end
 				else nil
@@ -414,11 +408,6 @@ function ShopUi.init()
 
 	local function renderList()
 		built.setTitle("Shop")
-		if message then
-			line(message, { TextColor3 = Panel.GOOD })
-		elseif hint then
-			line(hint)
-		end
 		local row = cardRow(section("Chests"))
 		freeCaseCard(row)
 		if player:GetAttribute("casesRestricted") == true then
@@ -507,7 +496,6 @@ function ShopUi.init()
 
 	local function open()
 		view = nil
-		message, hint = nil, nil
 		render()
 		backdrop.Visible = true
 	end
@@ -547,10 +535,10 @@ function ShopUi.init()
 		end
 		if info.kind == "purchaseRefused" then
 			waiting = false
-			message = REFUSALS[info.reason] or REFUSALS.unavailable
 			view = nil
 			if backdrop.Visible then
 				render()
+				built.toast(REFUSALS[info.reason] or REFUSALS.unavailable)
 			end
 		elseif info.kind == "purchaseDone" then
 			waiting = false
