@@ -131,7 +131,7 @@ end)
 T.test("the store upgrade enum matches Config", function()
 	local schema = RemoteSpec.remotes.BuyStoreUpgrade.args[1]
 	T.eq(schema.kind, "enum")
-	T.eq(#schema.values, 3)
+	T.eq(#schema.values, 2)
 	for id in Config.Store do
 		T.truthy(table.find(schema.values, id), id .. " is in the enum")
 	end

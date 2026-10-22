@@ -18,7 +18,7 @@ State.data = {
 	cash = 0,
 	tp = 0,
 	stadiumTier = 1,
-	storeLevels = { matchSpeed = 0, hatTrick = 0, offline = 0 },
+	storeLevels = { matchSpeed = 0, hatTrick = 0 },
 	fieldStarted = false,
 	players = {},
 	trials = {},

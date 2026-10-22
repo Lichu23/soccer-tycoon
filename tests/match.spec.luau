@@ -18,7 +18,7 @@ local NO_LUCK = function()
 	return 0.99
 end
 local LUCK = function()
-	return 0.05
+	return 0.01
 end
 
 -- One match the way the server plays it: rolled at kick-off, paid at the whistle.
@@ -88,10 +88,10 @@ end)
 T.test("the hat-trick chance upgrade changes the odds", function()
 	local data = newData()
 	local roll = function()
-		return 0.11
+		return 0.07
 	end
-	T.eq(play(data, FRESH, roll).hatTrick, false) -- base 10%
-	data.storeLevels.hatTrick = 1 -- 12%
+	T.eq(play(data, FRESH, roll).hatTrick, false) -- base 5%
+	data.storeLevels.hatTrick = 1 -- 10%
 	T.eq(play(data, FRESH, roll).hatTrick, true)
 end)
 

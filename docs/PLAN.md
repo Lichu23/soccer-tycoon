@@ -14,9 +14,9 @@ Status: steps 1 to 6 agreed (step 3 numbers are a draft to be playtested), step 
 payout = base x sum(field player income) x upgrades x momentum x daily boost x (hat-trick 2x if rolled)
 ```
 
-- **Hat-trick:** small random chance (about 10%) of a 2x match. The same text reads "HAT-TRICK x2" in a different colour, and "+$N" is the doubled amount. A Store upgrade can raise the chance later.
+- **Hat-trick:** small random chance (5%, raised by a Store upgrade) of a 2x match. The same text reads "HAT-TRICK x2" in a different colour, and "+$N" is the doubled amount. A Store upgrade can raise the chance later.
 - **Momentum:** session-only bonus for matches played in a row (for example +1% per match, capped). Never saved. Resets to 0 on join.
-- **Offline earnings:** capped at 4 hours of income. The offline rate starts at 10% of normal income and an upgrade raises it up to 35% (see Step 3).
+- **Offline earnings:** capped at 4 hours of income. Everyone earns 25% of normal income while away; there is no upgrade (owner decision, 2026-10-22).
 
 ### Stadium: 4 floors of capsules
 Players are physical displays in the world (glass capsules on pedestals, like a tycoon). There is no inventory menu and no picker.
@@ -69,7 +69,7 @@ There is no separate expensive cash route: everyone pays the cash price and comp
 - The server judges each kick (the client only sends the aim) and decides the reset time. No day-streak, no penalty for skipping.
 
 ### Store
-- **Cash upgrades:** cash per match (from the start), match speed (after stadium tier 2), hat-trick chance and offline earnings (after floor 1 is complete). No daily limit: rising prices are the gate. Every upgrade is reachable with cash. Levels and prices are in Step 3.
+- **Cash upgrades:** cash per match (from the start), match speed (after stadium tier 2), hat-trick chance (after floor 1 is complete; offline earnings are no longer an upgrade). No daily limit: rising prices are the gate. Every upgrade is reachable with cash. Levels and prices are in Step 3.
 - **Robux packs (owner decision, 2026-10-20):** six pads in one row on the ground left of the building door, with the cash or TP icon above each. Cash: $10K, $100K, $1M. TP: 500, 2,500, 10,000. Fixed amounts, the same for everyone; Robux prices are placeholders in `Config.Products` (25 / 99 / 349). Standing on a pad for the usual hold asks the server, which shows the Robux prompt; like every paid offer nothing is offered in the first 30 minutes after the first purchase. No bundles, timers or popups. There is no shop booth: the SHOP button in the dock still holds the cases, the boost and the Legends.
 - **Robux match boost:** "next 30 matches x2" (developer product, price about 25 to 49 Robux, size and price on the button). Boosted matches are banked up to a **maximum of 60**, shown by a counter ("Boosted matches left: 27"). It can be bought again once the bank has room. Stacking with other boosts is capped (total boost never above x4).
 - Purchases are granted by the server and must be safe if the purchase message arrives twice (`roblox-monetization`).
@@ -189,8 +189,8 @@ Income is cash per match for a player on the field. Prices rise faster than inco
 - **Stadium tiers (cash):** tier 2 $250 (field 5), tier 3 $25K (field 6), tier 4 $750K (field 8), tier 5 $45M (field 11), tier 6 $1.5B (field 11, *provisional*: the roof arena, not in the back test yet). The final back test (with all boosts, momentum and stars) has a player buying them at about 4 min, 7 min, 10 min and 28 min. Raising tiers 3 to 5 about 3 times spread them out from about 4, 6, 9 and 20 minutes. A bigger field adds only about +5% to +27% income in total (the best players do most of the earning), so tiers are mostly milestones. Each one gives a free x2 boost for 5 minutes (counts only while online, resets if a new one starts, inside the x4 cap).
 - **"Cash per match" upgrade, 8 levels:** $15, $60, $240, $960, $3.8K, $15K, $61K, $246K, giving multipliers x1.5, x2.1, x2.7, x3.5, x4.3, x5.1, x5.9, x6.7.
 - **Match speed (unlocks after stadium tier 2, minimum 5 s so the bar, "VICTORY" text and counter stay readable):** $120 (9 s), $2K (8 s), $30K (7 s), $500K (6 s), $8M (5 s).
-- **Hat-trick chance (unlocks after floor 1):** base 10%, then $300 (12%), $5K (14%), $80K (17%), $1.5M (21%), $25M (25%). It is a cash upgrade, not a Robux luck boost.
-- **Offline earnings (unlocks after floor 1):** cap 4 hours of income. Rate starts at 10% and rises with $500 (15%), $10K (20%), $200K (25%), $4M (30%), $80M (35%). At 100% it out-earned active play, so it is deliberately low.
+- **Hat-trick chance (unlocks after floor 1):** base 5%, then 3 levels: $2K (10%), $60K (20%), $1.5M (25%) (owner decision, 2026-10-22). It is a cash upgrade, not a Robux luck boost.
+- **Offline earnings (no upgrade):** cap 4 hours of income at a fixed 25% of normal income for everyone (`Config.Offline.rate`). The upgrade pad was removed (owner decision, 2026-10-22). At 100% it out-earned active play, so it stays deliberately low.
 - **Stars:** +10% income per star, maximum 5 stars (+50%).
 - **Training points (TP):** stamina session of 5 minutes, refilling in about 5 minutes away. Placeholder rate 10 TP per minute (50 TP per session). Each level adds **+3% income**. Level caps: Common 5, Rare 10, Very Rare 15, Epic 20, Legend 25. Cost of level L = 40 x L x rarity factor (Common 1, Rare 2, Very Rare 3, Epic 4, Legend 5). A Common player reaches level 5 in about 1 hour of training (600 TP, about 12 sessions). A Legend at level 25 is a very long-term goal (about 65,000 TP).
 - **Momentum:** +1% per match in a row this session, maximum +25%. Resets on join.
@@ -237,7 +237,7 @@ Return triggers are all **pull, not push**: a reason that is true (cash is waiti
 ### Pit and peak map (first sessions)
 - **Peaks:** first purchase (0:23), first hat-trick (about 4:15), first stadium upgrade (about 5:16, the main one), floor 1 complete (about 11 min), floor 2 complete (about 40 min).
 - **Pits to watch:** minutes 5 to 11 (after the big peak, before floor 1 is done), the long wait for items 10 to 12 on each floor, and the first New Season reset.
-- **Fix for the post-peak dip:** open one new thing right after the first upgrade (daily penalty pad), and open the next one when floor 1 completes (hat-trick and offline upgrades, training ground). One new idea at a time, never a menu dump.
+- **Fix for the post-peak dip:** open one new thing right after the first upgrade (daily penalty pad), and open the next one when floor 1 completes (hat-trick upgrade, training ground). One new idea at a time, never a menu dump.
 - **End on a high:** when a player leaves, the HUD shows what is banked ("Offline earnings ready: up to 4 h") so the last thing they see is progress, not a treadmill.
 - **Welcome back:** a single non-blocking line ("+$N while you were away", the cap is shown). It is the Day 1 hook, so it must always load correctly (see Step 6).
 
@@ -247,7 +247,7 @@ Return triggers are all **pull, not push**: a reason that is true (cash is waiti
 | Start | Claim plot, capsule pads, the field button |
 | About 1 min | Store: cash per match |
 | About 5 min | Daily penalties, free daily case, their two HUD icons, stadium tier 2 |
-| Floor 1 complete (about 11 min) | Hat-trick and offline upgrades, training ground, the notification opt-in (below) |
+| Floor 1 complete (about 11 min) | Hat-trick upgrade, training ground, the notification opt-in (below) |
 | Stadium tier 2 | Match speed |
 | Floor 2 started | The Standard Case, in the Store (not before, so the first 30 minutes are about the loop). The Legends hall becomes visible through glass |
 | Floor 2 complete | The Elite Case |
@@ -421,7 +421,7 @@ cash, tp
 staminaLeft            seconds left in the current session
 lastSeen               server time, for offline earnings
 stadiumTier
-storeLevels            { cashPerMatch, matchSpeed, hatTrick, offline }
+storeLevels            { matchSpeed, hatTrick }
 fieldStarted           true once the first player is on the field
 players                { [playerId] = { level, stars } }   owned only, Legends included
 season                 { number }

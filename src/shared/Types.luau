@@ -7,7 +7,6 @@ export type OwnedPlayer = { level: number, stars: number }
 export type StoreLevels = {
 	matchSpeed: number,
 	hatTrick: number,
-	offline: number,
 }
 
 -- What the progress rules (roster, store, stadium, goals) need to know.

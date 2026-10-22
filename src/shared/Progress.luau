@@ -73,8 +73,9 @@ function Progress.hatTrickChance(data: ProgressData): number
 	return Formulas.storeValue("hatTrick", data.storeLevels.hatTrick)
 end
 
-function Progress.offlineRate(data: ProgressData): number
-	return Formulas.storeValue("offline", data.storeLevels.offline)
+-- The share of normal income earned while away (no upgrade: the same for everyone).
+function Progress.offlineRate(_data: ProgressData): number
+	return Config.Offline.rate
 end
 
 -- Training ----------------------------------------------------------------------------------

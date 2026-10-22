@@ -29,11 +29,11 @@ local function expected(data, seconds)
 		seconds,
 		Formulas.storeValue("matchSpeed", data.storeLevels.matchSpeed),
 		base,
-		Formulas.storeValue("offline", data.storeLevels.offline)
+		Config.Offline.rate
 	)
 end
 
-T.test("an hour away pays whole matches at the 10% starting rate", function()
+T.test("an hour away pays whole matches at the 25% rate", function()
 	local data = playing()
 	local earned, away = Offline.preview(data, data.lastSeen + HOUR)
 	T.eq(away, HOUR)
@@ -60,12 +60,11 @@ T.test("time away is capped at 4 hours", function()
 	T.eq(long, capped)
 end)
 
-T.test("a better offline upgrade pays more", function()
+T.test("the hat-trick upgrade does not change offline earnings", function()
 	local data = playing()
 	local base = Offline.preview(data, data.lastSeen + HOUR)
-	data.storeLevels.offline = 5
-	local better = Offline.preview(data, data.lastSeen + HOUR)
-	T.truthy(better > base * 3)
+	data.storeLevels.hatTrick = 3
+	T.eq(Offline.preview(data, data.lastSeen + HOUR), base)
 end)
 
 T.test("nothing is paid for a new profile, no field, a negative gap or a tiny gap", function()

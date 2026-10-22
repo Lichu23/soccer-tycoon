@@ -83,7 +83,7 @@ T.test(
 		data.cash = 12345
 		data.tp = 40
 		data.stadiumTier = 4
-		data.storeLevels.offline = 3
+		data.storeLevels.hatTrick = 3
 		data.boosts.cashBoostLeft = 300
 		data.boosts.stadiumBoostLeft = 200
 		data.fieldStarted = true
@@ -100,7 +100,7 @@ T.test(
 		T.eq(data.cash, Config.StartingCash)
 		T.eq(data.tp, 0)
 		T.eq(data.stadiumTier, 1)
-		T.eq(data.storeLevels.offline, 0)
+		T.eq(data.storeLevels.hatTrick, 0)
 		T.eq(data.boosts.cashBoostLeft, 300) -- time bought with Robux is kept
 		T.eq(data.boosts.stadiumBoostLeft, 0)
 		T.eq(Roster.floorsComplete(data), 1) -- floor 1 kept, floor 2 and 3 gone

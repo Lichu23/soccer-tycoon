@@ -55,10 +55,10 @@ T.test("hat-trick and offline upgrades unlock when floor 1 is complete", functio
 	local data = newData()
 	data.cash = 1_000_000
 	T.eq(Progress.storeStatus(data, "hatTrick"), "locked")
-	T.eq(Progress.storeStatus(data, "offline"), "locked")
 	ownFloor(data, 1)
 	T.eq(Progress.storeStatus(data, "hatTrick"), "ready")
-	T.eq(Progress.storeStatus(data, "offline"), "ready")
+	data.storeLevels.hatTrick = 3
+	T.eq(Progress.storeStatus(data, "hatTrick"), "maxed") -- 3 levels at most
 end)
 
 T.test("an upgrade at its last level is maxed", function()
@@ -72,14 +72,13 @@ end)
 T.test("match speed, hat-trick chance and offline rate follow the levels", function()
 	local data = newData()
 	T.eq(Progress.matchSeconds(data), 10)
-	T.eq(Progress.hatTrickChance(data), 0.10)
-	T.eq(Progress.offlineRate(data), 0.10)
+	T.eq(Progress.hatTrickChance(data), 0.05)
+	T.eq(Progress.offlineRate(data), 0.25)
 	data.storeLevels.matchSpeed = 3
 	data.storeLevels.hatTrick = 2
-	data.storeLevels.offline = 5
 	T.eq(Progress.matchSeconds(data), 7)
-	T.eq(Progress.hatTrickChance(data), 0.14)
-	T.eq(Progress.offlineRate(data), 0.35)
+	T.eq(Progress.hatTrickChance(data), 0.20)
+	T.eq(Progress.offlineRate(data), 0.25)
 end)
 
 T.suite("progress stadium")

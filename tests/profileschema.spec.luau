@@ -21,9 +21,9 @@ end)
 T.test("every call returns a separate copy", function()
 	local a, b = ProfileSchema.newProfile(), ProfileSchema.newProfile()
 	a.players.kane = { level = 1, stars = 0 }
-	a.storeLevels.offline = 3
+	a.storeLevels.hatTrick = 3
 	T.deepEq(b.players, {})
-	T.eq(b.storeLevels.offline, 0)
+	T.eq(b.storeLevels.hatTrick, 0)
 end)
 
 T.test("a new profile passes validation", function()
@@ -114,13 +114,13 @@ T.test("stadium tier and store levels stay in range", function()
 	)
 	T.eq(
 		mutated(function(p)
-			p.storeLevels.offline = 6
+			p.storeLevels.hatTrick = 4
 		end),
 		false
 	)
 	T.eq(
 		mutated(function(p)
-			p.storeLevels.offline = 5
+			p.storeLevels.hatTrick = 3
 		end),
 		true
 	)
@@ -138,7 +138,7 @@ T.test("stadium tier and store levels stay in range", function()
 	)
 	T.eq(
 		mutated(function(p)
-			p.storeLevels.offline = -1
+			p.storeLevels.hatTrick = -1
 		end),
 		false
 	)
@@ -263,7 +263,7 @@ T.test("version 2 drops the removed cash upgrade and gets the bought boost timer
 	data.boosts.tpBoostLeft = nil
 	T.eq((ProfileSchema.migrate(data)), true)
 	ProfileSchema.reconcile(data, ProfileSchema.newProfile())
-	T.eq(data.version, 3)
+	T.eq(data.version, ProfileSchema.CURRENT_VERSION)
 	T.eq(data.storeLevels.cashPerMatch, nil)
 	T.eq(data.boosts.cashBoostLeft, 0)
 	T.eq(data.boosts.tpBoostLeft, 0)
@@ -428,4 +428,16 @@ T.test("a running boost with fractions of a second left is still a valid profile
 	T.eq(ProfileSchema.validate(data), true)
 	data.boosts.stadiumBoostLeft = -1
 	T.eq(ProfileSchema.validate(data), false)
+end)
+
+T.test("version 3 drops the offline upgrade and keeps at most the top hat-trick level", function()
+	local data = ProfileSchema.newProfile() :: any
+	data.version = 3
+	data.storeLevels.offline = 4
+	data.storeLevels.hatTrick = 5
+	T.eq((ProfileSchema.migrate(data)), true)
+	T.eq(data.version, 4)
+	T.eq(data.storeLevels.offline, nil)
+	T.eq(data.storeLevels.hatTrick, 3)
+	T.eq((ProfileSchema.validate(data)), true)
 end)

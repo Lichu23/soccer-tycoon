@@ -29,7 +29,7 @@ export type Profile = {
 	lastSeen: number, -- os.time(), for offline earnings
 	stadiumTier: number,
 	stadiumName: string, -- the roof arena's name as typed ("" = none); filtered again before it is shown
-	storeLevels: { matchSpeed: number, hatTrick: number, offline: number },
+	storeLevels: { matchSpeed: number, hatTrick: number },
 	fieldStarted: boolean,
 	players: { [string]: { level: number, stars: number } }, -- owned only, Legends included
 	season: { number: number },
@@ -73,7 +73,7 @@ export type Profile = {
 
 local ProfileSchema = {}
 
-ProfileSchema.CURRENT_VERSION = 3
+ProfileSchema.CURRENT_VERSION = 4
 
 -- Receipts are kept for 30 days or the newest 100, whichever keeps more (Step 6).
 ProfileSchema.RECEIPT_KEEP_SECONDS = 30 * 24 * 60 * 60
@@ -89,7 +89,7 @@ function ProfileSchema.newProfile(): Profile
 		lastSeen = 0,
 		stadiumTier = 1,
 		stadiumName = "",
-		storeLevels = { matchSpeed = 0, hatTrick = 0, offline = 0 },
+		storeLevels = { matchSpeed = 0, hatTrick = 0 },
 		fieldStarted = false,
 		players = {},
 		season = { number = 1 },
@@ -176,6 +176,18 @@ migrations[2] = function(data)
 	local levels = data.storeLevels
 	if type(levels) == "table" then
 		levels.cashPerMatch = nil
+	end
+end
+
+-- 3 -> 4: the "Offline earnings" upgrade is gone (every player earns Config.Offline.rate while away),
+-- and the hat-trick chance has 3 levels instead of 5 (a higher level keeps the top one).
+migrations[3] = function(data)
+	local levels = data.storeLevels
+	if type(levels) == "table" then
+		levels.offline = nil
+		if type(levels.hatTrick) == "number" then
+			levels.hatTrick = math.min(levels.hatTrick, #(Config.Store :: any).hatTrick.prices)
+		end
 	end
 end
 

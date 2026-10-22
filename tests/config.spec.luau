@@ -160,13 +160,17 @@ T.test("match speed never goes below 5 seconds and unlocks at tier 2", function(
 	T.eq(def.minTier, 2)
 end)
 
-T.test("hat-trick and offline upgrades unlock after floor 1", function()
-	T.eq(Config.Store.hatTrick.floorsComplete, 1)
-	T.eq(Config.Store.offline.floorsComplete, 1)
-	T.eq(Config.Store.hatTrick.baseValue, 0.10)
-	T.eq(Config.Store.offline.baseValue, 0.10)
-	T.eq(Config.Store.hatTrick.values[5], 0.25)
-	T.eq(Config.Store.offline.values[5], 0.35)
+T.test("the hat-trick upgrade unlocks after floor 1 and has 3 levels up to 25%", function()
+	local def = Config.Store.hatTrick
+	T.eq(def.floorsComplete, 1)
+	T.eq(def.baseValue, 0.05)
+	T.deepEq(def.prices, { 2_000, 60_000, 1_500_000 })
+	T.deepEq(def.values, { 0.10, 0.20, 0.25 })
+end)
+
+T.test("offline earnings are no upgrade: everyone earns 25% while away", function()
+	T.eq((Config.Store :: any).offline, nil)
+	T.eq(Config.Offline.rate, 0.25)
 end)
 
 T.test("store prices rise within every upgrade", function()

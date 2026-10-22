@@ -23,7 +23,7 @@ export type RarityDef = {
 	costFactor: number, -- training level cost multiplier
 }
 
-export type StoreUpgradeId = "matchSpeed" | "hatTrick" | "offline"
+export type StoreUpgradeId = "matchSpeed" | "hatTrick"
 
 export type StoreUpgradeDef = {
 	id: StoreUpgradeId,
@@ -330,6 +330,8 @@ Config.Daily = {
 
 Config.Offline = {
 	capSeconds = 4 * 60 * 60,
+	-- The share of normal income earned while away, the same for everyone (no upgrade).
+	rate = 0.25,
 }
 
 -- Reminders for players who opted in (docs/PLAN.md, Step 3, Notifications): the offline bank is full or
@@ -846,16 +848,9 @@ Config.Store = {
 	},
 	hatTrick = {
 		id = "hatTrick",
-		baseValue = 0.10, -- chance
-		prices = { 300, 5_000, 80_000, 1_500_000, 25_000_000 },
-		values = { 0.12, 0.14, 0.17, 0.21, 0.25 },
-		floorsComplete = 1,
-	},
-	offline = {
-		id = "offline",
-		baseValue = 0.10, -- share of normal income
-		prices = { 500, 10_000, 200_000, 4_000_000, 80_000_000 },
-		values = { 0.15, 0.20, 0.25, 0.30, 0.35 },
+		baseValue = 0.05, -- chance
+		prices = { 2_000, 60_000, 1_500_000 },
+		values = { 0.10, 0.20, 0.25 },
 		floorsComplete = 1,
 	},
 } :: { [StoreUpgradeId]: StoreUpgradeDef }

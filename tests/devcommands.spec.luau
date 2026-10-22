@@ -44,13 +44,13 @@ T.test("resetProfile returns a new profile", function()
 	DevCommands.apply(data, "grantFloor", 3)
 	DevCommands.apply(data, "setCash", 999)
 	data.stadiumTier = 4
-	data.storeLevels.offline = 5
+	data.storeLevels.hatTrick = 3
 	data.flags.milestones.first_match = 1
 	T.eq(DevCommands.apply(data, "resetProfile", 0), true)
 	T.eq(Roster.ownedCount(data), 0)
 	T.eq(data.cash, 15)
 	T.eq(data.stadiumTier, 1)
-	T.eq(data.storeLevels.offline, 0)
+	T.eq(data.storeLevels.hatTrick, 0)
 	T.eq(data.flags.milestones.first_match, nil)
 	T.eq(data.fieldStarted, false)
 	local ok = ProfileSchema.validate(data)
