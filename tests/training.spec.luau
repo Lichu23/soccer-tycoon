@@ -677,3 +677,47 @@ T.test("a long gap in the breakaway is caught up without looping for ever", func
 	local events = Freekick.normalize(state, 100 + 100000)
 	T.truthy(#events >= 1 and #events <= 16)
 end)
+
+T.test(
+	"the level-up tutorial: the treadmill pays its first TP faster, only until the first level",
+	function()
+		local data, carry = fresh()
+		data.flags.milestones.first_match = 1 -- training is open
+		Roster.add(data, "rashford")
+		T.eq(Progress.tutorialTraining(data), true)
+		local seconds = Config.Training.tutorialTp / Config.Training.tutorialTpPerMinute * 60
+		train(data, carry, seconds + 0.25, true)
+		T.eq(data.tp, Config.Training.tutorialTp)
+		T.eq(Progress.tutorialTraining(data), false) -- the TP are in: back to the usual rate
+		local before = data.tp
+		train(data, carry, 60, true)
+		T.eq(data.tp - before, Config.Training.idleTpPerMinute)
+	end
+)
+
+T.test(
+	"the other stations open with the first level ever, and a New Season does not close them",
+	function()
+		local data = fresh()
+		data.flags.milestones.first_match = 1
+		Roster.add(data, "rashford")
+		T.eq(PadInfo.describe("training", "trainingTreadmill", data).state, "info")
+		T.eq(PadInfo.describe("training", "trainingKeepie", data).state, "locked")
+		T.eq(PadInfo.describe("training", "trainingBench", data).state, "locked")
+		data.players.rashford.level = 1
+		T.eq(PadInfo.describe("training", "trainingKeepie", data).state, "info")
+		data.players.rashford.level = 0 -- a New Season takes the level away; the milestone stays
+		data.flags.milestones.first_level = 1
+		T.eq(Progress.firstLevelDone(data), true)
+		T.eq(PadInfo.describe("training", "trainingFreekick", data).state, "info")
+	end
+)
+
+T.test("a tap during how-to-play skips it: the countdown starts at once", function()
+	local state = Juggle.new(100 + Config.Training.juggleIntroSeconds)
+	local lead = Config.Training.juggleLeadSeconds
+	T.eq(Juggle.skipIntro(state, 100), true)
+	T.eq(state.startedAt, 100 + lead)
+	T.eq(Juggle.skipIntro(state, 100.5), false) -- the countdown itself is not skipped
+	T.eq(state.startedAt, 100 + lead)
+end)

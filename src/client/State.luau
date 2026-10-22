@@ -28,9 +28,16 @@ State.data = {
 -- True once the first snapshot from the server has arrived (before it the data is empty).
 State.loaded = false
 
--- Calls `listener` after any change of the cash, the snapshot or the plot.
-function State.onChange(listener: () -> ())
+-- Calls `listener` after any change of the cash, the snapshot or the plot. Returns a function that
+-- stops it.
+function State.onChange(listener: () -> ()): () -> ()
 	table.insert(listeners, listener)
+	return function()
+		local index = table.find(listeners, listener)
+		if index then
+			table.remove(listeners, index)
+		end
+	end
 end
 
 local function notify()

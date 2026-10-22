@@ -89,6 +89,10 @@ local function stationOf(session: Session.Session): { field: string, station: st
 	end
 	for marker, info in STATIONS do
 		if key == plot.Name .. ":" .. marker then
+			-- Until the first level-up only the treadmill is open (the level-up tutorial).
+			if info.station ~= "treadmill" and not Progress.firstLevelDone(session.data) then
+				return nil
+			end
 			if
 				info.field == "conditioning" and not onMachine(plot, session.player, info.station)
 			then
@@ -238,6 +242,11 @@ local function tap(player: Player)
 	end
 	local now = Workspace:GetServerTimeNow()
 	handleEvents(session, Juggle.normalize(round, now))
+	-- A tap while "how to play" shows skips it: the countdown starts at once.
+	if Juggle.skipIntro(round, now) then
+		publishGame(player, round)
+		return
+	end
 	local outcome, event = Juggle.press(round, now)
 	if outcome == "ignored" then
 		publishGame(player, round)

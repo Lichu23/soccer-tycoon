@@ -570,7 +570,7 @@ function KeepieUi.init()
 		local leadIn = running and untilStart > 0
 		local showIntro = leadIn and untilStart > lead + 0.05
 		intro.Visible = showIntro
-		introCount.Text = string.format("Starts in %d", math.ceil(untilStart))
+		introCount.Text = "Tap to skip" -- the server starts the countdown on a tap (the 3, 2, 1 follows)
 		local showGo = running and not leadIn and -untilStart < GO_SECONDS
 		bigText.Visible = (leadIn and not showIntro) or showGo
 		bigText.Text = if leadIn then tostring(math.ceil(untilStart)) else "GO!"

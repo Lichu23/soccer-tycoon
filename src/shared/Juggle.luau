@@ -35,6 +35,17 @@ function Juggle.new(now: number): State
 	}
 end
 
+-- Skips the "how to play" time before the first streak: the ball then leaves the foot after the
+-- usual `juggleLeadSeconds` countdown from `now`. True when there was intro time left to skip.
+function Juggle.skipIntro(state: State, now: number): boolean
+	local start = now + Config.Training.juggleLeadSeconds
+	if state.phase ~= "running" or state.lastIndex ~= 0 or state.startedAt <= start then
+		return false
+	end
+	state.startedAt = start
+	return true
+end
+
 -- The medal of a streak of `streak` touches: 0 none, 1 bronze, 2 silver, 3 gold.
 function Juggle.medal(streak: number): number
 	local medals = Config.Training.juggleMedals

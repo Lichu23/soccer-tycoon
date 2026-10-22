@@ -12,6 +12,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Boosts = require(script.Parent.Boosts)
 local Economy = require(script.Parent.Economy)
 local ProfileSchema = require(script.Parent.ProfileSchema)
+local Progress = require(ReplicatedStorage.Shared.Progress)
 
 type Profile = ProfileSchema.Profile
 
@@ -74,7 +75,11 @@ function Training.step(
 	if paysIdle == false then
 		return 0
 	end
-	carry.fraction += Config.Training.idleTpPerMinute / 60 * used * Boosts.tpMultiplier(data)
+	-- The first TP of the level-up tutorial come faster, so it is over in a few seconds.
+	local perMinute = if Progress.tutorialTraining(data :: any)
+		then Config.Training.tutorialTpPerMinute
+		else Config.Training.idleTpPerMinute
+	carry.fraction += perMinute / 60 * used * Boosts.tpMultiplier(data)
 	return payWhole(data, carry)
 end
 

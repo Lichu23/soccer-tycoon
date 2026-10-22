@@ -76,13 +76,8 @@ end
 -- the TP the level costs.
 local function levelGuide(): (string?, string?, number)
 	local data = State.data
-	if not Progress.trainingUnlocked(data) then
+	if not Progress.trainingUnlocked(data) or Progress.firstLevelDone(data) then
 		return nil, nil, 0
-	end
-	for _, owned in data.players do
-		if owned.level > 0 then
-			return nil, nil, 0
-		end
 	end
 	local id = firstPlayer()
 	local cost = if id then Progress.levelCost(data, id) else nil

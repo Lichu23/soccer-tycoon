@@ -2,12 +2,18 @@
 -- The player's own Roblox character runs on the treadmill of the Training Gym: in place, with the run
 -- animation of its own avatar, held in the middle of the belt until a jump takes it off. It only
 -- starts while the server says the player is training (on the pad with stamina left) and stops the
--- moment the player jumps, leaves the pad or runs out of stamina. The bench press is client/BenchPress.
--- The TP are the server's: this only moves and animates the character, nothing here pays.
+-- moment the player jumps, leaves the pad or runs out of stamina. During the level-up tutorial the
+-- jump is off until the TP of the first level are in, then the runner steps off by itself. The bench
+-- press is client/BenchPress. The TP are the server's: this only moves and animates the character,
+-- nothing here pays.
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+
+local Progress = require(ReplicatedStorage.Shared.Progress)
+local State = require(script.Parent.State)
 
 local player = Players.LocalPlayer
 
@@ -106,6 +112,10 @@ function GymRunner.init()
 		end)
 		local released = false
 		local jumping: RBXScriptConnection? = nil
+		local stopTutorial: (() -> ())? = nil
+		-- The level-up tutorial holds the runner on the belt: no jump until the first TP are in.
+		local held = Progress.tutorialTraining(State.data)
+		humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, not held)
 		local function release()
 			if released then
 				return
@@ -115,19 +125,34 @@ function GymRunner.init()
 			if jumping then
 				jumping:Disconnect()
 			end
+			if stopTutorial then
+				stopTutorial()
+			end
 			track:Stop(0.2)
 			if humanoid.Parent then
 				humanoid.WalkSpeed = oldSpeed
 				humanoid.AutoRotate = oldAutoRotate
+				humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
 			end
+		end
+		-- Off the belt: the humanoid damps a push, so it walks off instead (any input of the player
+		-- takes over).
+		local function stepOff()
+			release()
+			humanoid:MoveTo(middle - toConsole * HOP_DISTANCE)
 		end
 		jumping = humanoid.StateChanged:Connect(function(_, state)
 			if state == Enum.HumanoidStateType.Jumping then
-				release()
-				-- The humanoid damps a push, so it walks off instead (any input of the player takes over).
-				humanoid:MoveTo(middle - toConsole * HOP_DISTANCE)
+				stepOff()
 			end
 		end)
+		if held then
+			stopTutorial = State.onChange(function()
+				if not Progress.tutorialTraining(State.data) then
+					stepOff() -- the TP are in: off to level the player up
+				end
+			end)
+		end
 		cleanup = release
 		while runNumber == myRun and character.Parent and not released do
 			task.wait(0.25)

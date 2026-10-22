@@ -95,6 +95,29 @@ function Progress.trainingUnlocked(data: ProgressData): boolean
 	return Progress.firstMatchPlayed(data) or Roster.floorsComplete(data) >= 1
 end
 
+-- Whether a player has ever been levelled up (the level-up tutorial is done). It is kept as a
+-- milestone, so a New Season (which takes the levels away) never brings the tutorial back.
+function Progress.firstLevelDone(data: ProgressData): boolean
+	local flags = (data :: any).flags
+	if flags ~= nil and flags.milestones ~= nil and flags.milestones.first_level ~= nil then
+		return true
+	end
+	for _, owned in data.players do
+		if owned.level > 0 then
+			return true
+		end
+	end
+	return false
+end
+
+-- Whether the player is still earning the TP of the first level: the treadmill pays faster and holds
+-- them on the belt until then.
+function Progress.tutorialTraining(data: ProgressData): boolean
+	return Progress.trainingUnlocked(data)
+		and not Progress.firstLevelDone(data)
+		and data.tp < Config.Training.tutorialTp
+end
+
 -- TP for the next level of an owned player, or nil at the cap (or when not owned).
 function Progress.levelCost(data: ProgressData, id: string): number?
 	local def = Config.PlayersById[id]

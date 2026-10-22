@@ -360,6 +360,11 @@ Config.Training = {
 		rashford = { 5, 10, 20, 40, 50 },
 	} :: { [string]: { number } },
 	idleTpPerMinute = 10,
+	-- The level-up tutorial: until the first level ever, the treadmill pays `tutorialTpPerMinute`
+	-- while the player has less than `tutorialTp` (the first level of the first player, see
+	-- levelCostOverrides), holds them on the belt until then, and the other stations stay locked.
+	tutorialTp = 5,
+	tutorialTpPerMinute = 40,
 	staminaSeconds = 300,
 	staminaRefillSeconds = 300, -- time away to refill from empty
 	-- Keepie-uppies (a skill station of the Training Gym), an endless streak: the ball is kicked up and

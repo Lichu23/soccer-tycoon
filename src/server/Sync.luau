@@ -84,7 +84,12 @@ function Sync.snapshot(session: Session.Session)
 		},
 		fieldStarted = data.fieldStarted,
 		players = players,
-		flags = { milestones = { first_match = data.flags.milestones["first_match"] } },
+		flags = {
+			milestones = {
+				first_match = data.flags.milestones["first_match"],
+				first_level = data.flags.milestones["first_level"],
+			},
+		},
 	})
 end
 

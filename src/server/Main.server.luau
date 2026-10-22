@@ -63,6 +63,7 @@ Actions.onChange = function(session, what, id)
 	elseif what == "level" and id then
 		-- The client shows what the level gave (RewardCard).
 		local owned = session.data.players[id]
+		Analytics.milestone(session, "first_level") -- opens the other training stations for good
 		if owned then
 			-- The first level any player ever gets ends the level-up tutorial (the penalties follow).
 			local firstEver = owned.level == 1

@@ -205,6 +205,14 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 				state = "locked",
 			}
 		end
+		if padId ~= "trainingTreadmill" and not Progress.firstLevelDone(data) then
+			return {
+				title = title,
+				price = "",
+				note = "Level up a player first",
+				state = "locked",
+			}
+		end
 		local note = if padId == "trainingFreekick"
 			then "Dribble and score for TP"
 			elseif skill then "Tap in time for TP"
