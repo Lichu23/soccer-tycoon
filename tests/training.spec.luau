@@ -62,6 +62,7 @@ T.test(
 		local data = session.data
 		data.cash = 10_000_000
 		T.eq(Progress.storeStatus(data, "gymRate"), "locked")
+		T.eq(PadInfo.describe("store", "gymRate", data).note, "Stadium Tier 2 needed")
 		data.stadiumTier = 2
 		T.eq(PadInfo.describe("store", "gymRate", data).note, "Next: 25 TP a minute")
 		T.eq(Actions.buyStore(session, "gymRate", 0), true)

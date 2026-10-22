@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
+local Config = require(ReplicatedStorage.Shared.Config)
 local DailyInfo = require(ReplicatedStorage.Shared.DailyInfo)
 local Icons = require(script.Parent.Icons)
 local PadInfo = require(ReplicatedStorage.Shared.PadInfo)
@@ -272,11 +273,17 @@ local function refresh(entry: Entry)
 		entry.disc.Color = if entry.kind == "robux" then ROBUX_COLOR else padColor(info.state)
 	end
 	-- The claim rings of free plots only matter to a player who has no plot yet.
-	-- Locked Store pads stay hidden until they unlock, so the middle of the room is not cluttered.
+	-- Locked Store pads stay hidden until they unlock, so the middle of the room is not cluttered,
+	-- unless the upgrade asks to be shown locked (Faster training, alone in the gym).
 	-- Players on a floor that is not open yet stay visible (price and what to finish first), so
 	-- the stairs are worth climbing to see what is coming.
+	local storeDef = if entry.kind == "store" then (Config.Store :: any)[entry.padId] else nil
 	local hidden = (entry.kind == "claim" and State.hasPlot())
-		or (entry.kind == "store" and info.state == "locked")
+		or (
+			entry.kind == "store"
+			and info.state == "locked"
+			and not (storeDef and storeDef.showLocked)
+		)
 		or (entry.kind == "penalty" and info.price == "")
 	entry.billboard.Enabled = not hidden
 	if entry.disc then

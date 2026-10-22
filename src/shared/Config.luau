@@ -32,6 +32,7 @@ export type StoreUpgradeDef = {
 	values: { number }, -- values[level] is the value at that level
 	minTier: number?, -- stadium tier needed to unlock
 	floorsComplete: number?, -- floors completed needed to unlock
+	showLocked: boolean?, -- the pad stays visible (greyed) while locked, instead of hidden
 }
 
 export type StadiumTierDef = {
@@ -915,6 +916,7 @@ Config.Store = {
 		prices = { 5_000, 500_000, 50_000_000, 2_000_000_000 },
 		values = { 25, 30, 35, 40 },
 		minTier = 2,
+		showLocked = true, -- it stands alone in the gym, so a Tier 1 player sees what is coming
 	},
 } :: { [StoreUpgradeId]: StoreUpgradeDef }
 

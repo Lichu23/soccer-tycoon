@@ -171,7 +171,11 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 		local status = Progress.storeStatus(data, id)
 		local price = Progress.storePrice(data, id)
 		if status == "locked" then
-			return { title = title, price = "LOCKED", note = "Not unlocked yet", state = status }
+			local minTier = Config.Store[id].minTier
+			local note = if minTier and data.stadiumTier < minTier
+				then `Stadium Tier {minTier} needed`
+				else "Not unlocked yet"
+			return { title = title, price = "LOCKED", note = note, state = status }
 		elseif status == "maxed" or price == nil then
 			return { title = title, price = "MAX", note = "", state = "maxed" }
 		elseif status == "cannotAfford" then
