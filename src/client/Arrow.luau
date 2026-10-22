@@ -3,9 +3,8 @@
 -- next thing to do, marching towards it. There is no
 -- caption or marker above the pad (the pads and the goal row already say what to do). It only guides
 -- the first steps: to a free plot, then to the first player's pad.
--- After the first purchase it disappears. When the first match ends the
--- training ground opens, and until the first player is levelled up an objective at the top of the
--- screen says what to do: get the TP for the first level in the Training Gym (the trail leads there),
+-- After the first purchase, until the first player is levelled up, an objective at the top of the
+-- screen says what to do (the training ground opens when the first match ends, a few seconds later): get the TP for the first level in the Training Gym (the trail leads there),
 -- then level up the first player bought (the trail leads to his pad).
 
 local CollectionService = game:GetService("CollectionService")
@@ -72,11 +71,13 @@ local function firstPlayer(): string?
 end
 
 -- The level-up objective: "train" while the TP for the first level is still missing, "level" once
--- it is in, nil when training is not open yet or a player already has a level. Also the player and
--- the TP the level costs.
+-- it is in, nil before the first player is bought or once a player already has a level. Also the
+-- player and the TP the level costs. It starts with the first player, not when the first match
+-- ends (that opens the gym): a player who skips the first match cinematic is guided at once, and
+-- the short first match is over before they reach the gym.
 local function levelGuide(): (string?, string?, number)
 	local data = State.data
-	if not Progress.trainingUnlocked(data) or Progress.firstLevelDone(data) then
+	if Roster.ownedCount(data) == 0 or Progress.firstLevelDone(data) then
 		return nil, nil, 0
 	end
 	local id = firstPlayer()
@@ -135,6 +136,13 @@ function Arrow.init()
 	objectiveGui.DisplayOrder = 3
 	objectiveGui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
 	objectiveGui.Parent = player:WaitForChild("PlayerGui")
+	-- The first match cinematic is watched without it (its caption stands in the same place).
+	local playerGui = objectiveGui.Parent :: Instance
+	local function followCinematic()
+		objectiveGui.Enabled = playerGui:FindFirstChild("IntroCinematic") == nil
+	end
+	playerGui.ChildAdded:Connect(followCinematic)
+	playerGui.ChildRemoved:Connect(followCinematic)
 	local chip = Instance.new("Frame")
 	chip.Name = "Chip"
 	chip.AnchorPoint = Vector2.new(0.5, 0)
