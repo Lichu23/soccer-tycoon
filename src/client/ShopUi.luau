@@ -31,6 +31,7 @@ local BOX_PADDING = 12
 local CARDS_PER_ROW = 3
 local CARD_WIDTH = 0.31
 local CARD_GAP = 0.035
+local DISABLED = Color3.fromRGB(196, 194, 214) -- the grey of a button that cannot be pressed yet
 
 -- The short line on a closed card (the full sentences are for the answers of the server).
 local CARD_REASONS: { [string]: string } = {
@@ -151,13 +152,14 @@ function ShopUi.init()
 	-- The views --------------------------------------------------------------------------------
 	local view: string? = nil -- the product key of the open detail, nil = the list
 	local message: string? = nil -- the last answer from the server
+	local hint: string? = nil -- what a greyed card says when tapped (what opens it)
 	local waiting = false
 	local render: () -> ()
 
 	function close()
 		backdrop.Visible = false
 		view = nil
-		message = nil
+		message, hint = nil, nil
 	end
 
 	local function total()
@@ -264,7 +266,8 @@ function ShopUi.init()
 		iconName: string?,
 		open: boolean,
 		pillText: string,
-		onTap: (() -> ())?
+		onTap: (() -> ())?,
+		greyPill: boolean?
 	)
 		local item = new("TextButton", {
 			Name = "Row_" .. key,
@@ -313,20 +316,23 @@ function ShopUi.init()
 				ZIndex = 8,
 			}, item)
 		end
+		-- An open card has a green price button; a card that opens later can show its price on a grey
+		-- one (`greyPill`); otherwise a closed card only has a short muted reason.
+		local filled = open or greyPill == true
 		local pill = new("TextLabel", {
 			Name = "Price",
 			AnchorPoint = Vector2.new(0.5, 1),
 			Position = UDim2.fromScale(0.5, 1),
 			Size = UDim2.new(1, -8, 0, 30),
-			BackgroundColor3 = Style.ui.good,
-			BackgroundTransparency = if open then 0 else 1,
+			BackgroundColor3 = if open then Style.ui.good else DISABLED,
+			BackgroundTransparency = if filled then 0 else 1,
 			Text = pillText,
 			Font = Style.font,
-			TextSize = if open then 16 else 14,
+			TextSize = if filled then 16 else 14,
 			TextColor3 = if open then Style.ui.dark else Panel.MUTED,
 			ZIndex = 8,
 		}, item)
-		if open then
+		if filled then
 			rounded(pill, 8)
 			new("UIStroke", {
 				Color = Style.ui.dark,
@@ -339,11 +345,29 @@ function ShopUi.init()
 		end
 	end
 
-	-- A product card. Tapping an open card opens its detail (the two-tap purchase); a closed one only
-	-- shows the short reason.
+	-- What opens a case that is not open yet, for the greyed card.
+	local function caseHint(product: Config.ProductDef, reason: string?): string
+		local def = Config.Cases[product.caseId or ""]
+		if reason == "locked" and def then
+			return `Complete floor {def.floorsComplete} to unlock the {def.name}.`
+		end
+		return REFUSALS.early
+	end
+
+	-- A product card. Tapping an open card opens its detail (the two-tap purchase). A case that opens
+	-- later keeps its price on a grey button and, tapped, says what opens it; any other closed card
+	-- only shows the short reason.
 	local function productCard(parent: Frame, key: string, name: string, iconName: string?)
 		local ok, reason = offer(key)
 		local product = Config.Products[key]
+		if not ok and product.kind == "case" and (reason == "early" or reason == "locked") then
+			card_(parent, key, name, iconName, false, `{product.robux} Robux`, function()
+				hint = caseHint(product, reason)
+				message = nil
+				render()
+			end, true)
+			return
+		end
 		card_(
 			parent,
 			key,
@@ -392,6 +416,8 @@ function ShopUi.init()
 		built.setTitle("Shop")
 		if message then
 			line(message, { TextColor3 = Panel.GOOD })
+		elseif hint then
+			line(hint)
 		end
 		local row = cardRow(section("Chests"))
 		freeCaseCard(row)
@@ -481,7 +507,7 @@ function ShopUi.init()
 
 	local function open()
 		view = nil
-		message = nil
+		message, hint = nil, nil
 		render()
 		backdrop.Visible = true
 	end
