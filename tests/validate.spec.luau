@@ -139,7 +139,8 @@ end)
 T.test("the stadium upgrade accepts only real tiers", function()
 	local args = RemoteSpec.remotes.UpgradeStadium.args
 	T.eq((Validate.args(args, { 2 }, 1)), true)
-	T.eq((Validate.args(args, { 6 }, 1)), false)
+	T.eq((Validate.args(args, { 6 }, 1)), true)
+	T.eq((Validate.args(args, { 7 }, 1)), false)
 	T.eq((Validate.args(args, { 2.5 }, 1)), false)
 end)
 

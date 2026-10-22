@@ -20,6 +20,7 @@ local Panel = {}
 Panel.TEXT = Color3.fromRGB(28, 30, 48) -- body text on the panel
 Panel.MUTED = Color3.fromRGB(70, 74, 100) -- secondary text on the panel
 Panel.GOOD = Color3.fromRGB(14, 110, 48) -- an answer such as "Yours"
+Panel.BACKGROUND = PANEL_COLOR
 Panel.MAX_WIDTH = 640
 Panel.HEADER_HEIGHT = HEADER_HEIGHT
 

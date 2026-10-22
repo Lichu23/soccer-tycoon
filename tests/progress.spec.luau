@@ -95,7 +95,7 @@ end)
 
 T.test("the top tier is maxed", function()
 	local data = newData()
-	data.stadiumTier = 5
+	data.stadiumTier = 6
 	T.eq(Progress.stadiumStatus(data), "maxed")
 	T.eq(Progress.nextTier(data), nil)
 end)
@@ -136,7 +136,7 @@ end)
 T.test("with everything bought there is nothing to chase", function()
 	local data = newData()
 	data.fieldStarted = true
-	data.stadiumTier = 5
+	data.stadiumTier = 6
 	ownFloor(data, 1)
 	ownFloor(data, 2)
 	ownFloor(data, 3)
@@ -206,6 +206,6 @@ T.test("store and stadium pads", function()
 	T.eq(stadium.note, "Need $150 more")
 	data.cash = 250
 	T.eq(PadInfo.describe("stadium", "stadium", data).note, "")
-	data.stadiumTier = 5
+	data.stadiumTier = 6
 	T.eq(PadInfo.describe("stadium", "stadium", data).state, "maxed")
 end)

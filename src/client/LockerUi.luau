@@ -33,7 +33,7 @@ local CARD_HEIGHT = 64
 local FOOTER_HEIGHT = 68
 local CARD_COLOR = Color3.fromRGB(246, 243, 255)
 local DISABLED = Color3.fromRGB(196, 194, 214)
-local TIER_NAMES = { "Street cage", "F5 hall", "Stadium", "Big stadium", "Arena" }
+local TIER_NAMES = { "Street cage", "F5 hall", "Stadium", "Big stadium", "Arena", "Roof arena" }
 
 local REFUSALS: { [string]: string } = {
 	tier = "Reach that stadium tier first.",
@@ -70,7 +70,8 @@ local function slotDef(slotId: string): Config.CosmeticSlotDef?
 	return nil
 end
 
--- A swatch: the style's colours side by side (the banner sets show their pattern).
+-- A swatch: the crest's picture, or the style's colours side by side (the banner sets show their
+-- pattern).
 local function swatch(parent: Instance, def: Config.CosmeticDef, size: number)
 	local frame = new("Frame", {
 		Name = "Swatch",
@@ -82,7 +83,17 @@ local function swatch(parent: Instance, def: Config.CosmeticDef, size: number)
 	new("UICorner", { CornerRadius = UDim.new(0, 8) }, frame)
 	new("UIStroke", { Color = Style.ui.dark, Thickness = 2 }, frame)
 	local pattern = def.pattern
-	if pattern and #pattern > 1 then
+	if def.image then
+		frame.BackgroundColor3 = Panel.BACKGROUND
+		new("ImageLabel", {
+			Name = "Crest",
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			Image = def.image,
+			ScaleType = Enum.ScaleType.Fit,
+			ZIndex = 9,
+		}, frame)
+	elseif pattern and #pattern > 1 then
 		local count = math.min(#pattern, 3)
 		for index = 1, count do
 			new("Frame", {

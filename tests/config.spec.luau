@@ -136,13 +136,13 @@ T.test("penalty boost minutes are 0 / 3 / 5 / 10", function()
 end)
 
 T.test(
-	"the stadium tiers multiply the match cash x1.25 to x6.7 (the old cash upgrade is gone)",
+	"the stadium tiers multiply the match cash x1.25 to x8 (the old cash upgrade is gone)",
 	function()
 		local multipliers = {}
 		for _, tier in Config.StadiumTiers do
 			table.insert(multipliers, tier.cashMultiplier)
 		end
-		T.deepEq(multipliers, { 1.25, 2.7, 5.1, 6.7, 6.7 })
+		T.deepEq(multipliers, { 1.25, 2.7, 5.1, 6.7, 6.7, 8 })
 		T.eq(Config.Store.cashPerMatch, nil)
 	end
 )
@@ -180,19 +180,19 @@ end)
 
 T.test("stadium tiers", function()
 	local tiers = Config.StadiumTiers
-	T.eq(#tiers, 5)
-	T.deepEq(
-		{ tiers[1].price, tiers[2].price, tiers[3].price, tiers[4].price, tiers[5].price },
-		{ 0, 250, 25_000, 750_000, 45_000_000 }
-	)
-	T.deepEq(
-		{ tiers[1].field, tiers[2].field, tiers[3].field, tiers[4].field, tiers[5].field },
-		{ 4, 5, 6, 8, 11 }
-	)
+	T.eq(#tiers, 6)
+	local prices, fields = {}, {}
+	for _, def in tiers do
+		table.insert(prices, def.price)
+		table.insert(fields, def.field)
+	end
+	T.deepEq(prices, { 0, 250, 25_000, 750_000, 45_000_000, 1_500_000_000 })
+	T.deepEq(fields, { 4, 5, 6, 8, 11, 11 })
 	for index, def in tiers do
 		T.eq(def.tier, index)
 	end
-	-- the pitch grows with every tier and stays inside the 160 x 112 pitch zone
+	-- the pitch grows with every tier up to the arena (the roof arena keeps its pitch) and stays
+	-- inside the 160 x 112 pitch zone
 	T.deepEq({
 		tiers[1].courtLength,
 		tiers[2].courtLength,
@@ -207,10 +207,12 @@ T.test("stadium tiers", function()
 		tiers[4].courtWidth,
 		tiers[5].courtWidth,
 	}, { 36, 42, 50, 60, 72 })
-	for index = 2, #tiers do
+	for index = 2, 5 do
 		T.truthy(tiers[index].courtLength > tiers[index - 1].courtLength)
 		T.truthy(tiers[index].courtWidth > tiers[index - 1].courtWidth)
 	end
+	T.eq(tiers[6].courtLength, tiers[5].courtLength)
+	T.eq(tiers[6].courtWidth, tiers[5].courtWidth)
 end)
 
 T.test("stars, training and season constants", function()

@@ -74,25 +74,42 @@ T.test("each tier is a bigger, more real stadium", function()
 	T.eq(count(CourtPlan.parts(2), "BenchSeat"), 1)
 	T.eq(count(CourtPlan.parts(2), "BoxFront"), 2)
 	T.eq(count(CourtPlan.parts(2), "StandRow"), 0)
-	-- Tier 3: a stadium with stands, a crowd and a scoreboard, no floodlights yet.
+	-- Tier 3: a stadium with stands, a crowd, a scoreboard and four banks of round lamps.
 	T.eq(count(CourtPlan.parts(3), "WallNearA"), 0)
 	T.eq(count(CourtPlan.parts(3), "StandRow"), 5 + 4 + 4)
 	T.truthy(count(CourtPlan.parts(3), "Fan") > 20)
 	T.truthy(count(CourtPlan.parts(3), "AdBoard") > 20)
 	T.eq(count(CourtPlan.parts(3), "Scoreboard"), 1)
-	T.eq(count(CourtPlan.parts(3), "LightPole"), 0)
+	T.eq(count(CourtPlan.parts(3), "LightPole"), 4)
+	T.eq(count(CourtPlan.parts(3), "LightHead"), 4 * 12)
 	T.eq(count(CourtPlan.parts(3), "Roof"), 0)
-	-- Tier 4: stands on every side, a roof over the main one, four floodlight masts.
+	-- Tier 4: stands on every side, a roof over the main one, four towers of 16 lamps.
 	T.eq(count(CourtPlan.parts(4), "StandRow"), 6 + 4 + 4 + 4 + 4)
 	T.eq(count(CourtPlan.parts(4), "LightPole"), 4)
+	T.eq(count(CourtPlan.parts(4), "LightHead"), 4 * 16)
 	T.eq(count(CourtPlan.parts(4), "Roof"), 1)
-	-- Tier 5: the arena, roofs all round, screens, masts and fireworks.
+	-- Tier 5: the arena, roofs all round with lamps under them (no towers), screens and fireworks.
 	T.eq(count(CourtPlan.parts(5), "Roof"), 5)
 	T.eq(count(CourtPlan.parts(5), "Scoreboard"), 1)
 	T.eq(count(CourtPlan.parts(5), "Screen"), 2)
-	T.eq(count(CourtPlan.parts(5), "LightPole"), 4)
+	T.eq(count(CourtPlan.parts(5), "LightPole"), 0)
+	T.truthy(count(CourtPlan.parts(5), "LightHead") > 40)
 	T.eq(count(CourtPlan.parts(5), "Firework"), 2)
 	T.truthy(count(CourtPlan.parts(5), "Fan") > 60)
+	-- Tier 6: the roof arena, one ring of roof, eight retractable panels, the towers back outside.
+	T.eq(count(CourtPlan.parts(6), "RoofPanel"), 8)
+	T.eq(count(CourtPlan.parts(6), "LightPole"), 4)
+	T.eq(count(CourtPlan.parts(6), "Firework"), 2)
+	T.truthy(count(CourtPlan.parts(6), "Fan") > 60)
+	-- The sponsor boards are wedges with a made-up name, every lamp face is a disc or a panel.
+	for tier = 3, #Config.StadiumTiers do
+		for _, part in CourtPlan.parts(tier) do
+			if part.name == "AdBoard" then
+				T.eq(part.shape, "wedge")
+				T.truthy(part.text ~= nil and #part.text > 0)
+			end
+		end
+	end
 	for tier = 1, #Config.StadiumTiers do
 		T.eq(count(CourtPlan.parts(tier), "GoalNet"), 8, "tier " .. tier)
 	end
@@ -128,6 +145,29 @@ T.test("a sign names the face its text is on", function()
 	end
 end)
 
+T.test("the retractable roof closes over the pitch and opens onto the end roofs", function()
+	local def = Config.StadiumTiers[6]
+	local x0, x1 = -def.courtLength / 2, def.courtLength / 2
+	local covered = { left = false, right = false }
+	for _, part in CourtPlan.parts(6) do
+		if part.name == "RoofPanel" then
+			local slide = part.slide
+			T.truthy(slide ~= nil, "a panel knows where it closes")
+			-- Open, the panel sits outside the pitch; closed, it is over it.
+			T.truthy(part.x1 <= x0 or part.x0 >= x1, "an open panel is off the pitch")
+			local closed0, closed1 = part.x0 + slide[1], part.x1 + slide[1]
+			T.truthy(closed1 > x0 - 6 and closed0 < x1 + 6, "a closed panel is over the pitch")
+			if closed0 <= 0.01 and closed0 >= -0.01 then
+				covered.right = true
+			end
+			if closed1 <= 0.01 and closed1 >= -0.01 then
+				covered.left = true
+			end
+		end
+	end
+	T.truthy(covered.left and covered.right, "the two halves meet in the middle")
+end)
+
 T.test("a tier outside the range uses the nearest one", function()
 	T.eq(#CourtPlan.parts(0), #CourtPlan.parts(1))
 	T.eq(#CourtPlan.parts(99), #CourtPlan.parts(#Config.StadiumTiers))
@@ -148,6 +188,8 @@ T.test("the cinematic info shows the field growing and the boost", function()
 	T.truthy(info.maxSeconds > info.seconds)
 	T.eq(StadiumLogic.upgradeInfo(5, false).fieldFrom, 8)
 	T.eq(StadiumLogic.upgradeInfo(5, false).fieldTo, 11)
+	T.eq(StadiumLogic.upgradeInfo(6, false).fieldFrom, 11)
+	T.eq(StadiumLogic.upgradeInfo(6, false).fieldTo, 11)
 end)
 
 T.test("every slot the Locker room paints has parts from the tier that opens it", function()

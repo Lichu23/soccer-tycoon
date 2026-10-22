@@ -115,7 +115,7 @@ end)
 T.test("the stadium upgrade is refused without cash and at the top tier", function()
 	local session = newSession(249)
 	T.eq(select(2, Actions.upgradeStadium(session)), "cannotAfford")
-	session.data.stadiumTier = 5
+	session.data.stadiumTier = #Config.StadiumTiers
 	session.data.cash = 1e12
 	T.eq(select(2, Actions.upgradeStadium(session)), "maxed")
 end)

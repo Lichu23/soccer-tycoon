@@ -1,7 +1,7 @@
 --!strict
 -- How a Locker room style shows on the pitch (docs/PLAN.md, Step 3). Each slot paints the parts of
--- CourtPlan it names: the crest badge over the gate, the advertising boards, the floodlight heads and
--- the scoreboard. The server paints the owner's choices for everyone (server/Stadium), and the
+-- CourtPlan it names: the crest picture over the gate, the sponsor boards (colours and names), the
+-- glowing faces of the floodlights and the scoreboard. The server paints the owner's choices for everyone (server/Stadium), and the
 -- Locker room paints a style the player is looking at on their own screen only, then paints the
 -- chosen one back. The kit is drawn on the players by the match (client/MatchView), not here.
 
@@ -13,7 +13,7 @@ local StadiumLook = {}
 StadiumLook.PARTS = {
 	crest = { Crest = true },
 	banners = { AdBoard = true },
-	floodlights = { LightHead = true, LampHead = true },
+	floodlights = { LightHead = true },
 	scoreboard = { Scoreboard = true },
 } :: { [string]: { [string]: boolean } }
 
@@ -48,6 +48,7 @@ function StadiumLook.paint(court: Instance, slotId: string, def: Config.Cosmetic
 		return (tonumber(a:GetAttribute("PlanIndex")) or 0)
 			< (tonumber(b:GetAttribute("PlanIndex")) or 0)
 	end)
+	local brands = def.brands
 	for index, part in parts do
 		local body, text = StadiumLook.colors(def, index)
 		part.Color = body
@@ -55,6 +56,13 @@ function StadiumLook.paint(court: Instance, slotId: string, def: Config.Cosmetic
 		local label = gui and gui:FindFirstChildOfClass("TextLabel")
 		if label and text then
 			label.TextColor3 = text
+		end
+		if label and brands and #brands > 0 then
+			label.Text = brands[(index - 1) % #brands + 1]
+		end
+		local picture = gui and gui:FindFirstChildOfClass("ImageLabel")
+		if picture and def.image then
+			picture.Image = def.image
 		end
 	end
 end

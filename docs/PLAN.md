@@ -83,8 +83,11 @@ There is no separate expensive cash route: everyone pays the cash price and comp
 | 1 (start) | Street futsal court: walled, painted lines, centre circle, flags and murals (blocky) | 4 | free |
 | 2 | Walled court with proper lines and a small bench | 5 | $250 |
 | 3 | Local ground: fences and a small stand | 6 | $25K |
-| 4 | Club stadium: floodlights, bigger stand | 8 | $750K |
+| 4 | Club stadium: floodlight towers, bigger stand | 8 | $750K |
 | 5 | Pro stadium: roof, crowd, scoreboard, fireworks | 11 | $45M |
+| 6 | Roof arena: one ring of roof with a retractable roof over the pitch, towers outside (same pitch) | 11 | $1.5B (*provisional*) |
+
+- **Each tier has its own floodlights:** tier 1 an LED street light, tier 2 twin flood panels, tier 3 banks of round lamps, tier 4 square towers of round lamps, tier 5 rows of lamps under the roofs, tier 6 the roof lamps plus the towers outside. The Locker room floodlight style changes only the colour of the light. The tier 6 upgrade cinematic raises the arena with its roof closed, then opens it. Tier 6 multiplies match cash x8 (*provisional*, tune in the simulation).
 
 - **Each stadium upgrade gives a free x2 income boost for 5 minutes.** The timer counts only while the player is online (it waits if they leave), and a HUD badge shows the time left ("x2 · 4:32"). A new upgrade resets the timer, it does not add up. It stacks with other boosts inside the total x4 cap. It is free, never a Robux item, and repeats each New Season when the tiers are bought again.
 - The stadium tier costs cash only. Floors and stadium tier are two separate tracks (floors by completion, tier by cash). The price is taken from the player's cash, and the server charges and applies the upgrade in one step.
@@ -182,7 +185,7 @@ Income is cash per match for a player on the field. Prices rise faster than inco
 
 - **Starting cash:** $15.
 - **Legends (floor 4):** $400B, $1T, $2.5T, $6T, $15T. Everyone pays the cash price and completes the Legend Trials, or buys with Robux. The first Legend should take about 3 weeks of casual free play, but the cash price on top of the trials may now be the real bottleneck, so check it in the simulation. Re-check these after the first playtests.
-- **Stadium tiers (cash):** tier 2 $250 (field 5), tier 3 $25K (field 6), tier 4 $750K (field 8), tier 5 $45M (field 11). The final back test (with all boosts, momentum and stars) has a player buying them at about 4 min, 7 min, 10 min and 28 min. Raising tiers 3 to 5 about 3 times spread them out from about 4, 6, 9 and 20 minutes. A bigger field adds only about +5% to +27% income in total (the best players do most of the earning), so tiers are mostly milestones. Each one gives a free x2 boost for 5 minutes (counts only while online, resets if a new one starts, inside the x4 cap).
+- **Stadium tiers (cash):** tier 2 $250 (field 5), tier 3 $25K (field 6), tier 4 $750K (field 8), tier 5 $45M (field 11), tier 6 $1.5B (field 11, *provisional*: the roof arena, not in the back test yet). The final back test (with all boosts, momentum and stars) has a player buying them at about 4 min, 7 min, 10 min and 28 min. Raising tiers 3 to 5 about 3 times spread them out from about 4, 6, 9 and 20 minutes. A bigger field adds only about +5% to +27% income in total (the best players do most of the earning), so tiers are mostly milestones. Each one gives a free x2 boost for 5 minutes (counts only while online, resets if a new one starts, inside the x4 cap).
 - **"Cash per match" upgrade, 8 levels:** $15, $60, $240, $960, $3.8K, $15K, $61K, $246K, giving multipliers x1.5, x2.1, x2.7, x3.5, x4.3, x5.1, x5.9, x6.7.
 - **Match speed (unlocks after stadium tier 2, minimum 5 s so the bar, "VICTORY" text and counter stay readable):** $120 (9 s), $2K (8 s), $30K (7 s), $500K (6 s), $8M (5 s).
 - **Hat-trick chance (unlocks after floor 1):** base 10%, then $300 (12%), $5K (14%), $80K (17%), $1.5M (21%), $25M (25%). It is a cash upgrade, not a Robux luck boost.
@@ -269,7 +272,8 @@ Each stadium tier unlocks a new thing to customise, so a tier is more than a big
 | 5 | Scoreboard style, crowd chant style, fireworks colour | Premium stadium themes |
 
 - **Each tier has several free styles, a few bought with cash and a few with Robux** (counts are *provisional*). Cash prices are about 10 to 20 minutes of income at the slot's tier, so late tiers keep a cash sink. Bought styles are purely cosmetic: no income, no capacity, no advantage.
-- **The Locker room shows the real stadium:** the panel docks at the left and the camera frames the slot on the player's own pitch (the kit on a few players at the centre circle, the crest over the gate, the boards, a floodlight mast, the scoreboard). Tapping a style paints it on that player's screen only, for free; one button under the cards uses or buys it, and closing paints the chosen styles back. The server paints the choices for everyone (`shared/StadiumLook`).
+- **The Locker room shows a copy of the player's stadium:** the panel docks at the left and the camera frames the slot on a copy of the pitch lifted high above the map, so the match going on below never gets in the way (one of the player's team in the kit at the centre circle, the crest over the gate, the boards, a floodlight, the scoreboard). Tapping a style paints it on the copy only, for free; one button under the cards uses or buys it, and closing throws the copy away. The server paints the choices on the real pitch for everyone (`shared/StadiumLook`).
+- **Crests are pictures** (flat cartoon shields drawn by `tools/art/crests.py` and uploaded as decals). **Banner sets are made-up sponsors** on wedge-shaped boards (never real brands: Roblox does not allow unlicensed trademarks, and betting ads are not allowed at all).
 - A premium style is shown only for tiers the player has reached, with a preview before buying. It is a direct purchase of a visible style: no random cosmetic crates. Offers live only in the Locker room, with no popups and nothing in the first 30 minutes. Prices are placeholders (set in Step 8).
 - Bought styles (cash or Robux) are kept across New Seasons. Free choices are also kept and re-apply as the player reaches each tier again.
 - The client sends only an option ID from `Config` and the server checks it against what the tier unlocks and what the player owns. No free-text names in version 1 (presets avoid filtering). Purchases follow the Step 1 rule of being safe if a message arrives twice (`roblox-monetization`).
@@ -491,7 +495,7 @@ Step 7 is the whole implementation: the map, the scripts and the UI. Studio hold
     - Supported in version 1: phone, tablet, desktop. A controller works for walking and pads; full gamepad navigation of the screens and a console release are not targeted yet.
 11. **Lighting: one fixed bright late afternoon, no day and night cycle.** Brightness about 2, warm sun (ClockTime about 15 to 16), strong ambient fill so blocky shapes stay readable, low-density atmosphere, one ColorCorrection (slightly higher saturation) and a light Bloom with a high threshold so only neon glows. No cycle: it costs frames, changes colours of rarity glows, and every player and visitor should see the same stadium. Floodlights, the scoreboard and the capsule glow are neon plus transparent beam parts, not real light objects (no shadow-casting lights). Lighting technology is set in Studio and checked on a phone simulator.
 12. **Art source: native parts first.** Plastic and SmoothPlastic blocks, saturated colours, a modular kit (floor slab, glass front, fence, stand block, capsule, pad), built in Studio through MCP in small batches with readback. No Toolbox models with scripts. HUD icons are UI shapes and text at first and become uploaded images in the polish phase, using the game owner's account with the asset permission granted. Sounds: only audio that is confirmed usable in the experience.
-13. **Cost control: a worst-case fixture.** A test fixture fills all 8 plots at tier 5 with every player owned (from the Studio-only test profiles), and is run on a low-end phone preset before polish is called done.
+13. **Cost control: a worst-case fixture.** A test fixture fills all 8 plots at tier 6 with every player owned (from the Studio-only test profiles), and is run on a low-end phone preset before polish is called done.
 
 ### What "done" means for each phase (evidence required)
 - **Greybox:** every marker present and named, bounds and pivot read back, the walk from spawn to claim, first capsule and field button timed from a player camera.
@@ -511,7 +515,7 @@ Step 7 is the whole implementation: the map, the scripts and the UI. Studio hold
 | Opponent | Cosmetic only, always a win |
 | Match feedback | Loading bar in HUD, then "VICTORY" (or "HAT-TRICK x2") text and "+$N" on the money label |
 | Store | Cash upgrades with no daily limit. Robux boost: next 30 matches x2, banked up to 60, total boost cap x4 |
-| Stadium | 5 tiers (field 4, 5, 6, 8, 11), each upgrade gives a free x2 boost for 5 minutes |
+| Stadium | 6 tiers (field 4, 5, 6, 8, 11, 11), each upgrade gives a free x2 boost for 5 minutes |
 | Streak | Momentum, session only |
 | Stadium | 4 floors of capsules, 10 + 10 + 10 + 5 players (35) |
 | Buying | Stand on the pad in front of the capsule |

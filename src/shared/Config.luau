@@ -75,7 +75,9 @@ export type CosmeticDef = {
 	color: { number }, -- r, g, b (0 to 255): the swatch and, for the kit, the shirt colour
 	-- The colours the stadium parts of the slot take in turn (banner boards), nil = all `color`.
 	pattern: { { number } }?,
-	accent: { number }?, -- the text on the part (scoreboard, crest), nil = the part's own
+	accent: { number }?, -- the text on the part (scoreboard, banners), nil = the part's own
+	brands: { string }?, -- the made-up sponsors the banner boards show in turn
+	image: string?, -- the crest's picture (an uploaded decal, art in tools/art)
 	cash: number?, -- a cash price; with neither price the style is free
 	robux: number?,
 }
@@ -570,7 +572,7 @@ Config.CosmeticSlots = {
 	{ id = "scoreboard", name = "Scoreboard", tier = 5 },
 } :: { CosmeticSlotDef }
 
-type Look = { pattern: { { number } }?, accent: { number }? }
+type Look = { pattern: { { number } }?, accent: { number }?, brands: { string }?, image: string? }
 type Price = { cash: number?, robux: number? }
 
 local function style(
@@ -588,6 +590,8 @@ local function style(
 		color = color,
 		pattern = look and look.pattern,
 		accent = look and look.accent,
+		brands = look and look.brands,
+		image = look and look.image,
 		cash = price and price.cash,
 		robux = price and price.robux,
 	}
@@ -605,41 +609,63 @@ Config.Cosmetics = {
 	style("kit_purple", "kit", "Purple", { 150, 90, 220 }, { cash = 6_000 }),
 	style("kit_gold", "kit", "Gold", { 235, 190, 50 }, { robux = 99 }),
 	style("kit_black", "kit", "Midnight", { 35, 38, 50 }, { robux = 99 }),
-	style("crest_shield", "crest", "Shield", { 200, 205, 220 }, nil, { accent = NAVY }),
-	style("crest_star", "crest", "Star", { 250, 210, 70 }, nil, { accent = NAVY }),
-	style("crest_ball", "crest", "Ball", WHITE, nil, { accent = NAVY }),
-	style("crest_ruby", "crest", "Ruby", { 210, 50, 70 }, { cash = 15_000 }, { accent = WHITE }),
-	style(
-		"crest_emerald",
-		"crest",
-		"Emerald",
-		{ 40, 170, 100 },
-		{ cash = 40_000 },
-		{ accent = WHITE }
-	),
-	style("crest_crown", "crest", "Crown", { 240, 180, 40 }, { robux = 79 }, { accent = WHITE }),
-	style("crest_flame", "crest", "Flame", { 240, 100, 40 }, { robux = 79 }, { accent = GOLD }),
-	-- The first banner set keeps the sponsor colours the boards always had.
+	style("crest_shield", "crest", "Shield", { 205, 210, 225 }, nil, {
+		image = "rbxassetid://119246926723352",
+	}),
+	style("crest_star", "crest", "Star", { 255, 210, 70 }, nil, {
+		image = "rbxassetid://91284134429976",
+	}),
+	style("crest_ball", "crest", "Ball", { 60, 120, 230 }, nil, {
+		image = "rbxassetid://109239234345017",
+	}),
+	style("crest_ruby", "crest", "Ruby", { 210, 50, 70 }, { cash = 15_000 }, {
+		image = "rbxassetid://108259967301092",
+	}),
+	style("crest_emerald", "crest", "Emerald", { 40, 160, 95 }, { cash = 40_000 }, {
+		image = "rbxassetid://84216287066856",
+	}),
+	style("crest_crown", "crest", "Crown", { 150, 90, 220 }, { robux = 79 }, {
+		image = "rbxassetid://139431546168199",
+	}),
+	style("crest_flame", "crest", "Flame", { 240, 100, 40 }, { robux = 79 }, {
+		image = "rbxassetid://120423274947356",
+	}),
+	-- Each banner set is a group of made-up sponsors (never real brands) in their colours. The
+	-- first one keeps the sponsor colours the boards always had.
 	style("banners_plain", "banners", "Sponsors", { 200, 50, 60 }, nil, {
 		pattern = { { 200, 50, 60 }, { 30, 110, 200 }, { 240, 190, 50 }, { 40, 150, 90 } },
+		brands = { "VOLTA", "FIZZUP", "ZOOMR", "PIXEL" },
+		accent = WHITE,
 	}),
-	style("banners_stripes", "banners", "Stripes", { 90, 150, 230 }, nil, {
+	style("banners_stripes", "banners", "Kickz", { 90, 150, 230 }, nil, {
 		pattern = { { 90, 150, 230 }, WHITE },
+		brands = { "KICKZ", "KICKZ BOOTS" },
+		accent = NAVY,
 	}),
-	style("banners_dots", "banners", "Dots", { 230, 120, 140 }, nil, {
-		pattern = { { 230, 120, 140 }, WHITE },
+	style("banners_dots", "banners", "Fizz", { 230, 120, 140 }, nil, {
+		pattern = { { 230, 120, 140 }, { 150, 90, 220 } },
+		brands = { "FIZZUP", "fizz it up!" },
+		accent = WHITE,
 	}),
-	style("banners_sunset", "banners", "Sunset", { 245, 140, 40 }, { cash = 300_000 }, {
+	style("banners_sunset", "banners", "Sunny", { 245, 140, 40 }, { cash = 300_000 }, {
 		pattern = { { 245, 140, 40 }, { 235, 90, 130 }, { 150, 90, 220 } },
+		brands = { "SUNNY JUICE", "GOALAZO", "SUNNY JUICE" },
+		accent = WHITE,
 	}),
-	style("banners_ocean", "banners", "Ocean", { 40, 150, 220 }, { cash = 800_000 }, {
+	style("banners_ocean", "banners", "Wave", { 40, 150, 220 }, { cash = 800_000 }, {
 		pattern = { { 40, 150, 220 }, { 60, 200, 200 }, { 30, 90, 180 } },
+		brands = { "WAVE AIR", "BLUEBYTE", "WAVE AIR" },
+		accent = WHITE,
 	}),
 	style("banners_gold", "banners", "Gold set", { 235, 190, 50 }, { robux = 129 }, {
 		pattern = { { 235, 190, 50 }, NAVY },
+		brands = { "GOLDEN BOOT", "TROPHY BANK" },
+		accent = NAVY,
 	}),
 	style("banners_neon", "banners", "Neon set", { 70, 240, 200 }, { robux = 129 }, {
 		pattern = { { 70, 240, 200 }, { 150, 90, 220 } },
+		brands = { "NEON NOVA", "ZAPP" },
+		accent = NAVY,
 	}),
 	style("floodlights_white", "floodlights", "White", { 255, 244, 214 }),
 	style("floodlights_warm", "floodlights", "Warm", { 255, 214, 150 }),
@@ -796,6 +822,16 @@ Config.StadiumTiers = {
 		courtLength = 120,
 		courtWidth = 72,
 		cashMultiplier = 6.7,
+	},
+	-- The roof arena: the same pitch and field under a retractable roof. Provisional, tune in the
+	-- simulation (about 30 times tier 5, like the step from tier 4 to 5).
+	{
+		tier = 6,
+		price = 1_500_000_000,
+		field = 11,
+		courtLength = 120,
+		courtWidth = 72,
+		cashMultiplier = 8,
 	},
 } :: { StadiumTierDef }
 

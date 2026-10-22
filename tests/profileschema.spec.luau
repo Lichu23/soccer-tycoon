@@ -102,7 +102,7 @@ T.test("stadium tier and store levels stay in range", function()
 	)
 	T.eq(
 		mutated(function(p)
-			p.stadiumTier = 6
+			p.stadiumTier = 7
 		end),
 		false
 	)
