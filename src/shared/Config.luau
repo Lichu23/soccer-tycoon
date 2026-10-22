@@ -23,7 +23,7 @@ export type RarityDef = {
 	costFactor: number, -- training level cost multiplier
 }
 
-export type StoreUpgradeId = "matchSpeed" | "hatTrick"
+export type StoreUpgradeId = "matchSpeed" | "hatTrick" | "gymRate"
 
 export type StoreUpgradeDef = {
 	id: StoreUpgradeId,
@@ -904,6 +904,17 @@ Config.Store = {
 		prices = { 2_000, 60_000, 1_500_000 },
 		values = { 0.10, 0.20, 0.25 },
 		floorsComplete = 1,
+	},
+	-- Faster training: the TP a minute of the treadmill and the bench press (the pad stands between
+	-- them in the gym hall). It stays under the ~50 a minute of a juggler, so the skill games stay
+	-- worth playing. Prices are a few minutes of income at the tier each level is meant for (2, 3, 5
+	-- and 6); a New Season resets it like the other upgrades.
+	gymRate = {
+		id = "gymRate",
+		baseValue = Config.Training.idleTpPerMinute,
+		prices = { 5_000, 500_000, 50_000_000, 2_000_000_000 },
+		values = { 25, 30, 35, 40 },
+		minTier = 2,
 	},
 } :: { [StoreUpgradeId]: StoreUpgradeDef }
 

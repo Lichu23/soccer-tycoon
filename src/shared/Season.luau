@@ -118,7 +118,7 @@ function Season.estimateSeconds(finished: number): number
 		cash = Config.StartingCash,
 		tp = 0,
 		stadiumTier = 1,
-		storeLevels = { matchSpeed = 0, hatTrick = 0 },
+		storeLevels = { matchSpeed = 0, hatTrick = 0, gymRate = 0 },
 		fieldStarted = true,
 		players = players,
 		cosmetics = { owned = {}, chosen = {} },

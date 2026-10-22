@@ -30,7 +30,7 @@ for _, name in { "TrainingFloorAfk", "TrainingFloorActive", "TrainingDivider", "
 		old:Destroy()
 	end
 end
-for _, name in { "TrainingAfk", "TrainingActive", "TrainingTreadmill", "TrainingLadder", "TrainingBench", "TrainingKeepie", "TrainingDribble", "TrainingFreekick" } do
+for _, name in { "TrainingAfk", "TrainingActive", "TrainingTreadmill", "TrainingLadder", "TrainingBench", "TrainingKeepie", "TrainingDribble", "TrainingFreekick", "Store_gymRate" } do
 	local old = markers:FindFirstChild(name)
 	if old then
 		old:Destroy()
@@ -355,6 +355,23 @@ marker("TrainingFreekick", "trainingFreekick", -110, 120)
 marker("TrainingTreadmill", "trainingTreadmill", -70, 80, 15, 7.2)
 marker("TrainingBench", "trainingBench", -70, 120, 8, 10)
 
+-- The Faster training upgrade (a Store pad, Config.Store.gymRate) between the two machines, on the
+-- walk in from the entrance: the same 7 x 7 orange marker as the Store pads of the building.
+local upgrade = Instance.new("Part")
+upgrade.Name = "Store_gymRate"
+upgrade.Size = Vector3.new(7, 0.2, 7)
+upgrade.CFrame = CFrame.new(-70, 0.8, 100)
+upgrade.Anchored = true
+upgrade.Color = Color3.fromRGB(255, 150, 50)
+upgrade.Material = Enum.Material.Neon
+upgrade.Transparency = 0.4
+upgrade.CanCollide = false
+upgrade.CanTouch = false
+upgrade.CanQuery = false
+upgrade:SetAttribute("PadId", "gymRate")
+upgrade:SetAttribute("Kind", "store")
+upgrade.Parent = markers
+
 -- Move the whole gym and its markers onto the yard.
 local shift = CFrame.new(0, 0, SHIFT_Z)
 for _, item in gym:GetChildren() do
@@ -364,7 +381,7 @@ for _, item in gym:GetChildren() do
 		item:PivotTo(shift * item:GetPivot())
 	end
 end
-for _, name in { "TrainingKeepie", "TrainingFreekick", "TrainingTreadmill", "TrainingBench" } do
+for _, name in { "TrainingKeepie", "TrainingFreekick", "TrainingTreadmill", "TrainingBench", "Store_gymRate" } do
 	local pad = markers[name] :: BasePart
 	pad.CFrame = shift * pad.CFrame
 end

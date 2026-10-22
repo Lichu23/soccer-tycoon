@@ -1,6 +1,6 @@
 --!strict
 -- The training ground rules (docs/PLAN.md, Steps 1, 3 and 4). Standing on the training pad earns
--- Config.Training.idleTpPerMinute TP a minute while the stamina lasts; the stamina refills while the
+-- Progress.idleTpPerMinute TP a minute (the Faster training upgrade) while the stamina lasts; the stamina refills while the
 -- player is away from the pad (and while offline). The keepie-uppies game pays extra TP (up to the per-minute cap) for as long
 -- as the player keeps the ball up. TP are whole numbers in the profile, so the fraction that has not
 -- reached a whole point yet is carried in memory (lost on leaving, less than 1 TP). Pure and unit
@@ -78,7 +78,7 @@ function Training.step(
 	-- The first TP of the level-up tutorial come faster, so it is over in a few seconds.
 	local perMinute = if Progress.tutorialTraining(data :: any)
 		then Config.Training.tutorialTpPerMinute
-		else Config.Training.idleTpPerMinute
+		else Progress.idleTpPerMinute(data :: any)
 	carry.fraction += perMinute / 60 * used * Boosts.tpMultiplier(data)
 	return payWhole(data, carry)
 end

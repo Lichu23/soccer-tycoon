@@ -29,7 +29,7 @@ export type Profile = {
 	lastSeen: number, -- os.time(), for offline earnings
 	stadiumTier: number,
 	stadiumName: string, -- the roof arena's name as typed ("" = none); filtered again before it is shown
-	storeLevels: { matchSpeed: number, hatTrick: number },
+	storeLevels: { matchSpeed: number, hatTrick: number, gymRate: number },
 	fieldStarted: boolean,
 	players: { [string]: { level: number, stars: number } }, -- owned only, Legends included
 	season: { number: number },
@@ -89,7 +89,7 @@ function ProfileSchema.newProfile(): Profile
 		lastSeen = 0,
 		stadiumTier = 1,
 		stadiumName = "",
-		storeLevels = { matchSpeed = 0, hatTrick = 0 },
+		storeLevels = { matchSpeed = 0, hatTrick = 0, gymRate = 0 },
 		fieldStarted = false,
 		players = {},
 		season = { number = 1 },

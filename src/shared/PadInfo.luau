@@ -4,6 +4,7 @@
 -- decides every purchase. Pure, so it is unit tested.
 
 local Config = require(script.Parent.Config)
+local Formulas = require(script.Parent.Formulas)
 local Legends = require(script.Parent.Legends)
 local NumberFormat = require(script.Parent.NumberFormat)
 local Progress = require(script.Parent.Progress)
@@ -27,6 +28,7 @@ export type Info = {
 local STORE_NAMES: { [string]: string } = {
 	matchSpeed = "Faster matches",
 	hatTrick = "Hat-trick chance",
+	gymRate = "Faster training",
 	offline = "Offline earnings",
 }
 
@@ -180,7 +182,11 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 				state = status,
 			}
 		end
-		return { title = title, price = NumberFormat.money(price), note = "", state = status }
+		-- Faster training says what the next level gives (the others are told by their name).
+		local note = if id == "gymRate"
+			then `Next: {Formulas.storeValue(id, data.storeLevels.gymRate + 1)} TP a minute`
+			else ""
+		return { title = title, price = NumberFormat.money(price), note = note, state = status }
 	elseif kind == "robux" then
 		-- A cash or TP pack bought with Robux: the amount in the ring, the price under it. Whether it
 		-- can be bought yet is the server's call (the first 30 minutes), it says so when stepped on.
@@ -242,8 +248,8 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 			elseif skill then "Tap in time for TP"
 			elseif
 				padId == "trainingBench"
-			then `Lie here: {Config.Training.idleTpPerMinute} TP per minute`
-			else `Stand here: {Config.Training.idleTpPerMinute} TP per minute`
+			then `Lie here: {Progress.idleTpPerMinute(data)} TP per minute`
+			else `Stand here: {Progress.idleTpPerMinute(data)} TP per minute`
 		return { title = title, price = "", note = note, state = "info" }
 	elseif kind == "penalty" then
 		-- Whether kicks are left today is the server's call (the client shows the wait time).

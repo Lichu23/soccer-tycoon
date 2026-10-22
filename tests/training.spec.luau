@@ -42,6 +42,44 @@ T.test("standing on the pad pays 20 TP per minute", function()
 	T.eq(data.tp, 20)
 end)
 
+T.test("Faster training raises the pad to 25, 30, 35 and 40 TP per minute", function()
+	for level, rate in { 25, 30, 35, 40 } do
+		local data, carry = fresh()
+		data.storeLevels.gymRate = level
+		T.eq(train(data, carry, 60, true), rate)
+	end
+	local boosted, carry = fresh()
+	boosted.storeLevels.gymRate = 4
+	boosted.boosts.tpBoostLeft = 600
+	T.eq(train(boosted, carry, 60, true), 80) -- the x2 TP boost doubles the upgraded rate
+	T.truthy(Config.Store.gymRate.values[4] < 50, "the skill games stay better than the machines")
+end)
+
+T.test(
+	"Faster training is a cash upgrade from stadium tier 2, its pad says what comes next",
+	function()
+		local session = { data = ProfileSchema.newProfile() }
+		local data = session.data
+		data.cash = 10_000_000
+		T.eq(Progress.storeStatus(data, "gymRate"), "locked")
+		data.stadiumTier = 2
+		T.eq(PadInfo.describe("store", "gymRate", data).note, "Next: 25 TP a minute")
+		T.eq(Actions.buyStore(session, "gymRate", 0), true)
+		T.eq(data.cash, 10_000_000 - 5_000)
+		T.eq(Progress.idleTpPerMinute(data), 25)
+		data.flags.milestones.first_match = 1 -- the gym opens after the first match
+		T.eq(
+			PadInfo.describe("training", "trainingTreadmill", data).note,
+			"Stand here: 25 TP per minute"
+		)
+		T.eq(Actions.buyStore(session, "gymRate", 1), true)
+		T.eq(Progress.idleTpPerMinute(data), 30)
+		T.eq(select(2, Actions.buyStore(session, "gymRate", 2)), "cannotAfford") -- $50M
+		data.storeLevels.gymRate = 4
+		T.eq(PadInfo.describe("store", "gymRate", data).price, "MAX")
+	end
+)
+
 T.test("a bought x2 TP boost doubles the pad and the skill games", function()
 	local data, carry = fresh()
 	data.boosts.tpBoostLeft = 600

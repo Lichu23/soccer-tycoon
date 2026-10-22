@@ -80,6 +80,7 @@ function Sync.snapshot(session: Session.Session)
 		storeLevels = {
 			matchSpeed = data.storeLevels.matchSpeed,
 			hatTrick = data.storeLevels.hatTrick,
+			gymRate = data.storeLevels.gymRate,
 		},
 		fieldStarted = data.fieldStarted,
 		players = players,
