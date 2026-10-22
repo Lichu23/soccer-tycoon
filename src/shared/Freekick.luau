@@ -9,9 +9,11 @@
 -- or the save. A goal adds to the
 -- streak; a lost dribble or a shot that does not go in ends it, and the longest streak is kept.
 -- Every goal makes the next attack harder: a shorter move window, a keeper who reaches further, and
--- a power meter that fills faster with a narrower green zone (a release outside it misses).
+-- a power meter that fills faster with a narrower green zone (a release outside it misses), and a
+-- shorter shot clock: from the start of the aim the player has a few seconds to lock the aim and
+-- shoot, or the keeper rushes out and smothers the ball ("late").
 -- Until the player's first goal ever the first attack is practice: its move waits for the key with no
--- time limit and a wrong key is ignored, so a new player has time to read what to press.
+-- time limit (and no shot clock) and a wrong key is ignored, so a new player has time to read what to press.
 -- The moves, the reticle and the meter run on the server clock from the start of their step, so the
 -- server and the client agree without a message per frame: the server keeps the state and judges
 -- every input (one may be stamped a little in the past for a slow connection), the client reads it
@@ -20,7 +22,7 @@
 local Config = require(script.Parent.Config)
 
 export type Phase = "dribble" | "aim" | "power" | "shot" | "over"
-export type Outcome = "goal" | "saved" | "wide" | "over" | "post" | "bar" | "tackled"
+export type Outcome = "goal" | "saved" | "wide" | "over" | "post" | "bar" | "tackled" | "late"
 -- The skill moves: 1 cuts left, 2 is a step-over, 3 cuts right.
 export type Move = number
 export type State = {
@@ -33,6 +35,7 @@ export type State = {
 	aimY: number, -- and up: the ground is 0, the bar 1
 	holdAt: number, -- when the power meter starts to move (a moment after the lock), 0 before
 	power: number, -- 0 to 1
+	shotBy: number, -- when the shot clock runs out (the aim and the power), 0 for no clock
 	outcome: string, -- the attack's outcome while its film plays, "" before
 	streak: number, -- goals in a row
 	overAt: number, -- when the streak ended
@@ -73,6 +76,7 @@ local function attack(state: State, kick: number, startAt: number)
 	state.aimY = 0
 	state.holdAt = 0
 	state.power = 0
+	state.shotBy = 0
 	state.outcome = ""
 end
 
@@ -89,6 +93,7 @@ function Freekick.new(now: number, practice: boolean?): State
 		aimY = 0,
 		holdAt = 0,
 		power = 0,
+		shotBy = 0,
 		outcome = "",
 		streak = 0,
 		overAt = 0,
@@ -123,6 +128,15 @@ function Freekick.moveWindow(kick: number): number
 	return math.max(
 		training.freekickMoveSeconds - (kick - 1) * training.freekickMoveStep,
 		training.freekickMoveMin
+	)
+end
+
+-- How long attack `kick` has to aim and shoot: less with every goal of the streak.
+function Freekick.shotWindow(kick: number): number
+	local training = Config.Training
+	return math.max(
+		training.freekickShotSeconds - (kick - 1) * training.freekickShotStep,
+		training.freekickShotMin
 	)
 end
 
@@ -312,8 +326,18 @@ function Freekick.normalize(state: State, now: number): { Event }
 			for key, value in fresh do
 				(state :: any)[key] = value
 			end
+		elseif state.shotBy > 0 then -- the aim or the power, on the clock
+			if now < state.shotBy + training.freekickGraceSeconds then
+				break
+			end
+			-- Too slow: the reticle stays where the clock caught it and the keeper smothers the ball.
+			if state.phase == "aim" then
+				state.aimX, state.aimY = Freekick.aimAt(state, state.shotBy)
+			end
+			state.power = 0
+			shoot(state, "late", state.shotBy)
 		else
-			break -- the aim and the power wait for the player
+			break -- the practice attack's aim and power wait for the player
 		end
 	end
 	return events
@@ -346,6 +370,7 @@ function Freekick.move(state: State, now: number, move: number, stamp: number): 
 	then
 		state.phase = "aim"
 		state.stageAt = now + Config.Training.freekickDribbleSeconds
+		state.shotBy = if untimed then 0 else state.stageAt + Freekick.shotWindow(state.kick)
 		return "beat"
 	end
 	shoot(state, "tackled", now)
@@ -353,13 +378,18 @@ function Freekick.move(state: State, now: number, move: number, stamp: number): 
 end
 
 -- A tap at `now` (stamped `stamp`) during the aim step: locks the reticle, and the power meter
--- starts to move `freekickPowerDelay` later. Returns whether it did (not while the dribble plays).
+-- starts to move `freekickPowerDelay` later. Returns whether it did (not while the dribble plays, nor
+-- after the shot clock ran out).
 function Freekick.lock(state: State, now: number, stamp: number): boolean
 	Freekick.normalize(state, now)
 	if state.phase ~= "aim" or now < state.stageAt then
 		return false
 	end
-	state.aimX, state.aimY = Freekick.aimAt(state, inputTime(now, stamp, state.stageAt))
+	local at = inputTime(now, stamp, state.stageAt)
+	if state.shotBy > 0 and at > state.shotBy then
+		return false -- too late: the clock takes it at the next normalize
+	end
+	state.aimX, state.aimY = Freekick.aimAt(state, at)
 	state.phase = "power"
 	state.stageAt = now
 	state.holdAt = now + Config.Training.freekickPowerDelay
@@ -367,13 +397,17 @@ function Freekick.lock(state: State, now: number, stamp: number): boolean
 end
 
 -- A tap at `now` (stamped `stamp`) while the power meter moves: the shot. Returns whether it shot
--- (not before the meter moves).
+-- (not before the meter moves, nor after the shot clock ran out).
 function Freekick.strike(state: State, now: number, stamp: number): boolean
 	Freekick.normalize(state, now)
 	if state.phase ~= "power" or state.holdAt <= 0 or now < state.holdAt then
 		return false
 	end
-	state.power = Freekick.powerAt(state, inputTime(now, stamp, state.holdAt), state.kick)
+	local at = inputTime(now, stamp, state.holdAt)
+	if state.shotBy > 0 and at > state.shotBy then
+		return false
+	end
+	state.power = Freekick.powerAt(state, at, state.kick)
 	local setup = Freekick.setup(state.seed, state.kick)
 	local low, high = Freekick.goodZone(state.kick)
 	local outcome: Outcome = if state.power < low

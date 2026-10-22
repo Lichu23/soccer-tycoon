@@ -510,6 +510,65 @@ T.test("the wrong move, or the right one too late, loses the ball", function()
 	T.near(idle.stageAt, idleDeadline, 1e-9)
 end)
 
+T.test(
+	"the shot clock starts with the aim; when it runs out the keeper smothers the ball",
+	function()
+		local state = Freekick.new(100)
+		Freekick.move(state, state.stageAt + 0.2, state.move, state.stageAt + 0.2)
+		T.near(state.shotBy, state.stageAt + Freekick.shotWindow(1), 1e-9)
+		-- A lock after the clock (even inside the grace time) does not count.
+		T.eq(Freekick.lock(state, state.shotBy + 0.1, state.shotBy + 0.1), false)
+		Freekick.normalize(state, state.shotBy + FK.freekickGraceSeconds - 0.01)
+		T.eq(state.phase, "aim")
+		local shotBy = state.shotBy
+		Freekick.normalize(state, shotBy + FK.freekickGraceSeconds + 0.01)
+		T.eq(state.phase, "shot")
+		T.eq(state.outcome, "late")
+		T.eq(state.streak, 0)
+		T.near(state.stageAt, shotBy, 1e-9)
+		T.near(
+			state.aimX,
+			(Freekick.aimAt({ stageAt = shotBy - Freekick.shotWindow(1) }, shotBy)),
+			1e-9
+		)
+
+		-- Locked in time but never shot: the clock still runs through the power step.
+		local slow = Freekick.new(100)
+		Freekick.move(slow, slow.stageAt + 0.2, slow.move, slow.stageAt + 0.2)
+		T.eq(Freekick.lock(slow, slow.stageAt + 1, slow.stageAt + 1), true)
+		T.eq(Freekick.strike(slow, slow.shotBy + 0.1, slow.shotBy + 0.1), false)
+		Freekick.normalize(slow, slow.shotBy + 1)
+		T.eq(slow.outcome, "late")
+
+		-- A shot just before the clock on a slow connection counts.
+		local just = Freekick.new(100)
+		Freekick.move(just, just.stageAt + 0.2, just.move, just.stageAt + 0.2)
+		Freekick.lock(just, just.stageAt + 1, just.stageAt + 1)
+		T.eq(Freekick.strike(just, just.shotBy + 0.15, just.shotBy - 0.01), true)
+		T.truthy(just.outcome ~= "late")
+	end
+)
+
+T.test("the practice attack has no shot clock", function()
+	local state = Freekick.new(100, true)
+	Freekick.move(state, state.stageAt + 30, state.move, state.stageAt + 30)
+	T.eq(state.shotBy, 0)
+	Freekick.normalize(state, state.stageAt + 60)
+	T.eq(state.phase, "aim")
+end)
+
+T.test("the shot clock shrinks with the streak to its floor at the gold medal", function()
+	T.near(Freekick.shotWindow(1), FK.freekickShotSeconds, 1e-9)
+	T.truthy(Freekick.shotWindow(5) < Freekick.shotWindow(1))
+	T.near(Freekick.shotWindow(FK.freekickMedals.gold + 1), FK.freekickShotMin, 1e-9)
+	T.near(Freekick.shotWindow(500), FK.freekickShotMin, 1e-9)
+	-- The floor still leaves time to sweep the reticle across the goal and fill the meter once.
+	T.truthy(
+		FK.freekickShotMin
+			>= FK.freekickAimSeconds + FK.freekickPowerDelay + FK.freekickPowerSeconds
+	)
+end)
+
 T.test("the move window shrinks with the streak, never below the minimum", function()
 	T.near(Freekick.moveWindow(1), FK.freekickMoveSeconds, 1e-9)
 	T.truthy(Freekick.moveWindow(5) < Freekick.moveWindow(1))

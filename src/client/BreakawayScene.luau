@@ -649,7 +649,7 @@ function BreakawayScene.new(options: Options?): Scene
 			ballAt = finish:Lerp(back, u)
 			local drop = smooth((after - 0.3) / 0.5)
 			ballAt = Vector3.new(ballAt.X, lerp(ballAt.Y, ORIGIN.Y + BALL_R, drop), ballAt.Z)
-		elseif outcome == "saved" then
+		elseif outcome == "saved" or outcome == "late" then
 			local u = math.min(after / 0.7, 1)
 			local away = Vector3.new(side * 6 * u, 3 * 4 * u * (1 - u), 5 * u)
 			ballAt = finish + away - Vector3.new(0, (finish.Y - ORIGIN.Y - BALL_R) * u, 0)
@@ -672,7 +672,7 @@ function BreakawayScene.new(options: Options?): Scene
 		local restX = keeperRestX(state)
 		local targetX = finish.X - ORIGIN.X
 		local reachX: number
-		if outcome == "saved" then
+		if outcome == "saved" or outcome == "late" then -- a late shot is smothered like a save
 			reachX = targetX - side * 2.2
 		else
 			local gap = math.max(math.abs(targetX - restX) - 4.6, 0.8)

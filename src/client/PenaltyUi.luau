@@ -629,6 +629,7 @@ function PenaltyUi.init()
 				aimY = state.aimY,
 				holdAt = state.holdAt,
 				power = state.power,
+				shotBy = 0,
 				outcome = state.outcome,
 				streak = 0,
 				overAt = 0,

@@ -9,6 +9,8 @@
 --   2. the aim: a reticle glides over the goal mouth; tap (click, Space or the A button) to lock it;
 --   3. the power: an indicator slides up and down the meter by itself; tap when it is on the green
 --      to shoot.
+-- The aim and the power share a shot clock, a bar under the step name that runs out (shorter with
+-- every goal); when it is empty the keeper smothers the ball ("TOO SLOW!").
 -- A beaten defender plays the dribble film before the aim; after the shot the strike plays in slow
 -- motion, then the goal or the save. A
 -- goal adds to the streak and pays TP; a lost dribble or a shot that does not go in ends it. The
@@ -41,6 +43,9 @@ local MOVE_BUTTON = 58
 local MOVE_GAP = 10
 local PROMPT_TOP = 108 -- the move prompt starts under the step name
 local PROMPT_HEIGHT = 170
+local CLOCK_TOP = 108 -- the shot clock sits under the step name, where the move prompt was
+local CLOCK_BAR = 170
+local CLOCK_URGENT = 0.3 -- the share of the clock left when it turns red
 local COACH_BOTTOM = MOVE_BUTTON + 22 + 14 + 8 -- the hint sits just over the move buttons
 local COACH_HEIGHT = 30
 local LETTERBOX = 0.08 -- the share of the screen height of each film bar
@@ -111,10 +116,12 @@ local OUTCOME_TEXT: { [string]: string } = {
 	over = "OVER THE BAR",
 	bar = "OFF THE BAR",
 	tackled = "TACKLED!",
+	late = "TOO SLOW!",
 }
 local OUTCOME_SOUND: { [string]: string } = {
 	goal = "goal",
 	saved = "save",
+	late = "save",
 	post = "post",
 	bar = "post",
 }
@@ -308,6 +315,44 @@ function FreekickUi.init()
 		ZIndex = 5,
 	}, gui)
 	fitted(stepText, 26)
+
+	-- The shot clock of the aim and the power: a bar that runs out and the seconds left.
+	local clock = new("Frame", {
+		Name = "ShotClock",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, CLOCK_TOP),
+		Size = UDim2.fromOffset(CLOCK_BAR + 54, 24),
+		BackgroundTransparency = 1,
+		Visible = false,
+		ZIndex = 5,
+	}, gui)
+	local clockBar = new("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.fromScale(0, 0.5),
+		Size = UDim2.fromOffset(CLOCK_BAR, 12),
+		BackgroundColor3 = Style.ui.dark,
+		BackgroundTransparency = 0.2,
+		ZIndex = 5,
+	}, clock)
+	rounded(clockBar, 6)
+	new("UIStroke", { Color = Color3.fromRGB(0, 0, 0), Thickness = 2 }, clockBar)
+	local clockFill = new("Frame", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = Style.ui.gold,
+		BorderSizePixel = 0,
+		ZIndex = 6,
+	}, clockBar)
+	rounded(clockFill, 6)
+	local clockText = outlined({
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.fromScale(1, 0.5),
+		Size = UDim2.fromOffset(46, 24),
+		Text = "",
+		TextSize = 22,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		ZIndex = 5,
+	}, clock)
+	local clockScale = new("UIScale", {}, clockText)
 
 	-- The move: a big arrow tile, a bar that runs out and the move's name.
 	local prompt = new("Frame", {
@@ -563,6 +608,7 @@ function FreekickUi.init()
 	local lockedY: number? = nil
 	local localStartAt = 0 -- when the meter moves, from our own lock, until the server's arrives
 	local releasedPower: number? = nil
+	local frozenClock: number? = nil -- the seconds left when the player shot, held until the film
 	local function number(name: string): number
 		local value = player:GetAttribute(name)
 		return if type(value) == "number" then value else 0
@@ -586,6 +632,7 @@ function FreekickUi.init()
 		state.aimY = number("freekickAimY")
 		state.holdAt = number("freekickHoldAt")
 		state.power = number("freekickPower")
+		state.shotBy = number("freekickShotBy")
 		local outcome = player:GetAttribute("freekickOutcome")
 		state.outcome = if type(outcome) == "string" then outcome else ""
 		state.streak = number("freekickStreak")
@@ -603,6 +650,7 @@ function FreekickUi.init()
 			"freekickAimY",
 			"freekickHoldAt",
 			"freekickPower",
+			"freekickShotBy",
 			"freekickOutcome",
 			"freekickStreak",
 			"freekickOverAt",
@@ -615,6 +663,9 @@ function FreekickUi.init()
 		pressedMove = nil
 		lockedX, lockedY = nil, nil
 		releasedPower = nil
+		if player:GetAttribute("freekickState") ~= "power" then
+			frozenClock = nil
+		end
 		readServerState()
 	end)
 
@@ -692,6 +743,9 @@ function FreekickUi.init()
 			return
 		end
 		local now = Workspace:GetServerTimeNow()
+		if state.shotBy > 0 and now > state.shotBy then
+			return -- the clock ran out: the server smothers the ball
+		end
 		if state.phase == "aim" and lockedX == nil and now >= state.stageAt then
 			lockedX, lockedY = Freekick.aimAt(state, now)
 			localStartAt = now + Config.Training.freekickPowerDelay
@@ -699,6 +753,7 @@ function FreekickUi.init()
 			Net.fire("FreekickTap", now)
 		elseif state.phase == "power" and releasedPower == nil and now >= meterStart() then
 			releasedPower = Freekick.powerAt({ holdAt = meterStart() }, now, state.kick)
+			frozenClock = math.max(state.shotBy - now, 0)
 			Net.fire("FreekickTap", now)
 		end
 	end
@@ -892,6 +947,27 @@ function FreekickUi.init()
 			stroke.Color = if pressedMove == index
 				then (if index == state.move then Style.ui.good else BAD)
 				else Style.ui.bar
+		end
+
+		-- The shot clock, while the player aims and shoots (the practice attack has none).
+		clock.Visible = aiming and state.shotBy > 0
+		if clock.Visible then
+			local secondsLeft = frozenClock or math.max(state.shotBy - now, 0)
+			local share = math.clamp(secondsLeft / Freekick.shotWindow(state.kick), 0, 1)
+			local urgent = share < CLOCK_URGENT
+			clockFill.Size = UDim2.fromScale(share, 1)
+			clockFill.BackgroundColor3 = if urgent then BAD else Style.ui.gold
+			local text = string.format("%.1f", secondsLeft)
+			if
+				urgent
+				and frozenClock == nil
+				and text ~= clockText.Text
+				and string.sub(text, -1) == "0"
+			then
+				pulse(clockScale, 1.3) -- a beat on each whole second at the end
+			end
+			clockText.Text = text
+			clockText.TextColor3 = if urgent then BAD else WHITE
 		end
 
 		-- The power meter, and for a moment into the film where the shot stopped it.

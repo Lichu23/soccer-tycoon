@@ -432,6 +432,14 @@ Config.Training = {
 	-- `freekickPowerMin`.
 	freekickPowerStep = 0.02,
 	freekickPowerMin = 0.5,
+	-- The shot clock: from the start of the aim the player has `freekickShotSeconds` to lock the aim
+	-- and shoot, `freekickShotStep` less with every goal of the streak down to `freekickShotMin`
+	-- (reached on the 10th goal, the gold medal). The floor still leaves time for the reticle to reach
+	-- a corner and the meter to fill once. When it runs out the keeper smothers a rushed shot.
+	-- The practice attack has no clock.
+	freekickShotSeconds = 6,
+	freekickShotStep = 0.3,
+	freekickShotMin = 3,
 	freekickPowerSweet = 0.7,
 	freekickPowerLift = 1.2,
 	freekickWeakPower = 0.3, -- below this the shot rolls to the keeper
