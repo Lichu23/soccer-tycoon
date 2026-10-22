@@ -3,8 +3,10 @@
 -- streak of goals. Every attack starts with a through-ball, then three quick inputs: a skill move
 -- (left, right or step-over) shows and must be pressed in time to beat the defender; an aim reticle
 -- glides over the goal mouth and a tap locks it; then the power meter fills and empties again by
--- itself and a second tap shoots (too soft rolls to the keeper, too hard lifts it over the bar). Then the client plays the attack as
--- a short film: the dribble, the strike in slow motion, the goal or the save. A goal adds to the
+-- itself and a second tap shoots (too soft rolls to the keeper, too hard lifts it over the bar). The
+-- client plays the attack as a short film in two parts: the dribble past the defender as soon as the
+-- move beats him (the aim waits for it), then after the shot the strike in slow motion and the goal
+-- or the save. A goal adds to the
 -- streak; a lost dribble or a shot that does not go in ends it, and the longest streak is kept.
 -- Every goal makes the next attack harder: a shorter move window, a keeper who reaches further, and
 -- a power meter that fills faster with a narrower green zone (a release outside it misses).
@@ -25,7 +27,7 @@ export type State = {
 	phase: Phase,
 	seed: number, -- the start time of the streak: the moves and where the keeper stands come from it
 	kick: number, -- the attack of the streak, 1 for the first
-	stageAt: number, -- when the current step started (the move shows, the reticle glides from here)
+	stageAt: number, -- when the current step starts (the move shows, the reticle glides from here)
 	move: Move, -- the move this attack asks for
 	aimX: number, -- the locked reticle, across the goal: the posts are at -1 and 1
 	aimY: number, -- and up: the ground is 0, the bar 1
@@ -124,12 +126,33 @@ function Freekick.moveWindow(kick: number): number
 	)
 end
 
--- How long the film of an attack plays.
+-- How long the film after the shot plays (the strike and the result), or the lost dribble's film.
 function Freekick.filmSeconds(outcome: string): number
 	local training = Config.Training
 	return if outcome == "tackled"
 		then training.freekickTackleSeconds
 		else training.freekickFilmSeconds
+end
+
+-- Whether the dribble film plays now: the defender is beaten and the aim has not started yet.
+function Freekick.dribbling(state: State, now: number): boolean
+	return state.phase == "aim" and now < state.stageAt
+end
+
+-- Where the attack's film is at `now`, in seconds from its first frame (the dribble), or nil when
+-- no film plays. The dribble plays before the aim, so the film after the shot starts past it; a lost
+-- dribble plays from the start. In "over" it is the film's last frame.
+function Freekick.filmTime(state: State, now: number): number?
+	local dribble = Config.Training.freekickDribbleSeconds
+	if Freekick.dribbling(state, now) then
+		return dribble - (state.stageAt - now)
+	elseif state.phase == "shot" or state.phase == "over" then
+		local played = if state.phase == "shot"
+			then now - state.stageAt
+			else Freekick.filmSeconds(state.outcome)
+		return played + (if state.outcome == "tackled" then 0 else dribble)
+	end
+	return nil
 end
 
 -- Whether the move in play waits for its key with no time limit (the practice attack).
@@ -305,8 +328,8 @@ local function inputTime(now: number, stamp: number, from: number): number
 	return math.max(math.min(stamp, now), now - Config.Training.freekickGraceSeconds, from)
 end
 
--- A skill move pressed at `now` (stamped `stamp`). The right one in time beats the defender; the
--- wrong one, or one too late, loses the ball. Returns "beat", "tackled" or "ignored" (another step,
+-- A skill move pressed at `now` (stamped `stamp`). The right one in time beats the defender (the
+-- dribble film plays, then the aim starts); the wrong one, or one too late, loses the ball. Returns "beat", "tackled" or "ignored" (another step,
 -- the move has not shown yet, or a wrong key in the practice attack).
 function Freekick.move(state: State, now: number, move: number, stamp: number): string
 	Freekick.normalize(state, now)
@@ -322,7 +345,7 @@ function Freekick.move(state: State, now: number, move: number, stamp: number): 
 		move == state.move and (untimed or at <= state.stageAt + Freekick.moveWindow(state.kick))
 	then
 		state.phase = "aim"
-		state.stageAt = now
+		state.stageAt = now + Config.Training.freekickDribbleSeconds
 		return "beat"
 	end
 	shoot(state, "tackled", now)
@@ -330,10 +353,10 @@ function Freekick.move(state: State, now: number, move: number, stamp: number): 
 end
 
 -- A tap at `now` (stamped `stamp`) during the aim step: locks the reticle, and the power meter
--- starts to move `freekickPowerDelay` later. Returns whether it did.
+-- starts to move `freekickPowerDelay` later. Returns whether it did (not while the dribble plays).
 function Freekick.lock(state: State, now: number, stamp: number): boolean
 	Freekick.normalize(state, now)
-	if state.phase ~= "aim" then
+	if state.phase ~= "aim" or now < state.stageAt then
 		return false
 	end
 	state.aimX, state.aimY = Freekick.aimAt(state, inputTime(now, stamp, state.stageAt))

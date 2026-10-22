@@ -457,6 +457,14 @@ T.test("a breakaway goes move, aim, hold and release, then the film plays", func
 	T.eq(Freekick.lock(state, start, start), false) -- not the aim step yet
 	T.eq(Freekick.move(state, start + 0.4, state.move, start + 0.4), "beat")
 	T.eq(state.phase, "aim")
+	-- The dribble film plays first: the aim starts when it ends, and a tap during it is ignored.
+	local dribble = FK.freekickDribbleSeconds
+	T.near(state.stageAt, start + 0.4 + dribble, 1e-9)
+	T.eq(Freekick.dribbling(state, start + 0.5), true)
+	T.near(Freekick.filmTime(state, start + 0.5) :: number, 0.1, 1e-9)
+	T.eq(Freekick.lock(state, start + 1, start + 1), false)
+	T.eq(Freekick.dribbling(state, state.stageAt), false)
+	T.eq(Freekick.filmTime(state, state.stageAt), nil)
 	T.eq(Freekick.strike(state, start + 0.5, start + 0.5), false) -- not the power step yet
 	local lockAt = state.stageAt + aimTime(-0.8)
 	T.eq(Freekick.lock(state, lockAt, lockAt), true)
@@ -470,6 +478,8 @@ T.test("a breakaway goes move, aim, hold and release, then the film plays", func
 	T.near(state.power, 0.7, 1e-9)
 	T.eq(state.phase, "shot")
 	T.truthy(state.outcome ~= "")
+	-- The film after the shot starts past the dribble, at the strike.
+	T.near(Freekick.filmTime(state, strikeAt) :: number, dribble, 1e-9)
 end)
 
 T.test("the wrong move, or the right one too late, loses the ball", function()

@@ -9,7 +9,8 @@
 --   2. the aim: a reticle glides over the goal mouth; tap (click, Space or the A button) to lock it;
 --   3. the power: an indicator slides up and down the meter by itself; tap when it is on the green
 --      to shoot.
--- Then the attack plays as a film (the dribble, the strike in slow motion, the goal or the save). A
+-- A beaten defender plays the dribble film before the aim; after the shot the strike plays in slow
+-- motion, then the goal or the save. A
 -- goal adds to the streak and pays TP; a lost dribble or a shot that does not go in ends it. The
 -- medals are streak milestones and the longest streak is kept. Until the first goal ever a short hint
 -- guides each step (the tutorial), and the first attack is practice: the move has no bar and waits for
@@ -691,7 +692,7 @@ function FreekickUi.init()
 			return
 		end
 		local now = Workspace:GetServerTimeNow()
-		if state.phase == "aim" and lockedX == nil then
+		if state.phase == "aim" and lockedX == nil and now >= state.stageAt then
 			lockedX, lockedY = Freekick.aimAt(state, now)
 			localStartAt = now + Config.Training.freekickPowerDelay
 			pulse(reticleScale, 1.4)
@@ -822,7 +823,8 @@ function FreekickUi.init()
 		local reduced = GuiService.ReducedMotionEnabled
 
 		-- The reticle glides until the tap locks it; the scene draws the rest.
-		local aiming = phase == "aim" or phase == "power"
+		local dribbling = Freekick.dribbling(state, now) -- the film of the beaten defender
+		local aiming = (phase == "aim" and not dribbling) or phase == "power"
 		local reticleX, reticleY = state.aimX, state.aimY
 		if phase == "aim" then
 			if lockedX and lockedY then
@@ -834,9 +836,9 @@ function FreekickUi.init()
 		current.frame({ state = state, now = now, reticleX = reticleX, reticleY = reticleY })
 
 		-- The film: its bars, its speed lines and its moments.
-		local filming = phase == "shot"
-		local filmT = if filming then now - state.stageAt else -1
-		if filming then
+		local filming = phase == "shot" or dribbling
+		local filmT = if filming then Freekick.filmTime(state, now) or 0 else -1
+		if phase == "shot" then
 			if state.stageAt ~= lastStageAt then
 				lastStageAt = state.stageAt
 				lastFilm = -1
@@ -907,7 +909,10 @@ function FreekickUi.init()
 
 		-- The texts.
 		local waiting = phase == "dribble" and now < state.stageAt
-		stepText.Text = if waiting then "GET READY" else (STEP_NAMES[phase] or "")
+		stepText.Text = if waiting
+			then "GET READY"
+			elseif dribbling then ""
+			else (STEP_NAMES[phase] or "")
 		resultCard.Visible = phase == "over" and resultCard.Visible
 		local shown = if filming
 				and state.outcome == "goal"
@@ -929,7 +934,7 @@ function FreekickUi.init()
 		-- The tutorial, until the first goal ever.
 		local tutorial = state.kick == 1 and (type(record) ~= "number" or record <= 0)
 		local coachStep = if waiting then "waiting" else phase
-		local hint = if not tutorial
+		local hint = if not tutorial or dribbling
 			then nil
 			elseif coachStep == "dribble" and untimed then (if UserInputService.KeyboardEnabled
 				then string.format(

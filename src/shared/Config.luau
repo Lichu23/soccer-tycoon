@@ -401,8 +401,9 @@ Config.Training = {
 	-- mouth (across in `freekickAimSeconds`, up in `freekickAimUpSeconds`) until a tap locks it, then
 	-- the power meter fills by itself (empty to full in `freekickPowerSeconds`, then back) until a
 	-- second tap shoots. An input may be stamped up to `freekickGraceSeconds` in the past (a slow
-	-- connection). The film of the attack then plays for `freekickFilmSeconds`
-	-- (`freekickTackleSeconds` when the dribble was lost): a goal adds one to the streak and the next
+	-- connection). A beaten defender plays the dribble film (`freekickDribbleSeconds`) before the aim
+	-- starts; after the shot the strike and the result play for `freekickFilmSeconds` (a lost dribble
+	-- plays its own film for `freekickTackleSeconds`): a goal adds one to the streak and the next
 	-- attack comes, anything else ends the streak and the result shows for `freekickOverSeconds`.
 	-- The shot, in goal units: the posts are at x -1 and 1, the bar at height 1. The height at the goal
 	-- is the reticle's, plus `freekickPowerLift` per unit of power above `freekickPowerSweet`. The
@@ -440,7 +441,8 @@ Config.Training = {
 	freekickGoodHighStep = 0.003,
 	freekickGoodHighMin = 0.77,
 	freekickGraceSeconds = 0.2,
-	freekickFilmSeconds = 6,
+	freekickDribbleSeconds = 2,
+	freekickFilmSeconds = 4,
 	freekickTackleSeconds = 3,
 	freekickOverSeconds = 2.5,
 	freekickBallRadius = 0.05,

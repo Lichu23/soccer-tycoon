@@ -2,11 +2,12 @@
 -- The 3D scene of the 1v1 breakaway (client/FreekickUi drives it): a small stadium built far from the
 -- map, only on this client, with a clone of the player's own avatar, a defender and a keeper. While
 -- the player gives the three inputs the camera waits behind the attacker (the move) or behind the
--- ball (the aim and the power); then the attack plays as a film in three cuts, all from the state the
+-- ball (the aim and the power). The attack plays as a film in three cuts, all from the state the
 -- server judged:
 --   1. the dribble: a side tracking shot of the sprint, the skill move past the defender (or his
---      tackle), with speed lines and a light blur;
---   2. the strike: a slow-motion close-up from the front, the leg snapping back and through the ball;
+--      tackle), with speed lines and a light blur. It plays as soon as the move beats him, before the
+--      aim (Freekick.filmTime), or as the whole film of a lost dribble;
+--   2. after the shot, the strike: a slow-motion close-up from the front, the leg snapping back and through the ball;
 --   3. the result: from behind the keeper, the camera swivels after the ball into the net, or the
 --      keeper dives in slow motion for the save.
 -- The daily penalty kicks use the same set in penalty mode (`new({ penalty = true })`): no defender,
@@ -39,7 +40,7 @@ local KEEPER_Z = 1.6
 local CUT_X = 3.2 -- how far across the skill move takes the attacker
 
 -- The film, in seconds from the start of the shot step.
-local CUT_STRIKE = 2 -- the dribble cut ends, the strike cut starts
+local CUT_STRIKE = Config.Training.freekickDribbleSeconds -- the dribble cut ends, the strike cut starts
 local CUT_RESULT = 3.6 -- the strike cut ends, the result cut starts
 local STRIKE_SECONDS = CUT_RESULT - CUT_STRIKE
 local CONTACT_SHARE = 0.56 -- how far into the strike the foot meets the ball
@@ -701,17 +702,20 @@ function BreakawayScene.new(options: Options?): Scene
 		if phase == "dribble" then
 			netBack.CFrame = netRest
 			framePrep(state, now)
+		elseif not penalty and Freekick.dribbling(state, now) then
+			netBack.CFrame = netRest
+			filmDribble(state, Freekick.filmTime(state, now) or 0)
 		elseif phase == "aim" or phase == "power" then
 			netBack.CFrame = netRest
 			frameShoot(state, now)
 		else
 			-- The film, or its last frame while the result shows. A penalty's film starts at the run-up,
 			-- PENALTY_SKIP into the breakaway's.
-			local filmEnd = if penalty
-				then Config.Daily.penaltyFilmSeconds
-				else Freekick.filmSeconds(state.outcome)
-			local t = (if phase == "shot" then now - state.stageAt else filmEnd)
-				+ (if penalty then BreakawayScene.PENALTY_SKIP else 0)
+			local t = if penalty
+				then (if phase == "shot"
+					then now - state.stageAt
+					else Config.Daily.penaltyFilmSeconds) + BreakawayScene.PENALTY_SKIP
+				else Freekick.filmTime(state, now) or 0
 			if penalty and t < CUT_STRIKE then
 				filmRunUp(state, t)
 			elseif t < CUT_STRIKE or state.outcome == "tackled" then
