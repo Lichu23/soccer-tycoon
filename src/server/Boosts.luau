@@ -49,20 +49,19 @@ end
 
 -- Whether another bought boost fits: each timer it adds to stays within Config.Boost.paidMaxSeconds.
 function Boosts.canAddPaid(data: Profile, cash: boolean, tp: boolean): boolean
-	local room = Config.Boost.paidMaxSeconds - Config.Boost.paidSeconds
-	return not (cash and data.boosts.cashBoostLeft > room)
-		and not (tp and data.boosts.tpBoostLeft > room)
+	local max = Config.Boost.paidMaxSeconds
+	return not (cash and data.boosts.cashBoostLeft > max - Config.Boost.paidCashSeconds)
+		and not (tp and data.boosts.tpBoostLeft > max - Config.Boost.paidTpSeconds)
 end
 
 -- A bought x2 boost: adds its time to the cash timer, the TP timer or both. Paid time is never cut,
 -- so the maximum is only checked before the prompt (canAddPaid).
 function Boosts.addPaid(data: Profile, cash: boolean, tp: boolean)
-	local seconds = Config.Boost.paidSeconds
 	if cash then
-		data.boosts.cashBoostLeft += seconds
+		data.boosts.cashBoostLeft += Config.Boost.paidCashSeconds
 	end
 	if tp then
-		data.boosts.tpBoostLeft += seconds
+		data.boosts.tpBoostLeft += Config.Boost.paidTpSeconds
 	end
 end
 

@@ -35,29 +35,29 @@ local function train(data, carry, seconds, training)
 	return paid
 end
 
-T.test("standing on the pad pays 10 TP per minute", function()
+T.test("standing on the pad pays 20 TP per minute", function()
 	local data, carry = fresh()
 	local paid = train(data, carry, 60, true)
-	T.eq(paid, 10)
-	T.eq(data.tp, 10)
+	T.eq(paid, 20)
+	T.eq(data.tp, 20)
 end)
 
 T.test("a bought x2 TP boost doubles the pad and the skill games", function()
 	local data, carry = fresh()
 	data.boosts.tpBoostLeft = 600
-	T.eq(train(data, carry, 60, true), 20)
+	T.eq(train(data, carry, 60, true), 40)
 	local gameData, gameCarry = fresh()
 	gameData.boosts.tpBoostLeft = 600
 	T.eq(Training.gamePay(gameData, gameCarry, 1, 0, false), 2)
 	T.eq(Training.gamePay(gameData, gameCarry, 1, 0, true), 2)
 end)
 
-T.test("one full stamina session is 50 TP and then it stops", function()
+T.test("one full stamina session is 100 TP and then it stops", function()
 	local data, carry = fresh()
-	T.eq(train(data, carry, MAX, true), 50)
+	T.eq(train(data, carry, MAX, true), 100)
 	T.eq(data.staminaLeft, 0)
 	T.eq(train(data, carry, 120, true), 0) -- tired: nothing paid
-	T.eq(data.tp, 50)
+	T.eq(data.tp, 100)
 	T.eq(Training.hasStamina(data), false)
 end)
 
@@ -103,7 +103,7 @@ T.test("the fraction of a TP is carried, so slow steps lose nothing", function()
 	for _ = 1, 600 do -- 60 s in 0.1 s steps
 		Training.step(data, carry, 0.1, true)
 	end
-	T.eq(data.tp, 10)
+	T.eq(data.tp, 20)
 end)
 
 local Juggle = T.load("shared/Juggle")

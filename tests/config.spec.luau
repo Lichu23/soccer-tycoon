@@ -127,7 +127,6 @@ T.test("basic constants", function()
 	T.eq(Config.Daily.penaltyKicks, 3)
 	T.eq(Config.Offline.capSeconds, 14_400)
 	T.eq(Config.Boost.totalCap, 4)
-	T.eq(Config.Boost.matchBankMax, 60)
 	T.truthy(Config.MaxCash < 2 ^ 53, "MaxCash must stay exact in a double")
 end)
 
@@ -142,16 +141,24 @@ T.test(
 		for _, tier in Config.StadiumTiers do
 			table.insert(multipliers, tier.cashMultiplier)
 		end
-		T.deepEq(multipliers, { 1.25, 2.7, 5.1, 6.7, 6.7, 8 })
+		T.deepEq(multipliers, { 1.25, 2.7, 5.1, 6.7, 7.3, 8 })
 		T.eq(Config.Store.cashPerMatch, nil)
 	end
 )
 
-T.test("the three x2 boost pads cost 39, 39 and 69 Robux for 10 minutes", function()
+T.test("the three x2 boost pads cost 39, 39 and 69 Robux: 10 minutes of cash, 20 of TP", function()
 	T.eq(Config.Products.boost_cash.robux, 39)
 	T.eq(Config.Products.boost_tp.robux, 39)
 	T.eq(Config.Products.boost_both.robux, 69)
-	T.eq(Config.Boost.paidSeconds, 600)
+	T.eq(Config.Boost.paidCashSeconds, 600)
+	T.eq(Config.Boost.paidTpSeconds, 1200)
+end)
+
+T.test("the cases cost 49 and 79 Robux, and only the Elite Case skips owned players", function()
+	T.eq(Config.Products.caseStandard.robux, 49)
+	T.eq(Config.Products.caseElite.robux, 79)
+	T.eq(Config.Cases.standard.newOnly, nil)
+	T.eq(Config.Cases.elite.newOnly, true)
 end)
 
 T.test("match speed never goes below 5 seconds and unlocks at tier 2", function()
@@ -224,7 +231,7 @@ T.test("stars, training and season constants", function()
 	T.eq(Config.Stars.maxStars, 5)
 	T.eq(Config.Training.bonusPerLevel, 0.03)
 	T.eq(Config.Training.levelCostBase, 40)
-	T.eq(Config.Training.idleTpPerMinute, 10)
+	T.eq(Config.Training.idleTpPerMinute, 20)
 	T.eq(Config.Training.freekickTpPerMinuteMax, 40)
 	T.truthy(
 		Config.Training.freekickTpPerMinuteMax > Config.Training.idleTpPerMinute,
@@ -232,5 +239,7 @@ T.test("stars, training and season constants", function()
 	)
 	T.eq(Config.Training.juggleTpTiers[1].tp, 1)
 	T.eq(Config.Season.bonusPerSeason, 0.5)
+	T.eq(Config.Season.fullBonusSeasons, 10)
+	T.eq(Config.Season.lateBonusPerSeason, 0.1)
 	T.eq(Config.Match.momentumCap, 0.25)
 end)

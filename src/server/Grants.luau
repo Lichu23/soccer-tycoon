@@ -63,17 +63,21 @@ function Grants.apply(
 				result.cash = cash
 			end
 		end
-	elseif product.kind == "boost" then
-		-- Granted in full even when the bank has filled up since the prompt.
-		data.boosts.bankedMatches += Config.Boost.matchPackSize
-		result = { kind = "boost", matches = Config.Boost.matchPackSize }
 	elseif product.kind == "timedBoost" then
 		-- Granted in full even when the timer has filled up since the prompt (ShopRules checks before).
 		local cash, tp = product.boostsCash == true, product.boostsTp == true
 		Boosts.addPaid(data, cash, tp)
-		result = { kind = "timedBoost", cash = cash, tp = tp, seconds = Config.Boost.paidSeconds }
+		result = {
+			kind = "timedBoost",
+			cash = cash,
+			tp = tp,
+			cashSeconds = if cash then Config.Boost.paidCashSeconds else nil,
+			tpSeconds = if tp then Config.Boost.paidTpSeconds else nil,
+		}
 	elseif product.kind == "cash" then
-		result = { kind = "cash", amount = Economy.grant(data, product.amount or 0) }
+		-- Minutes of the player's normal income at the moment of the purchase.
+		local cash = Daily.caseCash(data, product.minutes or 0)
+		result = { kind = "cash", amount = Economy.grant(data, cash), minutes = product.minutes }
 	elseif product.kind == "tp" then
 		result = { kind = "tp", amount = Economy.grantTp(data, product.amount or 0) }
 	elseif product.kind == "cosmetic" then

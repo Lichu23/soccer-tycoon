@@ -47,4 +47,13 @@ function NumberFormat.money(amount: number): string
 	return "$" .. NumberFormat.short(amount)
 end
 
+-- A length of play from whole minutes: "15 min", "1 hour", "4 hours".
+function NumberFormat.minutes(minutes: number): string
+	if minutes >= 60 and minutes % 60 == 0 then
+		local hours = minutes // 60
+		return if hours == 1 then "1 hour" else `{hours} hours`
+	end
+	return `{minutes} min`
+end
+
 return NumberFormat

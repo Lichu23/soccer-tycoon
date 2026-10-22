@@ -18,6 +18,7 @@ local player = Players.LocalPlayer
 -- Why a pack or a boost on a Robux pad was not offered (the server's answer to the pad).
 local PACK_REFUSALS: { [string]: string } = {
 	full = "This boost already has an hour left.",
+	early = "Buy your first player first.",
 	unavailable = "Not available right now.",
 }
 

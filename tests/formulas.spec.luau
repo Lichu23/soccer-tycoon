@@ -54,6 +54,9 @@ T.test("season multiplier is x1, x1.5, x2.0, x2.5", function()
 	T.near(Formulas.seasonMultiplier(2), 1.5)
 	T.near(Formulas.seasonMultiplier(3), 2)
 	T.near(Formulas.seasonMultiplier(4), 2.5)
+	T.near(Formulas.seasonMultiplier(10), 5.5) -- the last full step
+	T.near(Formulas.seasonMultiplier(11), 5.6) -- then 0.1 a season
+	T.near(Formulas.seasonMultiplier(20), 6.5)
 	T.near(Formulas.seasonMultiplier(0), 1)
 end)
 

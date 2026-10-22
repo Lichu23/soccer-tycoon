@@ -137,16 +137,16 @@ end)
 
 T.test("a cash style is paid once, owned and put on, and a second tap charges nothing", function()
 	local session = newSession(5_000)
-	local ok = Actions.buyCosmetic(session, "kit_red") -- $2,000
+	local ok = Actions.buyCosmetic(session, "kit_red") -- $3,000
 	T.eq(ok, true)
-	T.eq(session.data.cash, 3_000)
+	T.eq(session.data.cash, 2_000)
 	T.eq(session.data.cosmetics.owned.kit_red, true)
 	T.eq(session.data.cosmetics.chosen.kit, "kit_red")
 	T.deepEq(changes, { "cosmetic:kit_red" })
 	local again, reason = Actions.buyCosmetic(session, "kit_red")
 	T.eq(again, false)
 	T.eq(reason, "owned")
-	T.eq(session.data.cash, 3_000)
+	T.eq(session.data.cash, 2_000)
 end)
 
 T.test(

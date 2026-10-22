@@ -188,27 +188,32 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 		if product ~= nil and product.kind == "timedBoost" then
 			-- An x2 boost: what it doubles and for how long in the ring, the price under it.
 			local both = product.boostsCash and product.boostsTp
-			local minutes = math.floor(Config.Boost.paidSeconds / 60)
+			local cashMinutes = math.floor(Config.Boost.paidCashSeconds / 60)
+			local tpMinutes = math.floor(Config.Boost.paidTpSeconds / 60)
 			return {
 				title = if both
 					then "x2 Cash + TP"
 					elseif product.boostsTp then "x2 TP"
 					else "x2 Cash",
-				price = minutes .. " MIN",
+				price = if both
+					then `{cashMinutes}/{tpMinutes} MIN`
+					elseif product.boostsTp then `{tpMinutes} MIN`
+					else `{cashMinutes} MIN`,
 				note = product.robux .. " Robux",
 				state = "ready",
 				icon = if both then "boost" elseif product.boostsTp then "tp" else "cash",
 			}
 		end
-		if product == nil or product.amount == nil then
+		local isCash = product ~= nil and product.kind == "cash"
+		if product == nil or (if isCash then product.minutes == nil else product.amount == nil) then
 			return { title = padId, price = "", note = "", state = "locked" }
 		end
-		local isCash = product.kind == "cash"
+		-- A cash pack is minutes of the player's own income (the amount is worked out at the purchase).
 		return {
 			title = if isCash then "Cash pack" else "TP pack",
 			price = if isCash
-				then "+" .. NumberFormat.money(product.amount)
-				else "+" .. NumberFormat.short(product.amount) .. " TP",
+				then "+" .. string.upper(NumberFormat.minutes(product.minutes :: number))
+				else "+" .. NumberFormat.short(product.amount :: number) .. " TP",
 			note = product.robux .. " Robux",
 			state = "ready",
 			icon = if isCash then "cash" else "tp",
@@ -235,8 +240,10 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 		local note = if padId == "trainingFreekick"
 			then "Dribble and score for TP"
 			elseif skill then "Tap in time for TP"
-			elseif padId == "trainingBench" then "Lie here: 10 TP per minute"
-			else "Stand here: 10 TP per minute"
+			elseif
+				padId == "trainingBench"
+			then `Lie here: {Config.Training.idleTpPerMinute} TP per minute`
+			else `Stand here: {Config.Training.idleTpPerMinute} TP per minute`
 		return { title = title, price = "", note = note, state = "info" }
 	elseif kind == "penalty" then
 		-- Whether kicks are left today is the server's call (the client shows the wait time).

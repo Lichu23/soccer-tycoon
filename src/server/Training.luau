@@ -1,7 +1,7 @@
 --!strict
 -- The training ground rules (docs/PLAN.md, Steps 1, 3 and 4). Standing on the training pad earns
--- 10 TP per minute while the stamina lasts; the stamina refills while the player is away from the
--- pad (and while offline). The keepie-uppies game pays extra TP (up to the per-minute cap) for as long
+-- Config.Training.idleTpPerMinute TP a minute while the stamina lasts; the stamina refills while the
+-- player is away from the pad (and while offline). The keepie-uppies game pays extra TP (up to the per-minute cap) for as long
 -- as the player keeps the ball up. TP are whole numbers in the profile, so the fraction that has not
 -- reached a whole point yet is carried in memory (lost on leaving, less than 1 TP). Pure and unit
 -- tested; TrainingActions wires it to the pad and the remote.

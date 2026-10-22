@@ -2,6 +2,7 @@
 local T = require("./framework")
 local Cases = T.load("shared/Cases")
 local Config = T.load("shared/Config")
+local Daily = T.load("server/Daily")
 local Grants = T.load("server/Grants")
 local MatchLogic = T.load("server/MatchLogic")
 local ProfileSchema = T.load("server/ProfileSchema")
@@ -197,21 +198,62 @@ T.test("Elite needs floor 2 done, and an unknown product is refused", function()
 	T.eq(ShopRules.canOffer(more, "caseElite"), true)
 end)
 
-T.test("the boost can be bought again only while the bank has room for a pack", function()
-	local data = profile(0)
-	data.boosts.bankedMatches = 30
-	T.eq(ShopRules.canOffer(data, "matchBoost"), true) -- 30 + 30 = 60
-	data.boosts.bankedMatches = 31
-	T.eq(select(2, ShopRules.canOffer(data, "matchBoost")), "full")
+T.test(
+	"the Elite Case rolls only players not owned yet, the Standard Case can roll duplicates",
+	function()
+		local data = profile(2)
+		local entries, summary = Cases.odds(data, "elite")
+		T.near(total(entries), 1, 1e-9)
+		T.eq(summary.duplicate, 0)
+		for _, entry in entries do
+			T.eq(data.players[entry.id], nil, entry.id)
+		end
+		T.near(summary.legend, 0.02, 1e-12)
+		local _, standard = Cases.odds(data, "standard")
+		T.truthy(standard.duplicate > 0)
+	end
+)
+
+T.test(
+	"an Elite Case with only Legends left rolls Legends, and with nothing left rolls duplicates",
+	function()
+		local data = profile(3)
+		local entries, summary = Cases.odds(data, "elite")
+		T.near(total(entries), 1, 1e-9)
+		T.near(summary.legend, 1, 1e-9)
+		T.eq(chanceOf(entries, "rashford"), 0)
+		for _, def in Config.Players do
+			Roster.add(data, def.id)
+		end
+		local all, full = Cases.odds(data, "elite")
+		T.near(total(all), 1, 1e-9)
+		T.near(full.duplicate, 1, 1e-9)
+	end
+)
+
+T.test("the 30-match boost is no longer sold", function()
+	T.eq(Config.Products.matchBoost, nil)
+	T.eq(select(2, ShopRules.canOffer(profile(0), "matchBoost")), "unknown")
 end)
 
 T.test("a Legend is offered for Robux only once floor 4 is reached, and not when owned", function()
 	local data = profile(2)
-	T.eq(select(2, ShopRules.canOffer(data, "legend_pele")), "locked")
+	T.eq(select(2, ShopRules.canOffer(data, "legend_ronaldinho")), "locked")
 	local reached = profile(3)
-	T.eq(ShopRules.canOffer(reached, "legend_pele"), true)
-	Roster.add(reached, "pele")
-	T.eq(select(2, ShopRules.canOffer(reached, "legend_pele")), "owned")
+	reached.trials = { ronaldinho = { own = true, train = true, tier = true } }
+	T.eq(ShopRules.canOffer(reached, "legend_ronaldinho"), true)
+	Roster.add(reached, "ronaldinho")
+	T.eq(select(2, ShopRules.canOffer(reached, "legend_ronaldinho")), "owned")
+end)
+
+T.test("Robux skips a Legend's cash price, not his trials", function()
+	local data = profile(3) -- floors 1 to 3 owned, nobody trained, stadium tier 1
+	T.eq(select(2, ShopRules.canOffer(data, "legend_ronaldinho")), "trials")
+	data.trials = { ronaldinho = { own = true, train = true } } -- the tier goal is still open
+	T.eq(select(2, ShopRules.canOffer(data, "legend_ronaldinho")), "trials")
+	data.stadiumTier = 4
+	T.eq(ShopRules.canOffer(data, "legend_ronaldinho"), true)
+	T.eq(select(2, ShopRules.canOffer(data, "legend_pele")), "trials")
 end)
 
 -- Granting ------------------------------------------------------------------------------------
@@ -288,15 +330,6 @@ T.test("a duplicate adds a star, and past the cap it pays cash instead", functio
 	T.eq(data.cash, cash + maxed.cash)
 end)
 
-T.test("the boost pack banks 30 matches, in full even when the bank is already high", function()
-	local data = profile(0)
-	data.boosts.bankedMatches = 50
-	local result = Grants.apply(data, Config.Products.matchBoost, "boost1", 1, 0)
-	T.eq(result.matches, 30)
-	T.eq(data.boosts.bankedMatches, 80)
-	T.eq(ProfileSchema.validate(data), true)
-end)
-
 T.test("a Legend bought with Robux is owned at once, and an owned one gets a star", function()
 	local data = profile(3)
 	local result = Grants.apply(data, Config.Products.legend_pele, "l1", 1, 0)
@@ -344,7 +377,7 @@ T.test(
 T.test("every receipt-granting path keeps the profile valid", function()
 	local data = profile(3)
 	data.flags.milestones.first_purchase = 0
-	for index, key in { "caseStandard", "caseElite", "matchBoost", "legend_zidane" } do
+	for index, key in { "caseStandard", "caseElite", "cash_large", "boost_both", "legend_zidane" } do
 		Grants.apply(data, Config.Products[key], "v" .. index, index, 0.37 * index % 1)
 	end
 	T.eq(ProfileSchema.validate(data), true)
@@ -372,18 +405,35 @@ end)
 
 -- Cash and TP packs (the Robux pads) -------------------------------------------------------------
 
-T.test("a cash pack adds its fixed amount once, a resent receipt adds nothing", function()
-	local data = profile(0)
-	local cash, tp = data.cash, data.tp
-	local result, granted = Grants.apply(data, Config.Products.cash_medium, "c1", 100, 0)
-	T.eq(granted, true)
-	T.eq(result.kind, "cash")
-	T.eq(result.amount, 100_000)
-	T.eq(data.cash, cash + 100_000)
-	T.eq(data.tp, tp)
-	local _, again = Grants.apply(data, Config.Products.cash_medium, "c1", 200, 0)
-	T.eq(again, false)
-	T.eq(data.cash, cash + 100_000)
+T.test(
+	"a cash pack adds minutes of the player's income once, a resent receipt adds nothing",
+	function()
+		local data = profile(1)
+		data.fieldStarted = true
+		local cash, tp = data.cash, data.tp
+		local expected = Daily.caseCash(data, 60)
+		T.truthy(expected > 0)
+		local result, granted = Grants.apply(data, Config.Products.cash_medium, "c1", 100, 0)
+		T.eq(granted, true)
+		T.eq(result.kind, "cash")
+		T.eq(result.minutes, 60)
+		T.eq(result.amount, expected)
+		T.eq(data.cash, cash + expected)
+		T.eq(data.tp, tp)
+		local _, again = Grants.apply(data, Config.Products.cash_medium, "c1", 200, 0)
+		T.eq(again, false)
+		T.eq(data.cash, cash + expected)
+	end
+)
+
+T.test("a cash pack is worth the same minutes at every stage of the climb", function()
+	local early, late = profile(1), profile(3)
+	T.near( -- the same ratio at both stages (whole dollars, so not to the last digit)
+		Daily.caseCash(late, 15) / Daily.caseCash(early, 15),
+		Daily.caseCash(late, 60) / Daily.caseCash(early, 60),
+		0.5
+	)
+	T.truthy(Daily.caseCash(late, 15) > Daily.caseCash(early, 15) * 100)
 end)
 
 T.test("a TP pack adds its fixed amount to TP and leaves cash alone", function()
@@ -396,18 +446,28 @@ T.test("a TP pack adds its fixed amount to TP and leaves cash alone", function()
 	T.eq(data.cash, cash)
 end)
 
-T.test("packs can be bought at any time, even before any other purchase", function()
+T.test("TP packs can be bought at any time, cash packs once someone is on the field", function()
 	local data = profile(0)
-	T.eq(ShopRules.canOffer(data, "cash_small"), true)
 	T.eq(ShopRules.canOffer(data, "tp_small"), true)
+	T.eq(select(2, ShopRules.canOffer(data, "cash_small")), "early")
+	Roster.add(data, "rashford")
+	T.eq(ShopRules.canOffer(data, "cash_small"), true)
 	T.eq(ShopRules.canOffer(data, "cash_large"), true)
 end)
 
-T.test("every pack has a fixed amount and a price", function()
-	for _, key in { "cash_small", "cash_medium", "cash_large", "tp_small", "tp_medium", "tp_large" } do
-		local product = Config.Products[key]
-		T.truthy(product, key)
-		T.truthy((product.amount or 0) > 0, key)
-		T.truthy(product.robux > 0, key)
-	end
+T.test("cash packs are 15 min, 1 hour and 4 hours of income; TP packs are fixed amounts", function()
+	local cash = Config.Products
+	T.deepEq(
+		{ cash.cash_small.minutes, cash.cash_medium.minutes, cash.cash_large.minutes },
+		{ 15, 60, 240 }
+	)
+	T.deepEq(
+		{ cash.cash_small.robux, cash.cash_medium.robux, cash.cash_large.robux },
+		{ 39, 129, 399 }
+	)
+	T.deepEq(
+		{ cash.tp_small.amount, cash.tp_medium.amount, cash.tp_large.amount },
+		{ 500, 2_500, 10_000 }
+	)
+	T.deepEq({ cash.tp_small.robux, cash.tp_medium.robux, cash.tp_large.robux }, { 39, 149, 499 })
 end)

@@ -67,7 +67,7 @@ T.test("a cash style is for sale once its tier is reached and the cash is there"
 	T.eq(select(2, Cosmetics.canBuyCash(data, "kit_blue")), "free")
 	T.eq(select(2, Cosmetics.canBuyCash(data, "kit_gold")), "free") -- sold for Robux only
 	T.eq(select(2, Cosmetics.canBuyCash(data, "nothing")), "unknown")
-	data.cash = 2_000
+	data.cash = 3_000
 	T.eq(Cosmetics.canBuyCash(data, "kit_red"), true)
 	T.eq(select(2, Cosmetics.choose(data, "kit_red")), "locked")
 	Cosmetics.grant(data, "kit_red")

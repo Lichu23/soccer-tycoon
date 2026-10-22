@@ -57,9 +57,13 @@ end
 
 -- Seasons ----------------------------------------------------------------------------------
 
--- Permanent income multiplier: season 1 = x1, season 2 = x1.5, season 3 = x2.0.
+-- Permanent income multiplier: season 1 = x1, season 2 = x1.5, season 3 = x2.0, then a smaller
+-- step a season after Config.Season.fullBonusSeasons.
 function Formulas.seasonMultiplier(season: number): number
-	return 1 + (math.max(season, 1) - 1) * Config.Season.bonusPerSeason
+	local def = Config.Season
+	local steps = math.max(season, 1) - 1
+	local full = math.min(steps, def.fullBonusSeasons - 1)
+	return 1 + full * def.bonusPerSeason + (steps - full) * def.lateBonusPerSeason
 end
 
 -- Floors a new season starts with already owned. Floor 3 is never granted, because

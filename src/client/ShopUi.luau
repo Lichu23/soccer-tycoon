@@ -38,13 +38,14 @@ local CARD_REASONS: { [string]: string } = {
 	early = "After floor 1",
 	locked = "Locked",
 	owned = "Yours",
+	trials = "Trials first",
 }
 
 local REFUSALS: { [string]: string } = {
 	early = "Cases open once floor 1 is done.",
 	locked = "Not unlocked yet.",
-	full = "Your boost bank is full.",
 	owned = "You already have him.",
+	trials = "Finish his trials in the Legends hall first.",
 	restricted = "Cases are not available for you.",
 	off = "Not available right now.",
 	unavailable = "Not available right now.",
@@ -232,6 +233,11 @@ function ShopUi.init()
 			end
 		elseif State.data.players[product.playerId or ""] ~= nil then
 			return false, "owned"
+		elseif product.kind == "legend" then
+			local done, goals = Legends.goalCount(State.data, product.playerId or "")
+			if done < goals then
+				return false, "trials"
+			end
 		end
 		return true, nil
 	end
@@ -481,7 +487,7 @@ function ShopUi.init()
 					productCard(legendRow :: Frame, key, def.name, nil)
 				end
 			end
-			line("Legends skip the trials and the cash price.", { TextColor3 = Panel.MUTED })
+			line("Robux skips a Legend's cash price, not his trials.", { TextColor3 = Panel.MUTED })
 		end
 		total()
 	end
@@ -529,13 +535,17 @@ function ShopUi.init()
 			end
 			oddsRow("Legend", odds.legend)
 			line(
-				`Duplicate? +1 star (+{math.floor(Config.Stars.bonusPerStar * 100)}% income, max {Config.Stars.maxStars}), then cash.`,
+				if def.newOnly and odds.duplicate == 0
+					then "Only players you don't have yet."
+					else `Duplicate? +1 star (+{math.floor(Config.Stars.bonusPerStar * 100)}% income, max {Config.Stars.maxStars}), then cash.`,
 				{ TextColor3 = Panel.MUTED }
 			)
 		else
 			local def = Config.PlayersById[product.playerId or ""]
 			built.setTitle(if def then def.name else "Legend")
-			line("Yours at once, with no trials and no cash price. Legends stay across seasons.")
+			line(
+				"Yours at once, with no cash price (his trials are done). Legends stay across seasons."
+			)
 		end
 		total()
 		local buy: TextButton

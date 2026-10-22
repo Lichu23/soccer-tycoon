@@ -51,20 +51,25 @@ export type CaseDef = {
 	-- The share of a pull that is a x2 cash or TP boost of Config.CaseBoosts instead of a player (also off
 	-- the top). nil for a case of players only.
 	boostChance: number?,
+	-- Only players not owned yet (no duplicates) while any is left in the case; a floor with none left
+	-- passes its share to the others.
+	newOnly: boolean?,
 	-- Shares of the rest: a player of the floors reached, of the next floor, of the floors further on.
 	odds: { reached: number, nextFloor: number, further: number },
 }
 
 export type ProductDef = {
 	key: string,
-	kind: "case" | "boost" | "legend" | "cosmetic" | "cash" | "tp" | "timedBoost",
+	kind: "case" | "legend" | "cosmetic" | "cash" | "tp" | "timedBoost",
 	robux: number, -- the price shown on the button (the real price is set on the dashboard)
 	productId: number, -- the Developer Product id, 0 until it is created on the dashboard
 	caseId: string?,
 	playerId: string?,
 	cosmeticId: string?,
-	amount: number?, -- the cash or the training points a pack gives (fixed amounts)
-	-- A timed boost: what it doubles. It runs for Config.Boost.paidSeconds of online time.
+	amount: number?, -- the training points a TP pack gives (a fixed amount)
+	minutes: number?, -- a cash pack: this many minutes of the player's normal income (Daily.caseCash)
+	-- A timed boost: what it doubles. The cash part runs for Config.Boost.paidCashSeconds of online
+	-- time, the TP part for Config.Boost.paidTpSeconds.
 	boostsCash: boolean?,
 	boostsTp: boolean?,
 }
@@ -247,13 +252,15 @@ Config.Boost = {
 	totalCap = 4, -- timed and banked boosts never multiply above this
 	stadiumMultiplier = 2,
 	stadiumSeconds = 300, -- counts only while online
-	matchPackSize = 30,
-	matchBankMax = 60,
+	-- A banked boosted match doubles the match. Nothing sells banked matches any more (the 30-match
+	-- product was dropped: x2 Cash gave three times the value for the same price); kept for old saves.
 	matchMultiplier = 2,
 	-- The x2 boosts bought on the Robux pads in the middle of floor 1: cash, TP, or both. Each
-	-- purchase adds paidSeconds of online time to its timer, up to paidMaxSeconds.
+	-- purchase adds its time of online time to its timer, up to paidMaxSeconds. The TP boost lasts
+	-- longer because it only pays while the stamina lasts (about half of the time).
 	paidMultiplier = 2,
-	paidSeconds = 10 * 60,
+	paidCashSeconds = 10 * 60,
+	paidTpSeconds = 20 * 60,
 	paidMaxSeconds = 60 * 60,
 }
 
@@ -364,7 +371,7 @@ Config.Training = {
 	levelCostOverrides = {
 		rashford = { 5, 10, 20, 40, 50 },
 	} :: { [string]: { number } },
-	idleTpPerMinute = 10,
+	idleTpPerMinute = 20,
 	-- The level-up tutorial: until the first level ever, the treadmill pays `tutorialTpPerMinute`
 	-- while the player has less than `tutorialTp` (the first level of the first player, see
 	-- levelCostOverrides), holds them on the belt until then, and the other stations stay locked.
@@ -382,7 +389,7 @@ Config.Training = {
 	-- place in the streak (`juggleTpTiers`: touches up to `upTo` pay `tp`; past the last tier
 	-- `juggleTpFloor`), with no cap per minute: a new streak starts again at the top tier, and the
 	-- stamina bar ends the session. The breakaway's goals are capped at
-	-- `freekickTpPerMinuteMax` TP in any minute (the treadmill pays 10).
+	-- `freekickTpPerMinuteMax` TP in any minute (the treadmill pays `idleTpPerMinute`).
 	juggleBounceSeconds = 0.8,
 	juggleBounceStep = 0.006,
 	juggleBounceMin = 0.5,
@@ -487,6 +494,7 @@ Config.Cases = {
 		name = "Elite Case",
 		floorsComplete = 2,
 		legendChance = 0.02,
+		newOnly = true,
 		odds = { reached = 0.40, nextFloor = 0.40, further = 0.20 },
 	},
 } :: { [string]: CaseDef }
@@ -533,7 +541,9 @@ Config.CaseRules = {
 }
 
 -- Developer Products. `productId` stays 0 until the product exists on the dashboard (then the
--- server only simulates the purchase in Studio). Prices are placeholders to set in Step 8.
+-- server only simulates the purchase in Studio). Prices follow one rate, about 3 to 4 Robux per
+-- minute of play saved (the 10-minute x2 Cash boost for 39), measured in the pricing simulation
+-- (docs/PLAN.md, Step 3, Robux prices).
 Config.Products = {
 	caseStandard = {
 		key = "caseStandard",
@@ -542,8 +552,7 @@ Config.Products = {
 		productId = 0,
 		caseId = "standard",
 	},
-	caseElite = { key = "caseElite", kind = "case", robux = 149, productId = 0, caseId = "elite" },
-	matchBoost = { key = "matchBoost", kind = "boost", robux = 39, productId = 0 },
+	caseElite = { key = "caseElite", kind = "case", robux = 79, productId = 0, caseId = "elite" },
 	legend_ronaldinho = {
 		key = "legend_ronaldinho",
 		kind = "legend",
@@ -579,27 +588,16 @@ Config.Products = {
 		productId = 0,
 		playerId = "pele",
 	},
-	-- Cash and TP packs, bought on the Robux pads outside the building. Fixed amounts (the same for
-	-- everyone); the Robux prices are placeholders like the rest.
-	cash_small = { key = "cash_small", kind = "cash", robux = 25, productId = 0, amount = 10_000 },
-	cash_medium = {
-		key = "cash_medium",
-		kind = "cash",
-		robux = 99,
-		productId = 0,
-		amount = 100_000,
-	},
-	cash_large = {
-		key = "cash_large",
-		kind = "cash",
-		robux = 349,
-		productId = 0,
-		amount = 1_000_000,
-	},
-	tp_small = { key = "tp_small", kind = "tp", robux = 25, productId = 0, amount = 500 },
-	tp_medium = { key = "tp_medium", kind = "tp", robux = 99, productId = 0, amount = 2_500 },
-	tp_large = { key = "tp_large", kind = "tp", robux = 349, productId = 0, amount = 10_000 },
-	-- The x2 boosts on the pads in the middle of floor 1 (10 minutes of online time each).
+	-- Cash and TP packs, bought on the Robux pads outside the building. A cash pack is minutes of the
+	-- player's own normal income, so it is worth the same at every stage (a fixed amount was worth
+	-- nothing after minute 17). TP packs are fixed amounts: the TP rate never grows.
+	cash_small = { key = "cash_small", kind = "cash", robux = 39, productId = 0, minutes = 15 },
+	cash_medium = { key = "cash_medium", kind = "cash", robux = 129, productId = 0, minutes = 60 },
+	cash_large = { key = "cash_large", kind = "cash", robux = 399, productId = 0, minutes = 240 },
+	tp_small = { key = "tp_small", kind = "tp", robux = 39, productId = 0, amount = 500 },
+	tp_medium = { key = "tp_medium", kind = "tp", robux = 149, productId = 0, amount = 2_500 },
+	tp_large = { key = "tp_large", kind = "tp", robux = 499, productId = 0, amount = 10_000 },
+	-- The x2 boosts on the pads in the middle of floor 1 (10 minutes of cash, 20 of TP).
 	boost_cash = {
 		key = "boost_cash",
 		kind = "timedBoost",
@@ -620,9 +618,9 @@ Config.Products = {
 
 -- Team customization (docs/PLAN.md, Step 3): each stadium tier opens one slot with free styles, a
 -- few bought with cash and a few with Robux. Bought styles are cosmetic only, kept across seasons and
--- bought directly (no random cosmetic crates). The first style of a slot is its default. Cash prices
--- are about 10 to 20 minutes of income at the slot's tier. Counts and prices are provisional; the
--- dashboard product ids are 0 until the products exist.
+-- bought directly (no random cosmetic crates). The first style of a slot is its default. The two cash
+-- prices of a slot are about 10 and 25 minutes of income near the end of the slot's tier (pricing
+-- simulation). Counts are provisional; the dashboard product ids are 0 until the products exist.
 Config.CosmeticSlots = {
 	{ id = "kit", name = "Kit", tier = 1 },
 	{ id = "crest", name = "Crest", tier = 2 },
@@ -675,8 +673,8 @@ Config.Cosmetics = {
 	style("kit_blue", "kit", "Blue", { 60, 120, 230 }),
 	style("kit_white", "kit", "White", { 235, 235, 240 }),
 	style("kit_green", "kit", "Green", { 50, 170, 90 }),
-	style("kit_red", "kit", "Red", { 220, 60, 60 }, { cash = 2_000 }),
-	style("kit_purple", "kit", "Purple", { 150, 90, 220 }, { cash = 6_000 }),
+	style("kit_red", "kit", "Red", { 220, 60, 60 }, { cash = 3_000 }),
+	style("kit_purple", "kit", "Purple", { 150, 90, 220 }, { cash = 8_000 }),
 	style("kit_gold", "kit", "Gold", { 235, 190, 50 }, { robux = 99 }),
 	style("kit_black", "kit", "Midnight", { 35, 38, 50 }, { robux = 99 }),
 	style("crest_shield", "crest", "Shield", { 205, 210, 225 }, nil, {
@@ -688,10 +686,10 @@ Config.Cosmetics = {
 	style("crest_ball", "crest", "Ball", { 60, 120, 230 }, nil, {
 		image = "rbxassetid://109239234345017",
 	}),
-	style("crest_ruby", "crest", "Ruby", { 210, 50, 70 }, { cash = 15_000 }, {
+	style("crest_ruby", "crest", "Ruby", { 210, 50, 70 }, { cash = 300_000 }, {
 		image = "rbxassetid://108259967301092",
 	}),
-	style("crest_emerald", "crest", "Emerald", { 40, 160, 95 }, { cash = 40_000 }, {
+	style("crest_emerald", "crest", "Emerald", { 40, 160, 95 }, { cash = 700_000 }, {
 		image = "rbxassetid://84216287066856",
 	}),
 	style("crest_crown", "crest", "Crown", { 150, 90, 220 }, { robux = 79 }, {
@@ -717,12 +715,12 @@ Config.Cosmetics = {
 		brands = { "FIZZUP", "fizz it up!" },
 		accent = WHITE,
 	}),
-	style("banners_sunset", "banners", "Sunny", { 245, 140, 40 }, { cash = 300_000 }, {
+	style("banners_sunset", "banners", "Sunny", { 245, 140, 40 }, { cash = 6_000_000 }, {
 		pattern = { { 245, 140, 40 }, { 235, 90, 130 }, { 150, 90, 220 } },
 		brands = { "SUNNY JUICE", "GOALAZO", "SUNNY JUICE" },
 		accent = WHITE,
 	}),
-	style("banners_ocean", "banners", "Wave", { 40, 150, 220 }, { cash = 800_000 }, {
+	style("banners_ocean", "banners", "Wave", { 40, 150, 220 }, { cash = 15_000_000 }, {
 		pattern = { { 40, 150, 220 }, { 60, 200, 200 }, { 30, 90, 180 } },
 		brands = { "WAVE AIR", "BLUEBYTE", "WAVE AIR" },
 		accent = WHITE,
@@ -762,11 +760,11 @@ Config.Cosmetics = {
 		nil,
 		{ model = "bank", accent = { 255, 244, 214 } }
 	),
-	style("lamps_tower", "lamps", "Tower", { 82, 88, 100 }, { cash = 1_000_000 }, {
+	style("lamps_tower", "lamps", "Tower", { 82, 88, 100 }, { cash = 8_000_000 }, {
 		model = "tower",
 		accent = { 255, 244, 214 },
 	}),
-	style("lamps_arena", "lamps", "Arena tower", { 82, 88, 100 }, { cash = 2_500_000 }, {
+	style("lamps_arena", "lamps", "Arena tower", { 82, 88, 100 }, { cash = 20_000_000 }, {
 		model = "arena",
 		accent = { 255, 244, 214 },
 	}),
@@ -782,8 +780,8 @@ Config.Cosmetics = {
 	style("floodlights_white", "floodlights", "White", { 255, 250, 235 }),
 	style("floodlights_warm", "floodlights", "Sunny", { 255, 200, 90 }),
 	style("floodlights_cool", "floodlights", "Sky blue", { 110, 190, 255 }),
-	style("floodlights_gold", "floodlights", "Red", { 255, 80, 80 }, { cash = 3_000_000 }),
-	style("floodlights_ice", "floodlights", "Green", { 90, 240, 120 }, { cash = 8_000_000 }),
+	style("floodlights_gold", "floodlights", "Red", { 255, 80, 80 }, { cash = 120_000_000 }),
+	style("floodlights_ice", "floodlights", "Green", { 90, 240, 120 }, { cash = 300_000_000 }),
 	style("floodlights_aurora", "floodlights", "Aurora", { 80, 255, 210 }, { robux = 149 }),
 	style("floodlights_rose", "floodlights", "Pink", { 255, 110, 200 }, { robux = 149 }),
 	-- Each scoreboard is its own design (shared/StadiumLook) in its own colours.
@@ -799,11 +797,11 @@ Config.Cosmetics = {
 		design = "retro",
 		accent = WHITE,
 	}),
-	style("scoreboard_navy", "scoreboard", "Neon", NAVY, { cash = 60_000_000 }, {
+	style("scoreboard_navy", "scoreboard", "Neon", NAVY, { cash = 800_000_000 }, {
 		design = "neon",
 		accent = { 120, 235, 140 },
 	}),
-	style("scoreboard_ruby", "scoreboard", "Derby", { 200, 50, 70 }, { cash = 150_000_000 }, {
+	style("scoreboard_ruby", "scoreboard", "Derby", { 200, 50, 70 }, { cash = 2_000_000_000 }, {
 		design = "split",
 		pattern = { { 200, 50, 70 }, { 40, 110, 210 } },
 		accent = WHITE,
@@ -820,8 +818,8 @@ Config.Cosmetics = {
 	style("stadium_white", "stadium", "White", { 226, 229, 236 }),
 	style("stadium_silver", "stadium", "Silver", { 170, 176, 190 }),
 	style("stadium_sky", "stadium", "Sky", { 120, 180, 240 }),
-	style("stadium_red", "stadium", "Red", { 210, 60, 70 }, { cash = 300_000_000 }),
-	style("stadium_green", "stadium", "Green", { 60, 170, 100 }, { cash = 800_000_000 }),
+	style("stadium_red", "stadium", "Red", { 210, 60, 70 }, { cash = 3_000_000_000 }),
+	style("stadium_green", "stadium", "Green", { 60, 170, 100 }, { cash = 7_500_000_000 }),
 	style("stadium_gold", "stadium", "Gold", { 235, 190, 50 }, { robux = 199 }),
 	style("stadium_midnight", "stadium", "Midnight", { 40, 44, 70 }, { robux = 199 }),
 } :: { CosmeticDef }
@@ -842,15 +840,19 @@ for _, def in Config.Cosmetics do
 end
 
 -- The roof arena's name (tier 6), typed by the player: filtered by Roblox on the server before
--- anyone sees it, and paid for each time it changes.
+-- anyone sees it, and paid for each time it changes (about 5 minutes of tier 6 income).
 Config.StadiumName = {
-	price = 100_000_000,
+	price = 1_500_000_000,
 	minLength = 3,
 	maxLength = 20,
 }
 
 Config.Season = {
-	bonusPerSeason = 0.5, -- permanent multiplier: season 2 = x1.5, season 3 = x2.0
+	-- Permanent multiplier: season 2 = x1.5, season 3 = x2.0, up to season `fullBonusSeasons`
+	-- (x5.5), then `lateBonusPerSeason` a season, so resetting again and again stops paying off.
+	bonusPerSeason = 0.5,
+	fullBonusSeasons = 10,
+	lateBonusPerSeason = 0.1,
 }
 
 -- The Legend Trials (docs/PLAN.md, Step 1): goals that use only training, owned players and stadium
@@ -879,9 +881,11 @@ Config.LegendTrials = {
 		{ id = "train", kind = "trained", target = 8, level = 10 },
 		{ id = "tier", kind = "tier", target = 5 },
 	},
+	-- Pelé asks for about 75K TP of training (it was 10 players at level 15, about 144K TP, which was
+	-- three quarters of the whole game in the finish simulation).
 	pele = {
 		{ id = "own", kind = "ownFloors", target = 3 },
-		{ id = "train", kind = "trained", target = 10, level = 15 },
+		{ id = "train", kind = "trained", target = 8, level = 12 },
 		{ id = "tier", kind = "tier", target = 5 },
 	},
 } :: { [string]: { TrialGoal } }
@@ -921,7 +925,8 @@ Config.Cinematic = {
 
 -- Each tier also multiplies the match cash, in place of the removed "More cash per match" upgrade:
 -- from tier 2 on, the values that upgrade had reached by about that point of the climb. Tier 1 is
--- x1.25, so the first stadium upgrade still comes at about 4:15 (tests/pacing).
+-- x1.25, so the first stadium upgrade still comes at about 4:15 (tests/pacing). Tier 5 is a little
+-- above tier 4 so its bigger field is worth buying (at x6.7 it added only 3%).
 Config.StadiumTiers = {
 	{ tier = 1, price = 0, field = 4, courtLength = 60, courtWidth = 36, cashMultiplier = 1.25 },
 	{ tier = 2, price = 250, field = 5, courtLength = 70, courtWidth = 42, cashMultiplier = 2.7 },
@@ -947,7 +952,7 @@ Config.StadiumTiers = {
 		field = 11,
 		courtLength = 120,
 		courtWidth = 72,
-		cashMultiplier = 6.7,
+		cashMultiplier = 7.3,
 	},
 	-- The roof arena: the same pitch and field under a retractable roof. Provisional, tune in the
 	-- simulation (about 30 times tier 5, like the step from tier 4 to 5).

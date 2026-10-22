@@ -240,29 +240,28 @@ local function purchaseCard(result: any): Content?
 	if type(result) ~= "table" then
 		return nil
 	end
-	if result.kind == "boost" then
-		return {
-			title = "PURCHASE",
-			big = "Match boost",
-			detail = `Your next {result.matches or Config.Boost.matchPackSize} matches pay x{Config.Boost.matchMultiplier}`,
-			icon = "boost",
-		}
-	elseif result.kind == "timedBoost" then
-		local minutes = math.floor((tonumber(result.seconds) or Config.Boost.paidSeconds) / 60)
+	if result.kind == "timedBoost" then
+		local cashMinutes = math.floor((tonumber(result.cashSeconds) or 0) / 60)
+		local tpMinutes = math.floor((tonumber(result.tpSeconds) or 0) / 60)
+		local detail = if result.cash and result.tp
+			then `Cash for {cashMinutes} min, TP for {tpMinutes} min of play`
+			else `For the next {if result.tp then tpMinutes else cashMinutes} minutes you play`
 		return {
 			title = "PURCHASE",
 			big = if result.cash and result.tp
 				then "x2 Cash + TP"
 				elseif result.tp then "x2 TP"
 				else "x2 Cash",
-			detail = `For the next {minutes} minutes you play`,
+			detail = detail,
 			icon = if result.cash and result.tp then "boost" elseif result.tp then "tp" else "cash",
 		}
 	elseif result.kind == "cash" and type(result.amount) == "number" then
 		return {
 			title = "PURCHASE",
 			big = "+" .. NumberFormat.money(result.amount),
-			detail = "Added to your cash",
+			detail = if type(result.minutes) == "number"
+				then `{NumberFormat.minutes(result.minutes)} of your income, added to your cash`
+				else "Added to your cash",
 			icon = "cash",
 		}
 	elseif result.kind == "tp" and type(result.amount) == "number" then

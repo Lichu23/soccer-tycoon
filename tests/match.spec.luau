@@ -168,26 +168,31 @@ T.test("the stadium boost lasts 300 connected seconds", function()
 	T.eq(Config.Boost.stadiumSeconds, 300)
 end)
 
-T.test("bought boosts add 10 minutes each, run only online and stop at an hour", function()
-	local data = ProfileSchema.newProfile()
-	T.eq(Boosts.tpMultiplier(data), 1)
-	Boosts.addPaid(data, false, true)
-	T.eq(data.boosts.tpBoostLeft, 600)
-	T.eq(data.boosts.cashBoostLeft, 0)
-	T.eq(Boosts.tpMultiplier(data), 2)
-	T.deepEq(Boosts.active(data), {}) -- the TP boost does not touch the match cash
-	Boosts.addPaid(data, true, true)
-	T.eq(data.boosts.tpBoostLeft, 1200)
-	T.eq(data.boosts.cashBoostLeft, 600)
-	T.deepEq(Boosts.active(data), { 2 })
-	T.eq(Boosts.nextEnd(data), 600)
-	T.eq(Boosts.tick(data, 600), true) -- the cash boost ended
-	T.eq(data.boosts.tpBoostLeft, 600)
-	T.eq(Boosts.canAddPaid(data, false, true), true)
-	data.boosts.tpBoostLeft = 3001
-	T.eq(Boosts.canAddPaid(data, false, true), false)
-	T.eq(Boosts.canAddPaid(data, true, false), true)
-end)
+T.test(
+	"bought boosts add 10 minutes of cash or 20 of TP, run only online and stop at an hour",
+	function()
+		local data = ProfileSchema.newProfile()
+		T.eq(Boosts.tpMultiplier(data), 1)
+		Boosts.addPaid(data, false, true)
+		T.eq(data.boosts.tpBoostLeft, 1200)
+		T.eq(data.boosts.cashBoostLeft, 0)
+		T.eq(Boosts.tpMultiplier(data), 2)
+		T.deepEq(Boosts.active(data), {}) -- the TP boost does not touch the match cash
+		Boosts.addPaid(data, true, true)
+		T.eq(data.boosts.tpBoostLeft, 2400)
+		T.eq(data.boosts.cashBoostLeft, 600)
+		T.deepEq(Boosts.active(data), { 2 })
+		T.eq(Boosts.nextEnd(data), 600)
+		T.eq(Boosts.tick(data, 600), true) -- the cash boost ended
+		T.eq(data.boosts.tpBoostLeft, 1800)
+		T.eq(Boosts.canAddPaid(data, false, true), true) -- 1800 + 1200 = an hour
+		data.boosts.tpBoostLeft = 2401
+		T.eq(Boosts.canAddPaid(data, false, true), false)
+		T.eq(Boosts.canAddPaid(data, true, false), true)
+		data.boosts.cashBoostLeft = 3001
+		T.eq(Boosts.canAddPaid(data, true, false), false)
+	end
+)
 
 T.suite("match plan")
 
