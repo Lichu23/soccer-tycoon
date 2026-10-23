@@ -25,6 +25,7 @@ local Stadium = require(script.Parent.Stadium)
 local StadiumName = require(script.Parent.StadiumName)
 local Training = require(script.Parent.Training)
 local TrainingActions = require(script.Parent.TrainingActions)
+local UnlockNotices = require(script.Parent.UnlockNotices)
 local Sync = require(script.Parent.Sync)
 
 Remotes.init()
@@ -72,6 +73,8 @@ Actions.onChange = function(session, what, id)
 	elseif what == "store" then
 		Analytics.milestone(session, "first_upgrade")
 	end
+	-- A pad that opened with this change gets its cinematic (the client waits for any reveal).
+	UnlockNotices.check(session)
 end
 
 -- Everyone walks faster than the Roblox default (the plots are large).

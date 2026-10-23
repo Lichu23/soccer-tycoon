@@ -1,6 +1,7 @@
 --!strict
 -- Four round buttons at the bottom right (4 3 2 1, the top floor on top) that take the player to a
--- floor of the building, so nobody has to find the stairs. The stairs stay open and walkable, with
+-- floor of the building, so nobody has to find the stairs. They show, with a "FLOOR" title, only
+-- while the player is inside their own building. The stairs stay open and walkable, with
 -- UP / DOWN plates on the floor. Moving the own character is not game state (floors are never
 -- locked, docs/PLAN.md), so this is done on the client; the server decides nothing here.
 
@@ -19,6 +20,7 @@ local GAP = 5
 local SIDE = 8
 local BOTTOM = 40 -- clears the strip at the bottom of the screen; the right side is free below the money
 local ARRIVE_HEIGHT = 3 -- the character stands this far above the spot
+local INSIDE_MARGIN = 4 -- studs around the building's parts that still count as inside
 local REFRESH_SECONDS = 0.25
 local CURRENT_COLOR = Color3.fromRGB(88, 170, 120)
 local IDLE_COLOR = Color3.fromRGB(110, 118, 150)
@@ -39,29 +41,62 @@ local function new(className: string, props: { [string]: any }, parent: Instance
 	return instance
 end
 
--- The spots of the player's own plot, by floor (nil until the plot exists).
-local function ownSpots(): { [number]: BasePart }?
+-- The player's own plot (nil until it exists).
+local function ownPlot(): Instance?
 	local plots = Workspace:FindFirstChild("Plots")
 	if plots == nil then
 		return nil
 	end
 	for _, plot in plots:GetChildren() do
 		if plot:GetAttribute("OwnerUserId") == player.UserId then
-			local stairs = plot:FindFirstChild("Stairs")
-			if stairs == nil then
-				return nil
-			end
-			local spots: { [number]: BasePart } = {}
-			for _, part in stairs:GetChildren() do
-				local floor = part:GetAttribute("SpotFloor")
-				if part:IsA("BasePart") and type(floor) == "number" then
-					spots[floor] = part
-				end
-			end
-			return spots
+			return plot
 		end
 	end
 	return nil
+end
+
+-- The spots of a plot's floors, by floor (nil without stairs).
+local function spotsOf(plot: Instance): { [number]: BasePart }?
+	local stairs = plot:FindFirstChild("Stairs")
+	if stairs == nil then
+		return nil
+	end
+	local spots: { [number]: BasePart } = {}
+	for _, part in stairs:GetChildren() do
+		local floor = part:GetAttribute("SpotFloor")
+		if part:IsA("BasePart") and type(floor) == "number" then
+			spots[floor] = part
+		end
+	end
+	return spots
+end
+
+-- Whether `position` is inside the plot's building: within the extremes of its parts (seen from the
+-- gate), with a small margin for the walls. Outside, the buttons would read as a debug tool.
+local function insideBuilding(plot: Instance, position: Vector3): boolean
+	local building = plot:FindFirstChild("Building")
+	local gate = plot:FindFirstChild("Gate")
+	if building == nil or gate == nil or not gate:IsA("BasePart") then
+		return false
+	end
+	local low, high = Vector3.one * math.huge, -Vector3.one * math.huge
+	for _, part in building:GetDescendants() do
+		if part:IsA("BasePart") then
+			local inPlot = gate.CFrame:PointToObjectSpace(part.Position)
+			low, high = low:Min(inPlot), high:Max(inPlot)
+		end
+	end
+	local at = gate.CFrame:PointToObjectSpace(position)
+	return at.X >= low.X - INSIDE_MARGIN
+		and at.X <= high.X + INSIDE_MARGIN
+		and at.Z >= low.Z - INSIDE_MARGIN
+		and at.Z <= high.Z + INSIDE_MARGIN
+		and at.Y <= high.Y + INSIDE_MARGIN
+end
+
+local function ownSpots(): { [number]: BasePart }?
+	local plot = ownPlot()
+	return if plot then spotsOf(plot) else nil
 end
 
 local function root(): BasePart?
@@ -97,6 +132,21 @@ function FloorSwitcher.init()
 		Size = UDim2.fromOffset(SIZE, FLOORS * SIZE + (FLOORS - 1) * GAP),
 		BackgroundTransparency = 1,
 	}, gui)
+	-- "FLOOR" left of the top button, so the numbers read as a lift without making the column any
+	-- taller (the New Season badge sits above it on short screens).
+	local title = new("TextLabel", {
+		Name = "Title",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.fromOffset(-6, SIZE / 2),
+		Size = UDim2.fromOffset(50, 18),
+		BackgroundTransparency = 1,
+		Text = "FLOOR",
+		TextXAlignment = Enum.TextXAlignment.Right,
+		Font = Style.font,
+		TextSize = 14,
+		TextColor3 = Style.ui.text,
+	}, column)
+	new("UIStroke", { Color = Style.ui.dark, Thickness = 2 }, title)
 	for floor = 1, FLOORS do
 		local button = new("TextButton", {
 			Name = "Floor" .. floor,
@@ -128,9 +178,13 @@ function FloorSwitcher.init()
 			return
 		end
 		sinceRefresh = 0
-		local spots = ownSpots()
-		gui.Enabled = spots ~= nil
+		local plot = ownPlot()
+		local spots = if plot then spotsOf(plot) else nil
 		local part = root()
+		gui.Enabled = plot ~= nil
+			and spots ~= nil
+			and part ~= nil
+			and insideBuilding(plot, part.Position)
 		if spots == nil or part == nil then
 			return
 		end

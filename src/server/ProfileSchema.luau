@@ -6,6 +6,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Unlocks = require(ReplicatedStorage.Shared.Unlocks)
 
 export type Receipt = {
 	at: number, -- os.time() when the purchase was granted
@@ -66,13 +67,14 @@ export type Profile = {
 		reminderIgnored: number, -- reminders in a row that were not followed by a return
 		reminderLastSentAt: number, -- os.time() of the last reminder sent to this player, 0 = never
 		hasClaimedPlot: boolean, -- claimed a plot before: later claims skip the plot tour
+		unlocksShown: { [string]: boolean }, -- the unlock cinematics already played (shared/Unlocks ids)
 		milestones: { [string]: number }, -- first_purchase, first_match... -> os.time() when first reached
 	},
 }
 
 local ProfileSchema = {}
 
-ProfileSchema.CURRENT_VERSION = 5
+ProfileSchema.CURRENT_VERSION = 6
 
 -- Receipts are kept for 30 days or the newest 100, whichever keeps more (Step 6).
 ProfileSchema.RECEIPT_KEEP_SECONDS = 30 * 24 * 60 * 60
@@ -120,6 +122,7 @@ function ProfileSchema.newProfile(): Profile
 			reminderIgnored = 0,
 			reminderLastSentAt = 0,
 			hasClaimedPlot = false,
+			unlocksShown = {},
 			milestones = {},
 		},
 	}
@@ -196,6 +199,20 @@ migrations[4] = function(data)
 	if type(flags) == "table" then
 		flags.tilesSeen = nil
 	end
+end
+
+-- 5 -> 6: new pads play a cinematic when they open. What a profile had already opened counts as
+-- shown, so a returning player is not walked through everything they unlocked long ago.
+migrations[5] = function(data)
+	local flags = data.flags
+	if type(flags) ~= "table" then
+		return
+	end
+	local shown = {}
+	if type(data.players) == "table" and type(data.storeLevels) == "table" then
+		Unlocks.seed(data :: any, shown)
+	end
+	flags.unlocksShown = shown
 end
 
 -- Brings saved data up to the current version in place. Returns false and a reason when

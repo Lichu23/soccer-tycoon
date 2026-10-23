@@ -23,6 +23,9 @@ export type Info = {
 	state: string, -- "ready", "cannotAfford", "locked", "owned", "maxed" or "info"
 	icon: string?, -- the name of a picture shown above the text (client/Icons), for the Robux packs
 	stars: number?, -- the stars of an owned player (from case duplicates), shown above the price
+	-- Player and Legend pads: the word on top that says what the pad is ("BUY", "LV 2/5", "OWNED").
+	badge: string?,
+	owned: boolean?, -- the player on this pad is owned (the pad levels him up instead of buying)
 }
 
 local STORE_NAMES: { [string]: string } = {
@@ -64,6 +67,7 @@ function PadInfo.levelUp(data: ProgressData, def: Config.PlayerDef): Info
 	local bonus = "+" .. math.floor(Config.Training.bonusPerLevel * 100 + 0.5) .. "% income"
 	-- Spending TP on a player who is not earning yet is allowed, but the pad says so first.
 	local note = if benched then levelText .. " · on the bench" else levelText .. " · " .. bonus
+	local badge = "LV " .. level .. "/" .. cap
 	if status == "maxed" or cost == nil then
 		return {
 			title = def.name,
@@ -71,6 +75,8 @@ function PadInfo.levelUp(data: ProgressData, def: Config.PlayerDef): Info
 			note = if benched then levelText .. " · on the bench" else levelText,
 			state = "maxed",
 			stars = stars,
+			badge = badge,
+			owned = true,
 		}
 	elseif status == "cannotAfford" then
 		local short = NumberFormat.short(cost - data.tp)
@@ -80,6 +86,8 @@ function PadInfo.levelUp(data: ProgressData, def: Config.PlayerDef): Info
 			note = levelText .. " · need " .. short .. " TP",
 			state = status,
 			stars = stars,
+			badge = badge,
+			owned = true,
 		}
 	end
 	return {
@@ -88,7 +96,14 @@ function PadInfo.levelUp(data: ProgressData, def: Config.PlayerDef): Info
 		note = note,
 		state = status,
 		stars = stars,
+		badge = badge,
+		owned = true,
 	}
+end
+
+-- What the top line of a pad that buys a player says, by its state (locked pads say nothing).
+local function buyBadge(state: string): string?
+	return if state == "ready" or state == "cannotAfford" then "BUY" else nil
 end
 
 function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
@@ -109,6 +124,7 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 					note = "",
 					state = "owned",
 					stars = if owned then owned.stars else 0,
+					owned = true,
 				}
 			end
 			return PadInfo.levelUp(data, def)
@@ -125,9 +141,16 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 				price = NumberFormat.money(def.price),
 				note = missing(def.price, data.cash),
 				state = status,
+				badge = buyBadge(status),
 			}
 		end
-		return { title = def.name, price = NumberFormat.money(def.price), note = "", state = status }
+		return {
+			title = def.name,
+			price = NumberFormat.money(def.price),
+			note = "",
+			state = status,
+			badge = buyBadge(status),
+		}
 	elseif kind == "legend" then
 		local def = Config.PlayersById[padId]
 		if def == nil then
@@ -143,6 +166,7 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 					note = "",
 					state = "owned",
 					stars = if owned then owned.stars else 0,
+					owned = true,
 				}
 			end
 			return PadInfo.levelUp(data, def)
@@ -161,7 +185,14 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 		elseif status == "cannotAfford" then
 			note = missing(def.price, data.cash)
 		end
-		return { title = def.name, price = price, note = note, lines = lines, state = state }
+		return {
+			title = def.name,
+			price = price,
+			note = note,
+			lines = lines,
+			state = state,
+			badge = buyBadge(state),
+		}
 	elseif kind == "store" then
 		if not isStoreId(padId) then
 			return { title = padId, price = "", note = "", state = "locked" }

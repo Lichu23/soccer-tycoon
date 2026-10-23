@@ -283,6 +283,24 @@ T.test("version 4 drops the saved button taps and gets the Faster training level
 	T.eq((ProfileSchema.validate(data)), true)
 end)
 
+T.test("version 5 counts what was already open as shown, and nothing more", function()
+	local data = ProfileSchema.newProfile()
+	data.version = 5
+	data.flags.unlocksShown = nil
+	for _, def in Config.Players do
+		if def.floor == 1 then
+			data.players[def.id] = { level = 1, stars = 0 }
+		end
+	end
+	T.eq((ProfileSchema.migrate(data)), true)
+	ProfileSchema.reconcile(data, ProfileSchema.newProfile())
+	T.eq(data.flags.unlocksShown.floor2, true) -- floor 1 is complete
+	T.eq(data.flags.unlocksShown.store_hatTrick, true)
+	T.eq(data.flags.unlocksShown.floor3, nil) -- not open yet: it will get its cinematic
+	T.eq(data.flags.unlocksShown.store_matchSpeed, nil) -- needs stadium tier 2
+	T.eq((ProfileSchema.validate(data)), true)
+end)
+
 T.test("newer or invalid versions are refused", function()
 	local ok, reason = ProfileSchema.migrate({ version = ProfileSchema.CURRENT_VERSION + 1 })
 	T.eq(ok, false)
