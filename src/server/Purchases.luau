@@ -160,6 +160,19 @@ function Purchases.start()
 	assert(not started, "Purchases.start called twice")
 	started = true
 	MarketplaceService.ProcessReceipt = processReceipt
+	if not RunService:IsStudio() then
+		-- A product without its id is refused live, so say which ones still need creating.
+		local missing = {}
+		for key, product in Config.Products do
+			if product.productId <= 0 then
+				table.insert(missing, key)
+			end
+		end
+		if #missing > 0 then
+			table.sort(missing)
+			warn("[Purchases] no Developer Product id yet for: " .. table.concat(missing, ", "))
+		end
+	end
 	Remotes.on("RequestPurchase", function(player: Player, ...: any)
 		local key = select(1, ...)
 		if type(key) == "string" then

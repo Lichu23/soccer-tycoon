@@ -3,6 +3,8 @@
 -- All values are placeholders from the economy draft: tune them here, not in code.
 -- Shared code holds no secrets: the client may read all of this.
 
+local ProductIds = require(script.Parent.ProductIds)
+
 export type Rarity = "Common" | "Rare" | "VeryRare" | "Epic" | "Legend"
 
 export type PlayerDef = {
@@ -63,7 +65,7 @@ export type ProductDef = {
 	key: string,
 	kind: "case" | "legend" | "cosmetic" | "cash" | "tp" | "timedBoost",
 	robux: number, -- the price shown on the button (the real price is set on the dashboard)
-	productId: number, -- the Developer Product id, 0 until it is created on the dashboard
+	productId: number, -- the Developer Product id, from shared/ProductIds (0 until it is created)
 	caseId: string?,
 	playerId: string?,
 	cosmeticId: string?,
@@ -838,6 +840,11 @@ for _, def in Config.Cosmetics do
 			cosmeticId = def.id,
 		}
 	end
+end
+
+-- The real Developer Product ids (0 until the product exists on the dashboard).
+for key, product in Config.Products do
+	product.productId = ProductIds[key] or 0
 end
 
 -- The roof arena's name (tier 6), typed by the player: filtered by Roblox on the server before

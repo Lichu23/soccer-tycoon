@@ -2,7 +2,7 @@
 -- What every pad looks like (docs/PLAN.md, Step 1 and 7). Pads that buy or upgrade something are
 -- small round discs coloured by what the player can do: green = can use it now, red = it is open but
 -- costs more than the player has, grey = not open yet (a floor or the goals of a Legend). Player pads
--- use their own colours (PLAYER_COLORS): blue once owned, glowing red while buyable. Above each
+-- use their own colours (PLAYER_COLORS): blue once owned, glowing green or red while not. Above each
 -- pad sits a label with the name, the price and a short note (the goals, for a Legend), as white and
 -- green text with a thick black outline and no box, like the signs of other tycoons. The
 -- server times the hold; this only draws it from the player's attributes: padKey, padState, padStart
@@ -52,12 +52,12 @@ local COLORS = {
 	idle = Color3.fromRGB(132, 134, 142),
 }
 -- Player and Legend pads say at a glance whether the player is owned: a blue disc for an owned one
--- (it levels him up), a glowing red one for a player the owner can buy now, a dull red one for a
--- player still too expensive, grey for a floor that is not open yet.
+-- (it levels him up), a glowing green one for a player the owner can buy now, a glowing red one for
+-- a player still too expensive, grey for a floor that is not open yet.
 local PLAYER_COLORS = {
 	owned = Style.ui.bar,
-	buy = Color3.fromRGB(255, 70, 70),
-	cannotAfford = Color3.fromRGB(150, 80, 80),
+	buy = Style.ui.good,
+	cannotAfford = Color3.fromRGB(255, 70, 70),
 }
 -- Soft text colours (no neon); the thick black outline keeps them readable on any floor or sky.
 local TITLE_COLOR = Color3.fromRGB(255, 255, 255)
@@ -293,6 +293,7 @@ local function refresh(entry: Entry)
 			glowing = true
 		elseif isPlayer and info.state == "cannotAfford" then
 			disc.Color = PLAYER_COLORS.cannotAfford
+			glowing = true
 		else
 			disc.Color = padColor(info.state)
 		end
