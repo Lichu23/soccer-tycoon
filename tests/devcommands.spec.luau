@@ -84,7 +84,6 @@ T.test(
 		end
 		T.eq(levelled, 1)
 		T.eq(data.flags.hasClaimedPlot, true)
-		T.eq(data.flags.tilesSeen.kick, true)
 		local ok = ProfileSchema.validate(data)
 		T.eq(ok, true)
 	end

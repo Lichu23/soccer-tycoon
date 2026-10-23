@@ -101,7 +101,7 @@ T.test(
 				count += 1
 			end
 		end
-		T.eq(count, 18)
+		T.eq(count, 17)
 		for _, name in CLIENT_TO_SERVER do
 			local def = RemoteSpec.remotes[name]
 			T.truthy(def, name .. " is missing")

@@ -65,15 +65,14 @@ export type Profile = {
 		notificationsOn: boolean, -- the reminder opt-in answer (off until the player turns it on)
 		reminderIgnored: number, -- reminders in a row that were not followed by a return
 		reminderLastSentAt: number, -- os.time() of the last reminder sent to this player, 0 = never
-		tilesSeen: { [string]: boolean }, -- the Case, Kick and Shop buttons the player has tapped (their "1" is gone)
-		hasClaimedPlot: boolean, -- a returning player gets a plot at once, without the claim ring
+		hasClaimedPlot: boolean, -- claimed a plot before: later claims skip the plot tour
 		milestones: { [string]: number }, -- first_purchase, first_match... -> os.time() when first reached
 	},
 }
 
 local ProfileSchema = {}
 
-ProfileSchema.CURRENT_VERSION = 4
+ProfileSchema.CURRENT_VERSION = 5
 
 -- Receipts are kept for 30 days or the newest 100, whichever keeps more (Step 6).
 ProfileSchema.RECEIPT_KEEP_SECONDS = 30 * 24 * 60 * 60
@@ -120,7 +119,6 @@ function ProfileSchema.newProfile(): Profile
 			notificationsOn = false,
 			reminderIgnored = 0,
 			reminderLastSentAt = 0,
-			tilesSeen = {},
 			hasClaimedPlot = false,
 			milestones = {},
 		},
@@ -188,6 +186,15 @@ migrations[3] = function(data)
 		if type(levels.hatTrick) == "number" then
 			levels.hatTrick = math.min(levels.hatTrick, #(Config.Store :: any).hatTrick.prices)
 		end
+	end
+end
+
+-- 4 -> 5: the "1" on the Kick and Shop buttons follows the daily penalties and the free case now,
+-- not a first tap, so the saved taps are dropped.
+migrations[4] = function(data)
+	local flags = data.flags
+	if type(flags) == "table" then
+		flags.tilesSeen = nil
 	end
 end
 

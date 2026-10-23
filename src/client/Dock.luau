@@ -5,22 +5,31 @@
 -- (client/Icons), a picture above its label. The screens behind them are built by their own modules;
 -- this only draws the buttons and shows the reasons.
 
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local Icons = require(script.Parent.Icons)
-local Net = require(script.Parent.Net)
 local Style = require(ReplicatedStorage.Shared.Style)
 
-local SIZE = 46
+local SIZE = 46 -- on the smallest landscape phone; bigger screens scale the buttons up
 local GAP = 10
 local LEFT = 8
-local TOP = 8
+local TOP = 20 -- clear of the Roblox menu, chat and voice buttons above the safe area
 local REASON_SECONDS = 2.5
+-- The buttons grow with the screen height: 1x up to a phone (about 500 px tall), up to MAX_SCALE on
+-- a desktop or tablet, where 46 px tiles look tiny.
+local SCALE_REFERENCE_HEIGHT = 500
+local MAX_SCALE = 1.4
+local BESIDE_GAP = 10
 
 local Dock = {}
 
 Dock.SIZE = SIZE
+
+local scale = 1
+local placedTiles: { { button: GuiObject, slot: number, scaler: UIScale } } = {}
+local placedBeside: { { object: GuiObject, slot: number, dy: number } } = {}
+local watching = false
 
 export type Tile = {
 	button: TextButton,
@@ -30,6 +39,7 @@ export type Tile = {
 	color: Color3,
 	picture: ImageLabel?, -- the uploaded tile picture, when there is one
 	reasonToken: number,
+	pending: boolean, -- something free waits behind the button (its red "1", see Dock.badge)
 }
 
 local function new(className: string, props: { [string]: any }, parent: Instance?): any
@@ -43,9 +53,53 @@ local function new(className: string, props: { [string]: any }, parent: Instance
 	return instance
 end
 
--- Where the button of slot 1 to 5 sits.
+-- Where the button of slot 1 to 5 sits, at the current scale.
 function Dock.position(slot: number): UDim2
-	return UDim2.fromOffset(LEFT, TOP + (slot - 1) * (SIZE + GAP))
+	return UDim2.fromOffset(LEFT, TOP + (slot - 1) * (SIZE + GAP) * scale)
+end
+
+local function layout()
+	local camera = Workspace.CurrentCamera
+	local height = if camera then camera.ViewportSize.Y else 0
+	scale = math.clamp(height / SCALE_REFERENCE_HEIGHT, 1, MAX_SCALE)
+	for _, tile in placedTiles do
+		tile.button.Position = Dock.position(tile.slot)
+		tile.scaler.Scale = scale
+	end
+	for _, beside in placedBeside do
+		local tileTop = Dock.position(beside.slot).Y.Offset
+		beside.object.Position =
+			UDim2.fromOffset(LEFT + SIZE * scale + BESIDE_GAP, tileTop + beside.dy * scale)
+	end
+end
+
+-- Re-lays the buttons when the window or the device turns (the camera can also be replaced).
+local function watchViewport()
+	if watching then
+		return
+	end
+	watching = true
+	local sizeConnection: RBXScriptConnection? = nil
+	local function follow()
+		if sizeConnection then
+			sizeConnection:Disconnect()
+		end
+		local camera = Workspace.CurrentCamera
+		if camera then
+			sizeConnection = camera:GetPropertyChangedSignal("ViewportSize"):Connect(layout)
+		end
+		layout()
+	end
+	Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(follow)
+	follow()
+end
+
+-- Keeps a note or toast just right of the button in `slot`, `dy` pixels below its top (at 1x), so it
+-- follows the buttons when they scale.
+function Dock.placeBeside(object: GuiObject, slot: number, dy: number)
+	table.insert(placedBeside, { object = object, slot = slot, dy = dy })
+	watchViewport()
+	layout()
 end
 
 -- Builds a button. `iconName` picks the uploaded image in client/Icons, if any.
@@ -139,6 +193,12 @@ function Dock.build(
 	new("UICorner", { CornerRadius = UDim.new(0, 3) }, body)
 	new("UIStroke", { Color = Style.ui.dark, Thickness = 1.5 }, body)
 
+	-- The whole button (padlock, badge and reason line included) grows from its top-left corner.
+	local scaler = new("UIScale", {}, button)
+	table.insert(placedTiles, { button = button, slot = slot, scaler = scaler })
+	watchViewport()
+	layout()
+
 	return {
 		button = button,
 		accent = stroke,
@@ -147,23 +207,23 @@ function Dock.build(
 		color = accent,
 		picture = picture,
 		reasonToken = 0,
+		pending = false,
 	}
 end
 
--- Shows or hides the "1" of a button: only while the button is open (something is there to see) and has
--- not been tapped yet. Called when the saved answer changes and whenever the button is painted.
+-- Shows or hides the "1" of a button: while the button is open and something free waits behind it.
 local function refreshBadge(tile: Tile)
 	local badge: any = tile.button:FindFirstChild("Badge")
 	if badge == nil then
 		return
 	end
-	local value = Players.LocalPlayer:GetAttribute("tile_" .. badge:GetAttribute("TileId"))
-	badge.Visible = value == 0 and not tile.lock.Visible
+	badge.Visible = tile.pending and not tile.lock.Visible
 end
 
--- The small red "1" at the top-right corner of a button, shown once the button is open until it is
--- tapped for the first time. The server saves the tap (SeenTile) and says through the attribute tile_<id> (0 = not yet).
-function Dock.badge(tile: Tile, id: string)
+-- The small red "1" at the top-right corner of a button. It shows while something free waits behind
+-- the button (the daily penalties, the free case) and goes only when that is claimed, never on a tap:
+-- opening the button and leaving it unclaimed keeps it. The owner says when with Dock.setPending.
+function Dock.badge(tile: Tile)
 	local badge = new("TextLabel", {
 		Name = "Badge",
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -179,17 +239,15 @@ function Dock.badge(tile: Tile, id: string)
 	}, tile.button)
 	new("UICorner", { CornerRadius = UDim.new(1, 0) }, badge)
 	new("UIStroke", { Color = Style.ui.dark, Thickness = 2 }, badge)
-	badge:SetAttribute("TileId", id)
 	refreshBadge(tile)
-	Players.LocalPlayer:GetAttributeChangedSignal("tile_" .. id):Connect(function()
+end
+
+-- Whether something free waits behind the button (its "1"). Cheap to call every frame.
+function Dock.setPending(tile: Tile, pending: boolean)
+	if tile.pending ~= pending then
+		tile.pending = pending
 		refreshBadge(tile)
-	end)
-	tile.button.Activated:Connect(function()
-		if badge.Visible then
-			badge.Visible = false
-			Net.fire("SeenTile", id)
-		end
-	end)
+	end
 end
 
 -- Paints a button: "open" (normal), "ready" (open and something is waiting), "waiting" (open but

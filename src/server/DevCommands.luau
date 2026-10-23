@@ -28,8 +28,8 @@ DevCommands.commands = {
 --   grantTp n:    adds n training points
 --   resetDaily:   the free case and the penalty kicks are ready again
 --   quickStart:   the opening is done: floor 1 owned, its cheapest player at level 1 (the level-up
---                 tutorial is over), the plot counts as claimed before (no tour) and the Kick button
---                 as seen. DevTools claims the plot.
+--                 tutorial is over) and the plot counts as claimed before (no tour). DevTools claims
+--                 the plot.
 --   resetProfile: back to a brand-new profile
 function DevCommands.apply(data: ProfileSchema.Profile, command: string, amount: number): boolean
 	if command == "grantFloor" then
@@ -63,7 +63,6 @@ function DevCommands.apply(data: ProfileSchema.Profile, command: string, amount:
 			data.players[first.id].level = 1
 		end
 		data.flags.hasClaimedPlot = true
-		data.flags.tilesSeen.kick = true
 		return true
 	elseif command == "resetProfile" then
 		local fresh = ProfileSchema.newProfile()

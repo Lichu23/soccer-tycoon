@@ -196,13 +196,25 @@ function Arrow.init()
 		return last
 	end
 	local function refreshObjective()
+		local gold = "#" .. Style.ui.gold:ToHex()
+		-- A returning player picks a plot again; their club is rebuilt there (a new player follows
+		-- the trail to a ring without a chip).
+		if not State.hasPlot() then
+			chipIcon.Visible = false
+			chipText.Text = string.format(
+				'Welcome back! <font color="%s">Stand on a yellow ring</font> to claim a plot',
+				gold
+			)
+			chip.Visible = Roster.ownedCount(State.data) > 0
+			return
+		end
+		chipIcon.Visible = true
 		local phase, id, cost = levelGuide()
 		local def = if id then Config.PlayersById[id] else nil
 		if phase == nil or def == nil then
 			chip.Visible = false
 			return
 		end
-		local gold = "#" .. Style.ui.gold:ToHex()
 		chipText.Text = if phase == "train"
 			then string.format(
 				'Get %d TP in the Gym to level up %s  <font color="%s">%d/%d</font>',

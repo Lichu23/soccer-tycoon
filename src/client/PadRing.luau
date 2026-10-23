@@ -279,11 +279,7 @@ local function refresh(entry: Entry)
 	-- the stairs are worth climbing to see what is coming.
 	local storeDef = if entry.kind == "store" then (Config.Store :: any)[entry.padId] else nil
 	local hidden = (entry.kind == "claim" and State.hasPlot())
-		or (
-			entry.kind == "store"
-			and info.state == "locked"
-			and not (storeDef and storeDef.showLocked)
-		)
+		or (entry.kind == "store" and info.state == "locked" and not (storeDef and storeDef.showLocked))
 		or (entry.kind == "penalty" and info.price == "")
 	entry.billboard.Enabled = not hidden
 	if entry.disc then
@@ -308,6 +304,13 @@ local function track(part: Instance)
 	-- Only the owner's pads and the public claim rings get a label.
 	if ownerId ~= 0 and ownerId ~= player.UserId then
 		return
+	end
+	-- With streaming, a pad that streamed out and back in can be the same part, still carrying the
+	-- label built the first time. That label is no longer refreshed, so it goes before a new one.
+	for _, child in part:GetChildren() do
+		if child.Name == "PadBillboard" or child.Name == "PadDisc" then
+			child:Destroy()
+		end
 	end
 	local billboard, title, stars, price, note, lines, bar, fill =
 		buildBillboard(part, kind == "robux")
@@ -334,9 +337,19 @@ local function track(part: Instance)
 	refresh(entry)
 end
 
+-- The pad left (its plot went, or it streamed out): its label and disc go with it, so a pad that
+-- streams back in never shows a stale label under the new one.
 local function untrack(part: Instance)
-	if part:IsA("BasePart") then
-		entries[part] = nil
+	if not part:IsA("BasePart") then
+		return
+	end
+	local entry = entries[part]
+	entries[part] = nil
+	if entry then
+		entry.billboard:Destroy()
+		if entry.disc then
+			entry.disc:Destroy()
+		end
 	end
 end
 

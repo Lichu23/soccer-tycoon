@@ -3,8 +3,9 @@
 -- Chests box, with the odds before a purchase, and from floor 4 the Legends. The boosts are sold on the
 -- pads of the building, not here. One icon under the daily icons
 -- opens it. Every purchase takes two taps (open an item, then Buy), shows what it costs and what this
--- visit has spent, and never pushes: no timers, no badges, no popups. The server decides everything;
--- this only asks (RequestPurchase) and shows the answer.
+-- visit has spent, and never pushes: no timers, no popups, and the icon's red "1" only ever means the
+-- free case is ready (never a paid offer). The server decides everything; this only asks
+-- (RequestPurchase) and shows the answer.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -89,7 +90,7 @@ function ShopUi.init()
 	local tile = Dock.build(gui, "ShopIcon", 2, "SHOP", Style.ui.gold, "shop")
 	local icon = tile.button
 	local locked = true
-	Dock.badge(tile, "shop")
+	Dock.badge(tile)
 
 	local close: () -> ()
 	local built = Panel.build(gui, "Shop", 0.84, function()
@@ -632,6 +633,17 @@ function ShopUi.init()
 		end
 	end
 	State.onChange(refresh)
+	-- The "1" stays while the free case is ready and goes only when it is claimed (opening the Shop
+	-- and leaving keeps it). Checked every second, as the case gets ready with time.
+	task.spawn(function()
+		while true do
+			local unlocked = State.hasPlot() and player:GetAttribute("dailyUnlocked") == true
+			local readyAt = attribute("caseReadyAt")
+			local status = DailyInfo.status(unlocked, readyAt, Workspace:GetServerTimeNow())
+			Dock.setPending(tile, status == "ready")
+			task.wait(1)
+		end
+	end)
 	for _, name in
 		{
 			"casesOpen",

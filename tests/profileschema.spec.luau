@@ -270,6 +270,19 @@ T.test("version 2 drops the removed cash upgrade and gets the bought boost timer
 	T.eq((ProfileSchema.validate(data)), true)
 end)
 
+T.test("version 4 drops the saved button taps and gets the Faster training level", function()
+	local data = ProfileSchema.newProfile()
+	data.version = 4
+	data.flags.tilesSeen = { kick = true, shop = true }
+	data.storeLevels.gymRate = nil
+	T.eq((ProfileSchema.migrate(data)), true)
+	ProfileSchema.reconcile(data, ProfileSchema.newProfile())
+	T.eq(data.version, ProfileSchema.CURRENT_VERSION)
+	T.eq(data.flags.tilesSeen, nil)
+	T.eq(data.storeLevels.gymRate, 0)
+	T.eq((ProfileSchema.validate(data)), true)
+end)
+
 T.test("newer or invalid versions are refused", function()
 	local ok, reason = ProfileSchema.migrate({ version = ProfileSchema.CURRENT_VERSION + 1 })
 	T.eq(ok, false)
@@ -436,7 +449,7 @@ T.test("version 3 drops the offline upgrade and keeps at most the top hat-trick 
 	data.storeLevels.offline = 4
 	data.storeLevels.hatTrick = 5
 	T.eq((ProfileSchema.migrate(data)), true)
-	T.eq(data.version, 4)
+	T.eq(data.version, ProfileSchema.CURRENT_VERSION)
 	T.eq(data.storeLevels.offline, nil)
 	T.eq(data.storeLevels.hatTrick, 3)
 	T.eq((ProfileSchema.validate(data)), true)

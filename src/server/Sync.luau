@@ -14,7 +14,6 @@ local Progress = require(ReplicatedStorage.Shared.Progress)
 local Remotes = require(script.Parent.Remotes)
 local Session = require(script.Parent.Session)
 local ShopRules = require(script.Parent.ShopRules)
-local TileBadges = require(ReplicatedStorage.Shared.TileBadges)
 
 local Sync = {}
 
@@ -27,10 +26,6 @@ function Sync.scalars(session: Session.Session)
 	player:SetAttribute("seasonNumber", data.season.number)
 	player:SetAttribute("fieldStarted", data.fieldStarted)
 	player:SetAttribute("notificationsOn", data.flags.notificationsOn)
-	-- The "1" on the Case, Kick and Shop buttons: 0 = not tapped yet, 1 = tapped.
-	for _, id in TileBadges.ids do
-		player:SetAttribute("tile_" .. id, if TileBadges.seen(data, id) then 1 else 0)
-	end
 	-- The badge shows the multiplier of all running boosts and the time until the next one ends.
 	local left = Boosts.nextEnd(data)
 	player:SetAttribute("boostEndsAt", if left > 0 then Workspace:GetServerTimeNow() + left else 0)
