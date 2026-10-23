@@ -486,7 +486,7 @@ Config.Training = {
 Config.Cases = {
 	standard = {
 		id = "standard",
-		name = "Standard Case",
+		name = "Standard Chest",
 		floorsComplete = 1,
 		legendChance = 0.005,
 		boostChance = 0.5,
@@ -494,7 +494,7 @@ Config.Cases = {
 	},
 	elite = {
 		id = "elite",
-		name = "Elite Case",
+		name = "Elite Chest",
 		floorsComplete = 2,
 		legendChance = 0.02,
 		newOnly = true,

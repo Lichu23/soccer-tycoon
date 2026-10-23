@@ -209,12 +209,12 @@ function DailyUi.init()
 				return -- the cases screen shows it with its roulette
 			end
 			if won.kind == "cash" and type(won.amount) == "number" then
-				showPrize("Free case: +" .. NumberFormat.money(won.amount))
+				showPrize("Free chest: +" .. NumberFormat.money(won.amount))
 			elseif won.kind == "tp" and type(won.amount) == "number" then
-				showPrize("Free case: +" .. won.amount .. " training points")
+				showPrize("Free chest: +" .. won.amount .. " training points")
 			elseif won.kind == "boost" and type(won.seconds) == "number" then
 				showPrize(
-					string.format("Free case: x2 income for %d min", math.ceil(won.seconds / 60))
+					string.format("Free chest: x2 income for %d min", math.ceil(won.seconds / 60))
 				)
 			end
 		end

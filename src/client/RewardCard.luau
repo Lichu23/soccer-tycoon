@@ -25,7 +25,7 @@ local CARD_WIDTH = 360
 local DISPLAY_ORDER = 8 -- above the Shop, the Locker room and the cases screen
 
 export type Content = {
-	title: string, -- the ribbon: "PURCHASE", "FREE CASE", "PENALTIES DONE"
+	title: string, -- the ribbon: "PURCHASE", "FREE CHEST", "PENALTIES DONE"
 	big: string, -- the main line: what it is
 	detail: string?, -- one short line under it
 	icon: string?, -- a name in client/Icons
@@ -213,21 +213,21 @@ function RewardCard.freeCase(prize: any)
 	end
 	if prize.kind == "cash" and type(prize.amount) == "number" then
 		RewardCard.show({
-			title = "FREE CASE",
+			title = "FREE CHEST",
 			big = "+" .. NumberFormat.money(prize.amount),
 			detail = "Added to your cash",
 			icon = "cash",
 		})
 	elseif prize.kind == "tp" and type(prize.amount) == "number" then
 		RewardCard.show({
-			title = "FREE CASE",
+			title = "FREE CHEST",
 			big = "+" .. prize.amount .. " TP",
 			detail = "Added to your training points",
 			icon = "tp",
 		})
 	elseif prize.kind == "boost" and type(prize.seconds) == "number" then
 		RewardCard.show({
-			title = "FREE CASE",
+			title = "FREE CHEST",
 			big = "x2 boost",
 			detail = string.format("Double income for %d min", math.ceil(prize.seconds / 60)),
 			icon = "boost",

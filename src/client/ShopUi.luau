@@ -43,11 +43,11 @@ local CARD_REASONS: { [string]: string } = {
 }
 
 local REFUSALS: { [string]: string } = {
-	early = "Cases open once floor 1 is done.",
+	early = "Chests open once floor 1 is done.",
 	locked = "Not unlocked yet.",
 	owned = "You already have him.",
 	trials = "Finish his trials in the Legends hall first.",
-	restricted = "Cases are not available for you.",
+	restricted = "Chests are not available for you.",
 	off = "Not available right now.",
 	unavailable = "Not available right now.",
 }
@@ -232,7 +232,7 @@ function ShopUi.init()
 		local cases, robux = attribute("sessionCases"), attribute("sessionRobux")
 		if robux > 0 then
 			line(
-				`This visit: {cases} {if cases == 1 then "case" else "cases"}, {robux} Robux`,
+				`This visit: {cases} {if cases == 1 then "chest" else "chests"}, {robux} Robux`,
 				{ TextColor3 = Panel.MUTED }
 			)
 		end
@@ -467,7 +467,7 @@ function ShopUi.init()
 		card_(
 			parent,
 			"caseFree",
-			"Free Case",
+			"Free Chest",
 			"case",
 			status == "ready",
 			pill,
