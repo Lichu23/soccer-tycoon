@@ -6,7 +6,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 
-export type Wallet = { cash: number, tp: number }
+-- `stats` is there on a real profile: every grant adds to the lifetime cash earned (leaderboard).
+export type Wallet =
+	{ cash: number, tp: number, stats: { robuxSpent: number, cashEarned: number }? }
 
 local Economy = {}
 
@@ -34,7 +36,12 @@ function Economy.grant(data: Wallet, amount: number): number
 	end
 	local before = data.cash
 	data.cash = math.min(before + amount, Config.MaxCash)
-	return data.cash - before
+	local added = data.cash - before
+	local stats = data.stats
+	if stats then
+		stats.cashEarned = math.min(stats.cashEarned + added, Config.MaxCash)
+	end
+	return added
 end
 
 -- Takes `amount` training points. False (and nothing changes) when invalid or too much.

@@ -19,6 +19,7 @@ Sounds.ids = {
 	post = "rbxassetid://129307213411297", -- it goes wide and hits the post
 	save = "rbxassetid://9114010169", -- the keeper saves it
 	ambience = "rbxassetid://9119562311", -- the stadium around the penalty screen, looped
+	cash = "rbxassetid://79392333090964", -- the match is over: VICTORY and its cash
 } :: { [string]: string }
 
 -- How loud each effect is (0 to 1); a cheer is quieter than a short tap.
@@ -29,6 +30,7 @@ Sounds.volumes = {
 	post = 0.7,
 	save = 7, -- the file is very quiet (about 15 on the loudness scale, the others 100 to 340), so it is boosted
 	ambience = 0.35,
+	cash = 0.7,
 } :: { [string]: number }
 
 -- A long sound is cut after this many seconds, with a short fade (the crowd scream is 12 s long, the save 6 s).

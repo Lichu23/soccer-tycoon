@@ -1,6 +1,8 @@
--- Builds the Training Gym in ServerStorage.PlotTemplate: a real gym on the training yard. The yard
--- (x -130 to -50, z 60 to 140, the entrance is the gap in the wall at x -50, z 92 to 108, the path
--- side is +x) is split in two: an indoor GYM HALL next to the entrance (x -90 to -50) with a roof,
+-- Builds the Training Gym in ServerStorage.PlotTemplate: a real gym on the training yard. The gym is
+-- laid out below at z 60 to 140 and then moved SHIFT_Z along the path, so it stands on the yard
+-- (x -130 to -50, z 50 to 130, the entrance is the gap in the wall at x -50, z 82 to 98, the path
+-- side is +x) with its door facing the building's door (z 90). All the z values below are before
+-- that move. The yard is split in two: an indoor GYM HALL next to the entrance (x -90 to -50) with a roof,
 -- ceiling lights, a glass front, mirrors, dumbbell racks and benches, holding the two conditioning
 -- stations; and an OUTDOOR YARD behind it (x -130 to -90) with striped turf, a fence, floodlights and
 -- a small goal, holding the two skill stations. A wide doorway joins the two. Run through the Studio
@@ -9,10 +11,10 @@
 --
 --   outdoor yard (open sky)             gym hall (roof)
 --   x -110: keepie-uppies (z 80)        x -70: treadmill (z 80)
---           free kicks (z 120)                  agility ladder (z 120)
+--           free kicks (z 120)                  bench press (z 120)
 --
 -- Each station has a 14 x 14 marker (Kind "training", PadId trainingKeepie, trainingFreekick,
--- trainingTreadmill, trainingLadder); the server reads the pad key (TrainingActions) and PadInfo names
+-- trainingTreadmill, trainingBench); the server reads the pad key (TrainingActions) and PadInfo names
 -- the stations.
 
 local ServerStorage = game:GetService("ServerStorage")
@@ -28,7 +30,7 @@ for _, name in { "TrainingFloorAfk", "TrainingFloorActive", "TrainingDivider", "
 		old:Destroy()
 	end
 end
-for _, name in { "TrainingAfk", "TrainingActive", "TrainingTreadmill", "TrainingLadder", "TrainingKeepie", "TrainingDribble", "TrainingFreekick" } do
+for _, name in { "TrainingAfk", "TrainingActive", "TrainingTreadmill", "TrainingLadder", "TrainingBench", "TrainingKeepie", "TrainingDribble", "TrainingFreekick", "Store_gymRate" } do
 	local old = markers:FindFirstChild(name)
 	if old then
 		old:Destroy()
@@ -43,6 +45,7 @@ local gym = Instance.new("Folder")
 gym.Name = "Gym"
 gym.Parent = template
 
+local SHIFT_Z = -10 -- the move from the layout below to the yard (BuildPlotTemplate Def.Training)
 local GROUND = 0.5
 local TOP = 0.6 -- the walking height of the yard floor
 local H_TOP = 14 -- the height of the hall walls, under the roof
@@ -87,10 +90,10 @@ local function soft(part: Part): Part
 	return part
 end
 
-local function marker(name: string, padId: string, cx: number, cz: number)
+local function marker(name: string, padId: string, cx: number, cz: number, sx: number?, sz: number?)
 	local pad = Instance.new("Part")
 	pad.Name = name
-	pad.Size = Vector3.new(14, 0.2, 14)
+	pad.Size = Vector3.new(sx or 14, 0.2, sz or 14)
 	pad.CFrame = CFrame.new(cx, 0.8, cz)
 	pad.Anchored = true
 	pad.Color = Color3.fromRGB(60, 220, 220)
@@ -287,21 +290,24 @@ for index, x in { -126, -124, -122 } do
 	soft(box("SpareCone" .. index, x - 0.5, x + 0.5, TOP, 1.3, 132.2, 133.2, COLORS.cone))
 end
 
--- Treadmill (conditioning, x -70, z 80): a dark belt, side rails and a console at the back.
-box("TreadmillBelt", -76, -64, TOP, TOP + 0.15, 74, 86, COLORS.dark)
-soft(box("TreadmillRail", -77, -76, TOP, 4.4, 73.5, 86.5, COLORS.steel, Enum.Material.Metal))
-soft(box("TreadmillRail", -64, -63, TOP, 4.4, 73.5, 86.5, COLORS.steel, Enum.Material.Metal))
-soft(box("TreadmillConsole", -78.5, -77.5, 4, 6.4, 76, 84, COLORS.dark))
-for i = 0, 5 do
-	soft(box("TreadmillStripe", -76 + i * 2, -75.4 + i * 2, TOP + 0.15, TOP + 0.2, 74, 86, COLORS.line))
-end
+-- Treadmill (conditioning, x -70, z 80): the cartoon treadmill model (ServerStorage.GymModels.Treadmill,
+-- saved in the place): one generated mesh in white with a blue console, a navy belt with blue chevrons
+-- to the console (-x), and an invisible Stand on the belt with a Ramp at the back (+x), since the
+-- meshes do not collide. Its pivot is the bottom centre of the machine; with the ramp it spans x -5.6
+-- to 8.6 of it, so the pivot sits 1.5 studs short of the station centre. The old part-built treadmill
+-- is kept in ServerStorage.TreadmillOld.
+local treadmill = ServerStorage:WaitForChild("GymModels"):WaitForChild("Treadmill"):Clone()
+treadmill:PivotTo(CFrame.new(-71.5, TOP, 80))
+treadmill.Parent = gym
 
--- Agility ladder (conditioning, x -70, z 120): two rails and nine rungs lying along x.
-soft(box("LadderRail", -78, -62, TOP, TOP + 0.25, 117.2, 117.8, COLORS.line))
-soft(box("LadderRail", -78, -62, TOP, TOP + 0.25, 122.2, 122.8, COLORS.line))
-for i = 0, 8 do
-	soft(box("LadderRung", -77 + i * 1.9, -76.6 + i * 1.9, TOP, TOP + 0.2, 117.2, 122.8, COLORS.yellow))
-end
+-- Bench press (conditioning, x -70, z 120): the cartoon bench model (ServerStorage.GymModels.Bench,
+-- saved in the place): generated meshes in white with a blue pad, the rack's uprights at the -x end
+-- with the barbell (a white bar, one navy disc a side) on the hooks, and an invisible Seat tagged
+-- "BenchSeat" on the pad (server/BenchSeats lays the owner down, client/BenchPress animates the
+-- press). Its pivot is the bottom centre. The old agility ladder is kept in ServerStorage.LadderOld.
+local bench = ServerStorage:WaitForChild("GymModels"):WaitForChild("Bench"):Clone()
+bench:PivotTo(CFrame.new(-70, TOP, 120))
+bench.Parent = gym
 
 -- Keepie-uppies (skill, x -110, z 80): a dark turf mat with a painted circle and a ball.
 box("KeepieMat", -116, -104, TOP, TOP + 0.1, 74, 86, COLORS.mat)
@@ -345,7 +351,39 @@ end
 -- The name of each station is written by the pad label (client/PadRing), so there are no boards here.
 marker("TrainingKeepie", "trainingKeepie", -110, 80)
 marker("TrainingFreekick", "trainingFreekick", -110, 120)
-marker("TrainingTreadmill", "trainingTreadmill", -70, 80)
-marker("TrainingLadder", "trainingLadder", -70, 120)
+-- The conditioning pads only cover their machine: training needs the belt or the bench seat anyway.
+marker("TrainingTreadmill", "trainingTreadmill", -70, 80, 15, 7.2)
+marker("TrainingBench", "trainingBench", -70, 120, 8, 10)
+
+-- The Faster training upgrade (a Store pad, Config.Store.gymRate) between the two machines, on the
+-- walk in from the entrance: the same 7 x 7 orange marker as the Store pads of the building.
+local upgrade = Instance.new("Part")
+upgrade.Name = "Store_gymRate"
+upgrade.Size = Vector3.new(7, 0.2, 7)
+upgrade.CFrame = CFrame.new(-70, 0.8, 100)
+upgrade.Anchored = true
+upgrade.Color = Color3.fromRGB(255, 150, 50)
+upgrade.Material = Enum.Material.Neon
+upgrade.Transparency = 0.4
+upgrade.CanCollide = false
+upgrade.CanTouch = false
+upgrade.CanQuery = false
+upgrade:SetAttribute("PadId", "gymRate")
+upgrade:SetAttribute("Kind", "store")
+upgrade.Parent = markers
+
+-- Move the whole gym and its markers onto the yard.
+local shift = CFrame.new(0, 0, SHIFT_Z)
+for _, item in gym:GetChildren() do
+	if item:IsA("BasePart") then
+		item.CFrame = shift * item.CFrame
+	elseif item:IsA("Model") then
+		item:PivotTo(shift * item:GetPivot())
+	end
+end
+for _, name in { "TrainingKeepie", "TrainingFreekick", "TrainingTreadmill", "TrainingBench", "Store_gymRate" } do
+	local pad = markers[name] :: BasePart
+	pad.CFrame = shift * pad.CFrame
+end
 
 return "Gym built: " .. #gym:GetChildren() .. " parts, " .. #markers:GetChildren() .. " markers in total"

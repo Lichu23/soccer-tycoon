@@ -4,6 +4,7 @@
 -- decides every purchase. Pure, so it is unit tested.
 
 local Config = require(script.Parent.Config)
+local Formulas = require(script.Parent.Formulas)
 local Legends = require(script.Parent.Legends)
 local NumberFormat = require(script.Parent.NumberFormat)
 local Progress = require(script.Parent.Progress)
@@ -21,21 +22,22 @@ export type Info = {
 	lines: { Line }?, -- extra rows under the price (the goals of a Legend)
 	state: string, -- "ready", "cannotAfford", "locked", "owned", "maxed" or "info"
 	icon: string?, -- the name of a picture shown above the text (client/Icons), for the Robux packs
+	stars: number?, -- the stars of an owned player (from case duplicates), shown above the price
 }
 
 local STORE_NAMES: { [string]: string } = {
-	cashPerMatch = "More cash per match",
 	matchSpeed = "Faster matches",
 	hatTrick = "Hat-trick chance",
+	gymRate = "Faster training",
 	offline = "Offline earnings",
 }
 
 -- The stations of the Training Gym (the marker's PadId -> its name).
 local TRAINING_NAMES: { [string]: string } = {
 	trainingKeepie = "Keepie-uppies",
-	trainingFreekick = "Free kicks",
+	trainingFreekick = "1v1 Breakaway",
 	trainingTreadmill = "Treadmill",
-	trainingLadder = "Agility ladder",
+	trainingBench = "Bench press",
 }
 
 local PadInfo = {}
@@ -54,6 +56,7 @@ function PadInfo.levelUp(data: ProgressData, def: Config.PlayerDef): Info
 	local owned = data.players[def.id]
 	local cap = Config.Rarities[def.rarity].levelCap
 	local level = if owned then owned.level else 0
+	local stars = if owned then owned.stars else 0
 	local levelText = "Lv " .. level .. "/" .. cap
 	local benched = table.find(Roster.field(data), def.id) == nil
 	local status = Progress.levelStatus(data, def.id)
@@ -67,6 +70,7 @@ function PadInfo.levelUp(data: ProgressData, def: Config.PlayerDef): Info
 			price = "MAX",
 			note = if benched then levelText .. " · on the bench" else levelText,
 			state = "maxed",
+			stars = stars,
 		}
 	elseif status == "cannotAfford" then
 		local short = NumberFormat.short(cost - data.tp)
@@ -75,6 +79,7 @@ function PadInfo.levelUp(data: ProgressData, def: Config.PlayerDef): Info
 			price = NumberFormat.short(cost) .. " TP",
 			note = levelText .. " · need " .. short .. " TP",
 			state = status,
+			stars = stars,
 		}
 	end
 	return {
@@ -82,6 +87,7 @@ function PadInfo.levelUp(data: ProgressData, def: Config.PlayerDef): Info
 		price = NumberFormat.short(cost) .. " TP",
 		note = note,
 		state = status,
+		stars = stars,
 	}
 end
 
@@ -96,7 +102,14 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 		local status = Progress.playerStatus(data, padId)
 		if status == "owned" then
 			if not Progress.trainingUnlocked(data) then
-				return { title = def.name, price = "OWNED", note = "", state = "owned" }
+				local owned = data.players[padId]
+				return {
+					title = def.name,
+					price = "OWNED",
+					note = "",
+					state = "owned",
+					stars = if owned then owned.stars else 0,
+				}
 			end
 			return PadInfo.levelUp(data, def)
 		elseif status == "locked" then
@@ -123,7 +136,14 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 		local status = Legends.status(data, padId)
 		if status == "owned" then
 			if not Progress.trainingUnlocked(data) then
-				return { title = def.name, price = "OWNED", note = "", state = "owned" }
+				local owned = data.players[padId]
+				return {
+					title = def.name,
+					price = "OWNED",
+					note = "",
+					state = "owned",
+					stars = if owned then owned.stars else 0,
+				}
 			end
 			return PadInfo.levelUp(data, def)
 		end
@@ -151,7 +171,11 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 		local status = Progress.storeStatus(data, id)
 		local price = Progress.storePrice(data, id)
 		if status == "locked" then
-			return { title = title, price = "LOCKED", note = "Not unlocked yet", state = status }
+			local minTier = Config.Store[id].minTier
+			local note = if minTier and data.stadiumTier < minTier
+				then `Stadium Tier {minTier} needed`
+				else "Not unlocked yet"
+			return { title = title, price = "LOCKED", note = note, state = status }
 		elseif status == "maxed" or price == nil then
 			return { title = title, price = "MAX", note = "", state = "maxed" }
 		elseif status == "cannotAfford" then
@@ -162,20 +186,44 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 				state = status,
 			}
 		end
-		return { title = title, price = NumberFormat.money(price), note = "", state = status }
+		-- Faster training says what the next level gives (the others are told by their name).
+		local note = if id == "gymRate"
+			then `Next: {Formulas.storeValue(id, data.storeLevels.gymRate + 1)} TP a minute`
+			else ""
+		return { title = title, price = NumberFormat.money(price), note = note, state = status }
 	elseif kind == "robux" then
 		-- A cash or TP pack bought with Robux: the amount in the ring, the price under it. Whether it
 		-- can be bought yet is the server's call (the first 30 minutes), it says so when stepped on.
 		local product = Config.Products[padId]
-		if product == nil or product.amount == nil then
+		if product ~= nil and product.kind == "timedBoost" then
+			-- An x2 boost: what it doubles and for how long in the ring, the price under it.
+			local both = product.boostsCash and product.boostsTp
+			local cashMinutes = math.floor(Config.Boost.paidCashSeconds / 60)
+			local tpMinutes = math.floor(Config.Boost.paidTpSeconds / 60)
+			return {
+				title = if both
+					then "x2 Cash + TP"
+					elseif product.boostsTp then "x2 TP"
+					else "x2 Cash",
+				price = if both
+					then `{cashMinutes}/{tpMinutes} MIN`
+					elseif product.boostsTp then `{tpMinutes} MIN`
+					else `{cashMinutes} MIN`,
+				note = product.robux .. " Robux",
+				state = "ready",
+				icon = if both then "boost" elseif product.boostsTp then "tp" else "cash",
+			}
+		end
+		local isCash = product ~= nil and product.kind == "cash"
+		if product == nil or (if isCash then product.minutes == nil else product.amount == nil) then
 			return { title = padId, price = "", note = "", state = "locked" }
 		end
-		local isCash = product.kind == "cash"
+		-- A cash pack is minutes of the player's own income (the amount is worked out at the purchase).
 		return {
 			title = if isCash then "Cash pack" else "TP pack",
 			price = if isCash
-				then "+" .. NumberFormat.money(product.amount)
-				else "+" .. NumberFormat.short(product.amount) .. " TP",
+				then "+" .. string.upper(NumberFormat.minutes(product.minutes :: number))
+				else "+" .. NumberFormat.short(product.amount :: number) .. " TP",
 			note = product.robux .. " Robux",
 			state = "ready",
 			icon = if isCash then "cash" else "tp",
@@ -191,10 +239,21 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 				state = "locked",
 			}
 		end
+		if padId ~= "trainingTreadmill" and not Progress.firstLevelDone(data) then
+			return {
+				title = title,
+				price = "",
+				note = "Level up a player first",
+				state = "locked",
+			}
+		end
 		local note = if padId == "trainingFreekick"
-			then "Score in a row for TP"
+			then "Dribble and score for TP"
 			elseif skill then "Tap in time for TP"
-			else "Stand here: 10 TP per minute"
+			elseif
+				padId == "trainingBench"
+			then `Lie here: {Progress.idleTpPerMinute(data)} TP per minute`
+			else `Stand here: {Progress.idleTpPerMinute(data)} TP per minute`
 		return { title = title, price = "", note = note, state = "info" }
 	elseif kind == "penalty" then
 		-- Whether kicks are left today is the server's call (the client shows the wait time).

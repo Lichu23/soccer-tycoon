@@ -1,7 +1,8 @@
 --!strict
 -- The stadium upgrade cinematic (docs/PLAN.md, Step 7), about 6 seconds, only for the player who
 -- bought it: controls lock, the camera moves over the court, the new pitch rises out of the ground
--- (the server builds it once the camera has arrived), and three short texts show what changed.
+-- (the server builds it once the camera has arrived), and three short texts show what changed. The
+-- roof arena rises with its roof closed, and the roof then opens over the pitch.
 -- The first upgrade cannot be skipped, later ones can with a tap. It always ends by itself after a
 -- time limit, so nobody is left stuck. Reduced motion: no camera shake and the new pitch just
 -- appears. The server finishes the upgrade whatever happens here.
@@ -28,6 +29,8 @@ local SHAKE_SIZE = 0.45
 local RISE_SECONDS = 1.1
 local RISE_SPREAD = 0.7 -- the far parts start this much later than the middle ones
 local SKIP_AFTER = 0.8 -- a skip tap is ignored right after the start (a leftover tap)
+local ROOF_HOLD = 0.4 -- the closed roof waits this long after the pitch has risen
+local ROOF_OPEN_SECONDS = 1.6
 
 local StadiumCinematic = {}
 
@@ -59,26 +62,49 @@ local function setControls(enabled: boolean)
 	end)
 end
 
--- Lifts every part of a freshly built pitch out of the ground, the middle first.
+-- Lifts every part of a freshly built pitch out of the ground, the middle first. A retractable roof
+-- rises closed and then opens (its panels carry how far they slide, server/Stadium). With streaming
+-- the folder arrives before its parts, so parts that come in during the rise are lifted too.
 local function rise(court: Instance, length: number, middle: Vector3)
 	local reduced = GuiService.ReducedMotionEnabled
 	if reduced then
 		return
 	end
 	local info = TweenInfo.new(RISE_SECONDS, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-	for _, part in court:GetChildren() do
-		if part:IsA("BasePart") then
-			local final = part.CFrame
-			local distance = (part.Position - middle).Magnitude
-			part.CFrame = final - Vector3.new(0, part.Size.Y + 2, 0)
-			local delay = math.clamp(distance / math.max(length, 1), 0, 1) * RISE_SPREAD
-			task.delay(delay, function()
+	local opening =
+		TweenInfo.new(ROOF_OPEN_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+	local started = os.clock()
+	local function lift(part: Instance)
+		if not part:IsA("BasePart") then
+			return
+		end
+		local open = part.CFrame
+		local slide = part:GetAttribute("Slide")
+		local final = if typeof(slide) == "Vector3" then open + slide else open
+		local waited = os.clock() - started
+		if typeof(slide) == "Vector3" then
+			task.delay(math.max(0, RISE_SECONDS + RISE_SPREAD + ROOF_HOLD - waited), function()
 				if part.Parent then
-					TweenService:Create(part, info, { CFrame = final }):Play()
+					TweenService:Create(part, opening, { CFrame = open }):Play()
 				end
 			end)
 		end
+		local distance = (part.Position - middle).Magnitude
+		part.CFrame = final - Vector3.new(0, part.Size.Y + 2, 0)
+		local delay = math.clamp(distance / math.max(length, 1), 0, 1) * RISE_SPREAD
+		task.delay(math.max(0, delay - waited), function()
+			if part.Parent then
+				TweenService:Create(part, info, { CFrame = final }):Play()
+			end
+		end)
 	end
+	for _, part in court:GetChildren() do
+		lift(part)
+	end
+	local arriving = court.ChildAdded:Connect(lift)
+	task.delay(RISE_SPREAD, function()
+		arriving:Disconnect()
+	end)
 end
 
 local function makeGui(): (ScreenGui, TextLabel, TextLabel)
@@ -273,7 +299,9 @@ local function play(info: any)
 		3.3,
 		showText,
 		title,
-		"Field " .. info.fieldFrom .. " to " .. info.fieldTo,
+		if info.fieldFrom == info.fieldTo
+			then "Retractable roof"
+			else "Field " .. info.fieldFrom .. " to " .. info.fieldTo,
 		1.3,
 		myToken
 	)

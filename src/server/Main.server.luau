@@ -6,21 +6,24 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Actions = require(script.Parent.Actions)
 local Analytics = require(script.Parent.Analytics)
+local BenchSeats = require(script.Parent.BenchSeats)
 local DailyActions = require(script.Parent.DailyActions)
 local DevTools = require(script.Parent.DevTools)
+local LeaderboardService = require(script.Parent.LeaderboardService)
+local Leaderstats = require(script.Parent.Leaderstats)
 local Match = require(script.Parent.Match)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Legends = require(ReplicatedStorage.Shared.Legends)
 local Offline = require(script.Parent.Offline)
 local Pads = require(script.Parent.Pads)
 local Plots = require(script.Parent.Plots)
-local Roster = require(ReplicatedStorage.Shared.Roster)
 local ReminderService = require(script.Parent.ReminderService)
 local Remotes = require(script.Parent.Remotes)
 local Purchases = require(script.Parent.Purchases)
 local RevealActions = require(script.Parent.RevealActions)
 local Session = require(script.Parent.Session)
 local Stadium = require(script.Parent.Stadium)
+local StadiumName = require(script.Parent.StadiumName)
 local TileBadges = require(ReplicatedStorage.Shared.TileBadges)
 local Training = require(script.Parent.Training)
 local TrainingActions = require(script.Parent.TrainingActions)
@@ -29,11 +32,14 @@ local Sync = require(script.Parent.Sync)
 Remotes.init()
 DevTools.start()
 Session.init()
+Leaderstats.start()
+LeaderboardService.start()
 Pads.start()
 Plots.init()
 Match.start()
 DailyActions.start()
 TrainingActions.start()
+BenchSeats.start()
 RevealActions.start()
 Purchases.start()
 ReminderService.start()
@@ -51,13 +57,20 @@ Actions.onChange = function(session, what, id)
 	if what == "case" then
 		RevealActions.send(session, id) -- a case win: the reveal plays after the result is saved
 	elseif what == "player" then
+		-- The reveal plays first; the first match waits for it and brings its own camera (Match).
 		RevealActions.send(session, id)
-		if
-			Analytics.milestone(session, "first_purchase")
-			and Roster.ownedCount(session.data) == 1
-		then
-			-- The first player ever: the camera shows the pitch until the first match ends.
-			Remotes.fireClient("Notice", session.player, { kind = "firstMatch" })
+		Analytics.milestone(session, "first_purchase")
+	elseif what == "level" and id then
+		-- The client shows what the level gave (RewardCard).
+		local owned = session.data.players[id]
+		Analytics.milestone(session, "first_level") -- opens the other training stations for good
+		if owned then
+			Remotes.fireClient("Notice", session.player, {
+				kind = "levelUp",
+				playerId = id,
+				level = owned.level,
+				stars = owned.stars,
+			})
 		end
 	elseif what == "store" then
 		Analytics.milestone(session, "first_upgrade")
@@ -139,6 +152,52 @@ Remotes.on("SetCosmetic", function(player: Player, ...: any)
 	local session = Session.get(player)
 	if session and type(slot) == "string" and type(id) == "string" then
 		Actions.setCosmetic(session, slot, id)
+	end
+end)
+
+Remotes.on("BuyCosmetic", function(player: Player, ...: any)
+	local id = select(1, ...)
+	local session = Session.get(player)
+	if session == nil or type(id) ~= "string" then
+		return
+	end
+	local ok, reason = Actions.buyCosmetic(session, id)
+	if ok then
+		Analytics.event(session, "cosmetic_cash")
+	else
+		-- The Locker room shows why (the same notice as a refused Robux purchase).
+		Remotes.fireClient("Notice", player, { kind = "purchaseRefused", reason = reason })
+	end
+end)
+
+Remotes.on("RenameStadium", function(player: Player, ...: any)
+	local raw = select(1, ...)
+	local session = Session.get(player)
+	if session == nil or type(raw) ~= "string" then
+		return
+	end
+	local text = StadiumName.clean(raw)
+	local ok, reason = StadiumName.check(session.data, text)
+	local filtered = if ok then StadiumName.filter(player, text) else nil
+	session = Session.get(player) -- the filter yields; the player may have left
+	if session == nil then
+		return
+	end
+	if ok and filtered == nil then
+		ok, reason = false, "unavailable"
+	end
+	if ok and filtered then
+		session.runtime.stadiumName = filtered
+		ok, reason = Actions.renameStadium(session, text, filtered)
+		if not ok then
+			session.runtime.stadiumName = nil
+			Stadium.ensure(session) -- filters the saved name again
+		end
+	end
+	if ok then
+		Analytics.event(session, "stadium_renamed")
+	else
+		Remotes.fireClient("Notice", player, { kind = "renameRefused", reason = reason })
 	end
 end)
 

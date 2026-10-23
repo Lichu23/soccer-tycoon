@@ -21,17 +21,13 @@ local function playing()
 	return data
 end
 
--- Rolls that make a kick score: no miss, and the keeper dives to the first zone.
-local GOAL_ROLLS = { miss = 0.99, keeper = 0 }
-local SAVE_ROLLS = { miss = 0.99, keeper = 0.99 }
-
 T.test("nothing is open before the first player is bought", function()
 	local data = ProfileSchema.newProfile()
 	T.eq(Daily.unlocked(data), false)
 	local prize, why = Daily.claimCase(data, T0, 0.9)
 	T.eq(prize, nil)
 	T.eq(why, "locked")
-	local result, reason = Daily.kick(data, T0, "topRight", GOAL_ROLLS)
+	local result, reason = Daily.recordKick(data, T0, true)
 	T.eq(result, nil)
 	T.eq(reason, "locked")
 	T.eq(Daily.kicksLeft(data, T0), 0)
@@ -132,10 +128,10 @@ T.test("three kicks, then nothing until 20 hours after the first kick", function
 	T.eq(Daily.kicksLeft(data, T0), 3)
 	T.eq(Daily.penaltyReadyAt(data, T0), 0)
 	for _ = 1, 3 do
-		T.truthy(Daily.kick(data, T0 + 100, "topLeft", SAVE_ROLLS) ~= nil)
+		T.truthy(Daily.recordKick(data, T0 + 100, false) ~= nil)
 	end
 	T.eq(Daily.kicksLeft(data, T0 + 200), 0)
-	local result, why = Daily.kick(data, T0 + 200, "topLeft", GOAL_ROLLS)
+	local result, why = Daily.recordKick(data, T0 + 200, true)
 	T.eq(result, nil)
 	T.eq(why, "notReady")
 	-- The cooldown counts from the first kick (T0 + 100), not from the last.
@@ -149,33 +145,30 @@ T.test(
 	"kicks left after leaving mid batch are still there, until the batch is 20 hours old",
 	function()
 		local data = playing()
-		Daily.kick(data, T0, "topLeft", SAVE_ROLLS)
+		Daily.recordKick(data, T0, false)
 		T.eq(Daily.kicksLeft(data, T0 + 5 * HOUR), 2)
-		T.truthy(Daily.kick(data, T0 + 5 * HOUR, "topLeft", SAVE_ROLLS) ~= nil)
+		T.truthy(Daily.recordKick(data, T0 + 5 * HOUR, false) ~= nil)
 		T.eq(Daily.kicksLeft(data, T0 + COOLDOWN), 3)
 	end
 )
 
-T.test("a kick is a goal unless the keeper dives to the same zone or the shot goes wide", function()
+T.test("a kick counts as a goal only when it was judged a goal", function()
 	local data = playing()
-	-- keeper roll 0 = first zone (topLeft)
-	local saved = Daily.kick(data, T0, "topLeft", GOAL_ROLLS)
-	T.eq(saved.keeper, "topLeft")
-	T.eq(saved.goal, false)
-	T.eq(saved.wide, false)
-	local scored = Daily.kick(data, T0, "center", GOAL_ROLLS)
+	local missed = Daily.recordKick(data, T0, false)
+	T.eq(missed.goal, false)
+	T.eq(missed.goals, 0)
+	T.eq(missed.boostSeconds, 0)
+	local scored = Daily.recordKick(data, T0, true)
 	T.eq(scored.goal, true)
-	local wide = Daily.kick(data, T0, "topRight", { miss = 0, keeper = 0 })
-	T.eq(wide.goal, false)
-	T.eq(wide.wide, true)
+	T.eq(scored.goals, 1)
+	T.eq(scored.kicksLeft, 1)
 end)
 
 T.test("the penalty boost totals 3 / 5 / 10 minutes for 1 / 2 / 3 goals", function()
 	for goals = 0, 3 do
 		local data = playing()
 		for kick = 1, 3 do
-			-- The keeper always dives topLeft: center scores, topLeft is saved.
-			Daily.kick(data, T0, if kick <= goals then "center" else "topLeft", GOAL_ROLLS)
+			Daily.recordKick(data, T0, kick <= goals)
 		end
 		T.eq(data.daily.goals, goals)
 		T.eq(data.boosts.penaltyBoostLeft, Config.Daily.penaltyBoostSeconds[goals])
@@ -184,22 +177,14 @@ end)
 
 T.test("the boost is paid goal by goal, so leaving after one kick keeps what was scored", function()
 	local data = playing()
-	local first = Daily.kick(data, T0, "center", GOAL_ROLLS)
+	local first = Daily.recordKick(data, T0, true)
 	T.eq(first.boostSeconds, 180)
 	T.eq(data.boosts.penaltyBoostLeft, 180)
-	local second = Daily.kick(data, T0, "center", GOAL_ROLLS)
+	local second = Daily.recordKick(data, T0, true)
 	T.eq(second.boostSeconds, 120)
-	local third = Daily.kick(data, T0, "center", GOAL_ROLLS)
+	local third = Daily.recordKick(data, T0, true)
 	T.eq(third.boostSeconds, 300)
 	T.eq(third.kicksLeft, 0)
-end)
-
-T.test("an unknown aim zone is refused and does not use a kick", function()
-	local data = playing()
-	local result, why = Daily.kick(data, T0, "middle", GOAL_ROLLS)
-	T.eq(result, nil)
-	T.eq(why, "badAim")
-	T.eq(Daily.kicksLeft(data, T0), 3)
 end)
 
 T.test("the penalty boost multiplies with the stadium boost and is capped by the total", function()

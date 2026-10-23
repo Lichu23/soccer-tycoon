@@ -54,31 +54,34 @@ T.test("locked, Legend and unknown players cannot be bought", function()
 	T.eq(session.data.cash, 1e15)
 end)
 
-T.test("the first Store upgrade costs $15 and adds a level", function()
-	local session = newSession(15)
-	local ok = Actions.buyStore(session, "cashPerMatch", 0)
+T.test("the first match speed upgrade costs $120 and adds a level", function()
+	local session = newSession(120)
+	session.data.stadiumTier = 2
+	local ok = Actions.buyStore(session, "matchSpeed", 0)
 	T.eq(ok, true)
 	T.eq(session.data.cash, 0)
-	T.eq(session.data.storeLevels.cashPerMatch, 1)
-	T.deepEq(changes, { "store:cashPerMatch" })
+	T.eq(session.data.storeLevels.matchSpeed, 1)
+	T.deepEq(changes, { "store:matchSpeed" })
 end)
 
 T.test("a double tap on a Store upgrade cannot buy two levels", function()
-	local session = newSession(1000)
-	local first = Actions.buyStore(session, "cashPerMatch", 0)
-	local second, reason = Actions.buyStore(session, "cashPerMatch", 0) -- the client still saw level 0
+	local session = newSession(10_000) -- enough for the second level too, so only the level stops it
+	session.data.stadiumTier = 2
+	local first = Actions.buyStore(session, "matchSpeed", 0)
+	local second, reason = Actions.buyStore(session, "matchSpeed", 0) -- the client still saw level 0
 	T.eq(first, true)
 	T.eq(second, false)
 	T.eq(reason, "stale")
-	T.eq(session.data.storeLevels.cashPerMatch, 1)
-	T.eq(session.data.cash, 985)
+	T.eq(session.data.storeLevels.matchSpeed, 1)
+	T.eq(session.data.cash, 9_880)
 end)
 
 T.test("a Store upgrade that is locked or maxed is refused", function()
 	local session = newSession(1e9)
 	T.eq(select(2, Actions.buyStore(session, "matchSpeed", 0)), "locked")
-	session.data.storeLevels.cashPerMatch = 8
-	T.eq(select(2, Actions.buyStore(session, "cashPerMatch", 8)), "maxed")
+	session.data.stadiumTier = 2
+	session.data.storeLevels.matchSpeed = 5
+	T.eq(select(2, Actions.buyStore(session, "matchSpeed", 5)), "maxed")
 end)
 
 T.test("the stadium upgrade costs $250, adds a tier and starts a x2 boost", function()
@@ -112,7 +115,7 @@ end)
 T.test("the stadium upgrade is refused without cash and at the top tier", function()
 	local session = newSession(249)
 	T.eq(select(2, Actions.upgradeStadium(session)), "cannotAfford")
-	session.data.stadiumTier = 5
+	session.data.stadiumTier = #Config.StadiumTiers
 	session.data.cash = 1e12
 	T.eq(select(2, Actions.upgradeStadium(session)), "maxed")
 end)
@@ -131,3 +134,53 @@ T.test("a failed purchase does not start the matches", function()
 	Actions.buyPlayer(session, "rashford") -- $10, cannot afford
 	T.eq(session.data.fieldStarted, false)
 end)
+
+T.test("a cash style is paid once, owned and put on, and a second tap charges nothing", function()
+	local session = newSession(5_000)
+	local ok = Actions.buyCosmetic(session, "kit_red") -- $3,000
+	T.eq(ok, true)
+	T.eq(session.data.cash, 2_000)
+	T.eq(session.data.cosmetics.owned.kit_red, true)
+	T.eq(session.data.cosmetics.chosen.kit, "kit_red")
+	T.deepEq(changes, { "cosmetic:kit_red" })
+	local again, reason = Actions.buyCosmetic(session, "kit_red")
+	T.eq(again, false)
+	T.eq(reason, "owned")
+	T.eq(session.data.cash, 2_000)
+end)
+
+T.test(
+	"a cash style needs its tier and the cash, and Robux or free styles are not sold for cash",
+	function()
+		local session = newSession(100)
+		T.eq(select(2, Actions.buyCosmetic(session, "kit_red")), "cannotAfford")
+		T.eq(select(2, Actions.buyCosmetic(session, "crest_ruby")), "tier")
+		T.eq(select(2, Actions.buyCosmetic(session, "kit_gold")), "free")
+		T.eq(select(2, Actions.buyCosmetic(session, "kit_blue")), "free")
+		T.eq(session.data.cash, 100)
+		T.deepEq(changes, {})
+	end
+)
+
+T.test(
+	"the roof arena's name is tidied, checked and paid for, and a filtered name is refused",
+	function()
+		local StadiumName = T.load("server/StadiumName")
+		T.eq(StadiumName.clean("  Thunder   Park!  "), "Thunder Park!")
+		T.eq(StadiumName.clean("Bad<>Name\n"), "BadName")
+		local session = newSession(Config.StadiumName.price)
+		T.eq(select(2, Actions.renameStadium(session, "Thunder Park", "Thunder Park")), "tier")
+		session.data.stadiumTier = #Config.StadiumTiers
+		T.eq(select(2, Actions.renameStadium(session, "TP", "TP")), "length")
+		T.eq(select(2, Actions.renameStadium(session, "Thunder Park", "Thunder ####")), "filtered")
+		T.eq(session.data.cash, Config.StadiumName.price) -- nothing charged
+		T.eq(Actions.renameStadium(session, "Thunder Park", "Thunder Park"), true)
+		T.eq(session.data.stadiumName, "Thunder Park")
+		T.eq(session.data.cash, 0)
+		T.eq(select(2, Actions.renameStadium(session, "Thunder Park", "Thunder Park")), "same")
+		T.eq(
+			select(2, Actions.renameStadium(session, "Golden Dome", "Golden Dome")),
+			"cannotAfford"
+		)
+	end
+)

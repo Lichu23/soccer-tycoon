@@ -23,7 +23,7 @@ export type RarityDef = {
 	costFactor: number, -- training level cost multiplier
 }
 
-export type StoreUpgradeId = "cashPerMatch" | "matchSpeed" | "hatTrick" | "offline"
+export type StoreUpgradeId = "matchSpeed" | "hatTrick" | "gymRate"
 
 export type StoreUpgradeDef = {
 	id: StoreUpgradeId,
@@ -32,6 +32,7 @@ export type StoreUpgradeDef = {
 	values: { number }, -- values[level] is the value at that level
 	minTier: number?, -- stadium tier needed to unlock
 	floorsComplete: number?, -- floors completed needed to unlock
+	showLocked: boolean?, -- the pad stays visible (greyed) while locked, instead of hidden
 }
 
 export type StadiumTierDef = {
@@ -40,6 +41,7 @@ export type StadiumTierDef = {
 	field: number, -- players on the field
 	courtLength: number, -- the pitch of this tier, in studs
 	courtWidth: number,
+	cashMultiplier: number, -- every match pays this times the field income (it replaced the cash upgrade)
 }
 
 export type CaseDef = {
@@ -47,19 +49,30 @@ export type CaseDef = {
 	name: string,
 	floorsComplete: number, -- floors completed to unlock it
 	legendChance: number, -- the share of a pull that is a Legend (fixed, taken off the top)
+	-- The share of a pull that is a x2 cash or TP boost of Config.CaseBoosts instead of a player (also off
+	-- the top). nil for a case of players only.
+	boostChance: number?,
+	-- Only players not owned yet (no duplicates) while any is left in the case; a floor with none left
+	-- passes its share to the others.
+	newOnly: boolean?,
 	-- Shares of the rest: a player of the floors reached, of the next floor, of the floors further on.
 	odds: { reached: number, nextFloor: number, further: number },
 }
 
 export type ProductDef = {
 	key: string,
-	kind: "case" | "boost" | "legend" | "cosmetic" | "cash" | "tp",
+	kind: "case" | "legend" | "cosmetic" | "cash" | "tp" | "timedBoost",
 	robux: number, -- the price shown on the button (the real price is set on the dashboard)
 	productId: number, -- the Developer Product id, 0 until it is created on the dashboard
 	caseId: string?,
 	playerId: string?,
 	cosmeticId: string?,
-	amount: number?, -- the cash or the training points a pack gives (fixed amounts)
+	amount: number?, -- the training points a TP pack gives (a fixed amount)
+	minutes: number?, -- a cash pack: this many minutes of the player's normal income (Daily.caseCash)
+	-- A timed boost: what it doubles. The cash part runs for Config.Boost.paidCashSeconds of online
+	-- time, the TP part for Config.Boost.paidTpSeconds.
+	boostsCash: boolean?,
+	boostsTp: boolean?,
 }
 
 export type CosmeticSlotDef = { id: string, name: string, tier: number }
@@ -69,7 +82,15 @@ export type CosmeticDef = {
 	slot: string,
 	name: string,
 	color: { number }, -- r, g, b (0 to 255): the swatch and, for the kit, the shirt colour
-	robux: number?, -- nil = a free style
+	-- The colours the stadium parts of the slot take in turn (banner boards), nil = all `color`.
+	pattern: { { number } }?,
+	accent: { number }?, -- the text on the part (scoreboard, banners), nil = the part's own
+	brands: { string }?, -- the made-up sponsors the banner boards show in turn
+	image: string?, -- the crest's picture (an uploaded decal, art in tools/art)
+	model: string?, -- a floodlight model (CourtPlan.LAMPS)
+	design: string?, -- a scoreboard design (shared/StadiumLook)
+	cash: number?, -- a cash price; with neither price the style is free
+	robux: number?,
 }
 
 export type TrialGoal = {
@@ -232,9 +253,16 @@ Config.Boost = {
 	totalCap = 4, -- timed and banked boosts never multiply above this
 	stadiumMultiplier = 2,
 	stadiumSeconds = 300, -- counts only while online
-	matchPackSize = 30,
-	matchBankMax = 60,
+	-- A banked boosted match doubles the match. Nothing sells banked matches any more (the 30-match
+	-- product was dropped: x2 Cash gave three times the value for the same price); kept for old saves.
 	matchMultiplier = 2,
+	-- The x2 boosts bought on the Robux pads in the middle of floor 1: cash, TP, or both. Each
+	-- purchase adds its time of online time to its timer, up to paidMaxSeconds. The TP boost lasts
+	-- longer because it only pays while the stamina lasts (about half of the time).
+	paidMultiplier = 2,
+	paidCashSeconds = 10 * 60,
+	paidTpSeconds = 20 * 60,
+	paidMaxSeconds = 60 * 60,
 }
 
 export type CaseReward = {
@@ -254,15 +282,16 @@ Config.Daily = {
 	penaltyMultiplier = 1.5,
 	-- Seconds of boost for the number of goals scored out of 3 kicks.
 	penaltyBoostSeconds = { [0] = 0, [1] = 180, [2] = 300, [3] = 600 } :: { [number]: number },
-	-- Chance that a kick goes wide or over before the keeper is even asked, by aim zone. Corners
-	-- are riskier than the middle; the keeper then dives to a random zone.
-	zoneMissChance = {
-		topLeft = 0.2,
-		topRight = 0.2,
-		bottomLeft = 0.08,
-		bottomRight = 0.08,
-		center = 0.03,
-	} :: { [string]: number },
+	-- Each kick is played like the shot of the 1v1 breakaway (shared/Penalty): the reticle and the
+	-- power meter of Config.Training, then a film of `penaltyFilmSeconds` (the run-up, the strike, the
+	-- result). The next kick's reticle starts `penaltyLeadSeconds` after the film. The keeper always
+	-- stands in the middle of the goal and reaches `penaltyKeeperReach` to either side (goal units at
+	-- the sweet power; the posts are at 1), so only a kick placed towards a post beats him.
+	penaltyLeadSeconds = 1.2,
+	penaltyFilmSeconds = 5.2,
+	penaltyKeeperReach = 0.5,
+	-- The penalty's green zone: from the breakaway's weak power up to this (wider than the 1v1's).
+	penaltyGoodHigh = 0.82,
 	-- The free daily case: five small rewards (never players, never large amounts). `weight` is the
 	-- relative chance. Cash is worth `minutes` of normal income, a boost is x2 for `seconds`, `tp`
 	-- is a few training points. The roulette on screen spins through exactly these.
@@ -312,6 +341,8 @@ Config.Daily = {
 
 Config.Offline = {
 	capSeconds = 4 * 60 * 60,
+	-- The share of normal income earned while away, the same for everyone (no upgrade).
+	rate = 0.25,
 }
 
 -- Reminders for players who opted in (docs/PLAN.md, Step 3, Notifications): the offline bank is full or
@@ -336,7 +367,17 @@ Config.Stars = {
 Config.Training = {
 	bonusPerLevel = 0.03,
 	levelCostBase = 40, -- cost of level L = base x L x rarity cost factor
-	idleTpPerMinute = 10,
+	-- Players whose levels cost something else, level by level. The first player bought is the
+	-- level-up tutorial (Arrow): his first level is quick to earn in the Training Gym.
+	levelCostOverrides = {
+		rashford = { 5, 10, 20, 40, 50 },
+	} :: { [string]: { number } },
+	idleTpPerMinute = 20,
+	-- The level-up tutorial: until the first level ever, the treadmill pays `tutorialTpPerMinute`
+	-- while the player has less than `tutorialTp` (the first level of the first player, see
+	-- levelCostOverrides), holds them on the belt until then, and the other stations stay locked.
+	tutorialTp = 5,
+	tutorialTpPerMinute = 40,
 	staminaSeconds = 300,
 	staminaRefillSeconds = 300, -- time away to refill from empty
 	-- Keepie-uppies (a skill station of the Training Gym), an endless streak: the ball is kicked up and
@@ -345,9 +386,11 @@ Config.Training = {
 	-- `juggleWindow` seconds either side of that moment is a clean touch and the streak grows; a tap
 	-- outside it or a ball left to drop ends the streak. The result shows for `juggleOverSeconds`, then
 	-- a new streak starts after `juggleLeadSeconds`. The longest streak is the personal best; the
-	-- medals (`juggleMedals`: bronze, silver, gold) are streak milestones. Each touch pays
-	-- `juggleBaseTp` plus `juggleComboTp` per step of the streak up to `juggleComboMax`, at most
-	-- `juggleTpPerMinuteMax` TP in any minute for the skill games together (the treadmill pays 10).
+	-- medals (`juggleMedals`: bronze, silver, gold) are streak milestones. Each touch pays by its
+	-- place in the streak (`juggleTpTiers`: touches up to `upTo` pay `tp`; past the last tier
+	-- `juggleTpFloor`), with no cap per minute: a new streak starts again at the top tier, and the
+	-- stamina bar ends the session. The breakaway's goals are capped at
+	-- `freekickTpPerMinuteMax` TP in any minute (the treadmill pays `idleTpPerMinute`).
 	juggleBounceSeconds = 0.8,
 	juggleBounceStep = 0.006,
 	juggleBounceMin = 0.5,
@@ -355,44 +398,76 @@ Config.Training = {
 	juggleLeadSeconds = 2, -- "get ready": the first ball of a streak leaves the foot this long after it starts
 	juggleIntroSeconds = 4, -- extra time before the first streak after stepping on the mat, to read how to play
 	juggleOverSeconds = 2.5, -- the result of a streak shows this long before the next one starts
-	juggleBaseTp = 0.35,
-	juggleComboTp = 0.05,
-	juggleComboMax = 10,
-	juggleTpPerMinuteMax = 40,
+	juggleTpTiers = {
+		{ upTo = 40, tp = 1 }, -- 40 TP for the first 40 touches
+		{ upTo = 110, tp = 0.5 },
+		{ upTo = 210, tp = 0.3 },
+		{ upTo = 340, tp = 0.2 },
+	},
+	juggleTpFloor = 0.1,
+	freekickTpPerMinuteMax = 40,
 	juggleMedals = { bronze = 10, silver = 25, gold = 50 },
-	-- Free kicks (the other skill station), an endless streak of goals. Each kick has three steps: a
-	-- power bar that goes up and down (`freekickPowerSeconds` from empty to full), a tap on the ball
-	-- for the contact point (the side curls it, below the middle lifts it), and an aim marker that
-	-- sweeps across the goal (`freekickAimSeconds` from one side to the other). A tap may be stamped up
-	-- to `freekickGraceSeconds` in the past (a slow connection). The shot then flies for
-	-- `freekickFlightSeconds`: a goal adds one to the streak and the next kick comes, anything else
-	-- ends the streak and the result shows for `freekickOverSeconds`.
-	-- The shot, in goal units: the posts are at x -1 and 1, the bar at height 1. The wall stands
-	-- `freekickWallAt` of the way to the goal; `freekickWallHalf` wide either side of its middle and
-	-- `freekickWallTop` high. The height of the ball at the wall and at the goal grows with the lift
-	-- (0 for a hit at the top of the ball, 1 at the bottom) and the power (`freekickPowerSweet` is the
-	-- power for a normal flight). The keeper reaches `freekickKeeperReach` from where he stands, less
-	-- for a hard shot and more with every goal of the streak (`freekickKeeperReachStep`, up to
+	-- The 1v1 breakaway (the free-kick spot, the other skill station), an endless streak of goals. Each
+	-- attack: the through-ball arrives (`freekickLeadSeconds`), then a skill move shows and waits
+	-- `freekickMoveSeconds` for its key (less `freekickMoveStep` with every goal, down to
+	-- `freekickMoveMin`), or the defender wins the ball. Then the aim reticle glides over the goal
+	-- mouth (across in `freekickAimSeconds`, up in `freekickAimUpSeconds`) until a tap locks it, then
+	-- the power meter fills by itself (empty to full in `freekickPowerSeconds`, then back) until a
+	-- second tap shoots. An input may be stamped up to `freekickGraceSeconds` in the past (a slow
+	-- connection). A beaten defender plays the dribble film (`freekickDribbleSeconds`) before the aim
+	-- starts; after the shot the strike and the result play for `freekickFilmSeconds` (a lost dribble
+	-- plays its own film for `freekickTackleSeconds`): a goal adds one to the streak and the next
+	-- attack comes, anything else ends the streak and the result shows for `freekickOverSeconds`.
+	-- The shot, in goal units: the posts are at x -1 and 1, the bar at height 1. The height at the goal
+	-- is the reticle's, plus `freekickPowerLift` per unit of power above `freekickPowerSweet`. The
+	-- keeper stands up to `freekickKeeperSpread` from the middle and reaches `freekickKeeperReach`,
+	-- less for a hard shot and more with every goal of the streak (`freekickKeeperReachStep`, up to
 	-- `freekickKeeperReachMax` more).
-	freekickPowerSeconds = 0.75,
-	freekickAimSeconds = 1.4,
+	freekickLeadSeconds = 1.2,
+	freekickIntroSeconds = 1.5, -- extra time before the first attack after stepping on the spot, to get ready
+	freekickMoveSeconds = 1.1,
+	freekickMoveStep = 0.05,
+	freekickMoveMin = 0.45,
+	freekickAimSeconds = 1.5,
+	freekickAimUpSeconds = 1.05,
+	freekickAimRange = 1.25, -- the reticle glides from -this to +this (a little past the posts)
+	freekickAimLow = 0.1, -- the reticle's lowest and highest height
+	freekickAimHigh = 0.92,
+	freekickPowerSeconds = 0.7,
+	-- The meter starts to move this long after the aim is locked (a double tap does not shoot).
+	freekickPowerDelay = 0.3,
+	-- The meter fills faster with every goal of the streak: `freekickPowerStep` less, down to
+	-- `freekickPowerMin`.
+	freekickPowerStep = 0.02,
+	freekickPowerMin = 0.5,
+	-- The shot clock: from the start of the aim the player has `freekickShotSeconds` to lock the aim
+	-- and shoot, `freekickShotStep` less with every goal of the streak down to `freekickShotMin`
+	-- (reached on the 10th goal, the gold medal). The floor still leaves time for the reticle to reach
+	-- a corner and the meter to fill once. When it runs out the keeper smothers a rushed shot.
+	-- The practice attack has no clock.
+	freekickShotSeconds = 6,
+	freekickShotStep = 0.3,
+	freekickShotMin = 3,
+	freekickPowerSweet = 0.7,
+	freekickPowerLift = 1.2,
+	freekickWeakPower = 0.3, -- below this the shot rolls to the keeper
+	-- The green zone of the meter: from `freekickGoodLow` up to `freekickGoodHigh` on the first
+	-- attack, narrower with every goal (its bottom `freekickGoodLowStep` higher up to
+	-- `freekickGoodLowMax`, its top `freekickGoodHighStep` lower down to `freekickGoodHighMin`). A
+	-- free kick stopped under it rolls to the keeper, over it flies over the bar.
+	freekickGoodLow = 0.42,
+	freekickGoodHigh = 0.8,
+	freekickGoodLowStep = 0.02,
+	freekickGoodLowMax = 0.61,
+	freekickGoodHighStep = 0.003,
+	freekickGoodHighMin = 0.77,
 	freekickGraceSeconds = 0.2,
-	freekickFlightSeconds = 1.6,
-	freekickLeadSeconds = 1, -- the power bar starts this long after a kick begins
-	freekickIntroSeconds = 1.5, -- extra time before the first kick after stepping on the spot, to get ready
+	freekickDribbleSeconds = 2,
+	freekickFilmSeconds = 4,
+	freekickTackleSeconds = 3,
 	freekickOverSeconds = 2.5,
-	freekickAimRange = 1.3, -- the aim marker sweeps from -this to +this (a little past the posts)
 	freekickBallRadius = 0.05,
-	freekickWallAt = 0.4,
-	freekickWallHalf = 0.3,
-	freekickWallTop = 0.6,
-	freekickWallLift = 1.1, -- height at the wall per unit of lift
-	freekickGoalLift = 1.3, -- height at the goal per unit of lift
-	freekickWallPower = 0.3, -- extra height at the wall per unit of power above the sweet power
-	freekickGoalPower = 1.2, -- extra height at the goal per unit of power above the sweet power
-	freekickPowerSweet = 0.75,
-	freekickWeakPower = 0.35, -- below this the shot rolls to the keeper
-	freekickCurl = 0.7, -- how far a hit at the very side of the ball bends the flight at its middle
+	freekickKeeperSpread = 0.3,
 	freekickKeeperReach = 0.42,
 	freekickKeeperReachStep = 0.015,
 	freekickKeeperReachMax = 0.15,
@@ -412,6 +487,7 @@ Config.Cases = {
 		name = "Standard Case",
 		floorsComplete = 1,
 		legendChance = 0.005,
+		boostChance = 0.5,
 		odds = { reached = 0.70, nextFloor = 0.25, further = 0.05 },
 	},
 	elite = {
@@ -419,18 +495,56 @@ Config.Cases = {
 		name = "Elite Case",
 		floorsComplete = 2,
 		legendChance = 0.02,
+		newOnly = true,
 		odds = { reached = 0.40, nextFloor = 0.40, further = 0.20 },
 	},
 } :: { [string]: CaseDef }
 
+export type CaseBoost = {
+	id: string,
+	kind: "cash" | "tp", -- what it doubles: the match cash or the TP of the Training Gym
+	label: string,
+	detail: string,
+	seconds: number, -- added to the paid x2 cash or TP timer (Boosts.addCaseBoost), never cut
+	weight: number, -- the relative chance within the case's boost share
+}
+
+-- The boosts of a case that has a boostChance: half x2 TP, half x2 cash, all longer than the 10
+-- minutes a Robux pad sells. The cash ones keep their first ids (saved receipts name them).
+Config.CaseBoosts = {} :: { CaseBoost }
+for _, kind in { "tp", "cash" } :: { "cash" | "tp" } do
+	for _, step in
+		{
+			{ minutes = 15, weight = 30 },
+			{ minutes = 30, weight = 15 },
+			{ minutes = 60, weight = 5 },
+		}
+	do
+		table.insert(Config.CaseBoosts, {
+			id = (if kind == "cash" then "caseBoost" else "caseBoostTp") .. step.minutes,
+			kind = kind,
+			label = if kind == "cash" then "x2 Cash" else "x2 TP",
+			detail = step.minutes .. " minutes",
+			seconds = step.minutes * 60,
+			weight = step.weight,
+		})
+	end
+end
+
+Config.CaseBoostsById = {} :: { [string]: CaseBoost }
+for _, boost in Config.CaseBoosts do
+	Config.CaseBoostsById[boost.id] = boost
+end
+
 Config.CaseRules = {
 	slotDecay = 0.7,
-	noOfferSeconds = 30 * 60, -- no case offer until this long after the first purchase
 	duplicateCashMinutes = 5, -- a duplicate past the star cap pays this much income instead
 }
 
 -- Developer Products. `productId` stays 0 until the product exists on the dashboard (then the
--- server only simulates the purchase in Studio). Prices are placeholders to set in Step 8.
+-- server only simulates the purchase in Studio). Prices follow one rate, about 3 to 4 Robux per
+-- minute of play saved (the 10-minute x2 Cash boost for 39), measured in the pricing simulation
+-- (docs/PLAN.md, Step 3, Robux prices).
 Config.Products = {
 	caseStandard = {
 		key = "caseStandard",
@@ -439,8 +553,7 @@ Config.Products = {
 		productId = 0,
 		caseId = "standard",
 	},
-	caseElite = { key = "caseElite", kind = "case", robux = 149, productId = 0, caseId = "elite" },
-	matchBoost = { key = "matchBoost", kind = "boost", robux = 39, productId = 0 },
+	caseElite = { key = "caseElite", kind = "case", robux = 79, productId = 0, caseId = "elite" },
 	legend_ronaldinho = {
 		key = "legend_ronaldinho",
 		kind = "legend",
@@ -476,70 +589,240 @@ Config.Products = {
 		productId = 0,
 		playerId = "pele",
 	},
-	-- Cash and TP packs, bought on the Robux pads outside the building. Fixed amounts (the same for
-	-- everyone); the Robux prices are placeholders like the rest.
-	cash_small = { key = "cash_small", kind = "cash", robux = 25, productId = 0, amount = 10_000 },
-	cash_medium = {
-		key = "cash_medium",
-		kind = "cash",
-		robux = 99,
+	-- Cash and TP packs, bought on the Robux pads outside the building. A cash pack is minutes of the
+	-- player's own normal income, so it is worth the same at every stage (a fixed amount was worth
+	-- nothing after minute 17). TP packs are fixed amounts: the TP rate never grows.
+	cash_small = { key = "cash_small", kind = "cash", robux = 39, productId = 0, minutes = 15 },
+	cash_medium = { key = "cash_medium", kind = "cash", robux = 129, productId = 0, minutes = 60 },
+	cash_large = { key = "cash_large", kind = "cash", robux = 399, productId = 0, minutes = 240 },
+	tp_small = { key = "tp_small", kind = "tp", robux = 39, productId = 0, amount = 500 },
+	tp_medium = { key = "tp_medium", kind = "tp", robux = 149, productId = 0, amount = 2_500 },
+	tp_large = { key = "tp_large", kind = "tp", robux = 499, productId = 0, amount = 10_000 },
+	-- The x2 boosts on the pads in the middle of floor 1 (10 minutes of cash, 20 of TP).
+	boost_cash = {
+		key = "boost_cash",
+		kind = "timedBoost",
+		robux = 39,
 		productId = 0,
-		amount = 100_000,
+		boostsCash = true,
 	},
-	cash_large = {
-		key = "cash_large",
-		kind = "cash",
-		robux = 349,
+	boost_tp = { key = "boost_tp", kind = "timedBoost", robux = 39, productId = 0, boostsTp = true },
+	boost_both = {
+		key = "boost_both",
+		kind = "timedBoost",
+		robux = 69,
 		productId = 0,
-		amount = 1_000_000,
+		boostsCash = true,
+		boostsTp = true,
 	},
-	tp_small = { key = "tp_small", kind = "tp", robux = 25, productId = 0, amount = 500 },
-	tp_medium = { key = "tp_medium", kind = "tp", robux = 99, productId = 0, amount = 2_500 },
-	tp_large = { key = "tp_large", kind = "tp", robux = 349, productId = 0, amount = 10_000 },
 } :: { [string]: ProductDef }
 
--- Team customization (docs/PLAN.md, Step 3): each stadium tier opens one slot with free styles and a
--- few premium ones. Premium styles are cosmetic only, kept across seasons and bought directly (no
--- random cosmetic crates). The first style of a slot is its default. Counts and prices are
--- provisional; the dashboard product ids are 0 until the products exist.
+-- Team customization (docs/PLAN.md, Step 3): each stadium tier opens one slot with free styles, a
+-- few bought with cash and a few with Robux. Bought styles are cosmetic only, kept across seasons and
+-- bought directly (no random cosmetic crates). The first style of a slot is its default. The two cash
+-- prices of a slot are about 10 and 25 minutes of income near the end of the slot's tier (pricing
+-- simulation). Counts are provisional; the dashboard product ids are 0 until the products exist.
 Config.CosmeticSlots = {
 	{ id = "kit", name = "Kit", tier = 1 },
 	{ id = "crest", name = "Crest", tier = 2 },
 	{ id = "banners", name = "Banners", tier = 3 },
-	{ id = "floodlights", name = "Floodlights", tier = 4 },
+	{ id = "lamps", name = "Floodlights", tier = 3 },
+	{ id = "floodlights", name = "Light colour", tier = 4 },
 	{ id = "scoreboard", name = "Scoreboard", tier = 5 },
+	{ id = "stadium", name = "Stadium", tier = 6 },
 } :: { CosmeticSlotDef }
 
-local function style(id: string, slot: string, name: string, color: { number }, robux: number?)
-	return { id = id, slot = slot, name = name, color = color, robux = robux } :: CosmeticDef
+type Look = {
+	pattern: { { number } }?,
+	accent: { number }?,
+	brands: { string }?,
+	image: string?,
+	model: string?,
+	design: string?,
+}
+type Price = { cash: number?, robux: number? }
+
+local function style(
+	id: string,
+	slot: string,
+	name: string,
+	color: { number },
+	price: Price?,
+	look: Look?
+): CosmeticDef
+	return {
+		id = id,
+		slot = slot,
+		name = name,
+		color = color,
+		pattern = look and look.pattern,
+		accent = look and look.accent,
+		brands = look and look.brands,
+		image = look and look.image,
+		model = look and look.model,
+		design = look and look.design,
+		cash = price and price.cash,
+		robux = price and price.robux,
+	}
 end
 
+local WHITE = { 240, 240, 240 }
+local NAVY = { 32, 38, 56 }
+local GOLD = { 255, 205, 60 }
+
 Config.Cosmetics = {
-	style("kit_blue", "kit", "Blue", { 60, 120, 230 }, nil),
-	style("kit_white", "kit", "White", { 235, 235, 240 }, nil),
-	style("kit_green", "kit", "Green", { 50, 170, 90 }, nil),
-	style("kit_gold", "kit", "Gold", { 235, 190, 50 }, 99),
-	style("kit_black", "kit", "Midnight", { 35, 38, 50 }, 99),
-	style("crest_shield", "crest", "Shield", { 200, 205, 220 }, nil),
-	style("crest_star", "crest", "Star", { 250, 210, 70 }, nil),
-	style("crest_ball", "crest", "Ball", { 240, 240, 240 }, nil),
-	style("crest_crown", "crest", "Crown", { 240, 180, 40 }, 79),
-	style("crest_flame", "crest", "Flame", { 240, 100, 40 }, 79),
-	style("banners_plain", "banners", "Plain", { 210, 215, 225 }, nil),
-	style("banners_stripes", "banners", "Stripes", { 90, 150, 230 }, nil),
-	style("banners_dots", "banners", "Dots", { 230, 120, 140 }, nil),
-	style("banners_gold", "banners", "Gold set", { 235, 190, 50 }, 129),
-	style("banners_neon", "banners", "Neon set", { 70, 240, 200 }, 129),
-	style("floodlights_white", "floodlights", "White", { 255, 255, 250 }, nil),
-	style("floodlights_warm", "floodlights", "Warm", { 255, 214, 150 }, nil),
-	style("floodlights_cool", "floodlights", "Cool", { 170, 210, 255 }, nil),
-	style("floodlights_aurora", "floodlights", "Aurora", { 120, 255, 190 }, 149),
-	style("floodlights_rose", "floodlights", "Rose", { 255, 140, 190 }, 149),
-	style("scoreboard_classic", "scoreboard", "Classic", { 40, 44, 60 }, nil),
-	style("scoreboard_light", "scoreboard", "Light", { 225, 228, 238 }, nil),
-	style("scoreboard_retro", "scoreboard", "Retro", { 70, 160, 80 }, nil),
-	style("scoreboard_gold", "scoreboard", "Gold", { 235, 190, 50 }, 199),
-	style("scoreboard_crystal", "scoreboard", "Crystal", { 150, 220, 250 }, 199),
+	style("kit_blue", "kit", "Blue", { 60, 120, 230 }),
+	style("kit_white", "kit", "White", { 235, 235, 240 }),
+	style("kit_green", "kit", "Green", { 50, 170, 90 }),
+	style("kit_red", "kit", "Red", { 220, 60, 60 }, { cash = 3_000 }),
+	style("kit_purple", "kit", "Purple", { 150, 90, 220 }, { cash = 8_000 }),
+	style("kit_gold", "kit", "Gold", { 235, 190, 50 }, { robux = 99 }),
+	style("kit_black", "kit", "Midnight", { 35, 38, 50 }, { robux = 99 }),
+	style("crest_shield", "crest", "Shield", { 205, 210, 225 }, nil, {
+		image = "rbxassetid://119246926723352",
+	}),
+	style("crest_star", "crest", "Star", { 255, 210, 70 }, nil, {
+		image = "rbxassetid://91284134429976",
+	}),
+	style("crest_ball", "crest", "Ball", { 60, 120, 230 }, nil, {
+		image = "rbxassetid://109239234345017",
+	}),
+	style("crest_ruby", "crest", "Ruby", { 210, 50, 70 }, { cash = 300_000 }, {
+		image = "rbxassetid://108259967301092",
+	}),
+	style("crest_emerald", "crest", "Emerald", { 40, 160, 95 }, { cash = 700_000 }, {
+		image = "rbxassetid://84216287066856",
+	}),
+	style("crest_crown", "crest", "Crown", { 150, 90, 220 }, { robux = 79 }, {
+		image = "rbxassetid://139431546168199",
+	}),
+	style("crest_flame", "crest", "Flame", { 240, 100, 40 }, { robux = 79 }, {
+		image = "rbxassetid://120423274947356",
+	}),
+	-- Each banner set is a group of made-up sponsors (never real brands) in their colours. The
+	-- first one keeps the sponsor colours the boards always had.
+	style("banners_plain", "banners", "Sponsors", { 200, 50, 60 }, nil, {
+		pattern = { { 200, 50, 60 }, { 30, 110, 200 }, { 240, 190, 50 }, { 40, 150, 90 } },
+		brands = { "VOLTA", "FIZZUP", "ZOOMR", "PIXEL" },
+		accent = WHITE,
+	}),
+	style("banners_stripes", "banners", "Kickz", { 90, 150, 230 }, nil, {
+		pattern = { { 90, 150, 230 }, WHITE },
+		brands = { "KICKZ", "KICKZ BOOTS" },
+		accent = NAVY,
+	}),
+	style("banners_dots", "banners", "Fizz", { 230, 120, 140 }, nil, {
+		pattern = { { 230, 120, 140 }, { 150, 90, 220 } },
+		brands = { "FIZZUP", "fizz it up!" },
+		accent = WHITE,
+	}),
+	style("banners_sunset", "banners", "Sunny", { 245, 140, 40 }, { cash = 6_000_000 }, {
+		pattern = { { 245, 140, 40 }, { 235, 90, 130 }, { 150, 90, 220 } },
+		brands = { "SUNNY JUICE", "GOALAZO", "SUNNY JUICE" },
+		accent = WHITE,
+	}),
+	style("banners_ocean", "banners", "Wave", { 40, 150, 220 }, { cash = 15_000_000 }, {
+		pattern = { { 40, 150, 220 }, { 60, 200, 200 }, { 30, 90, 180 } },
+		brands = { "WAVE AIR", "BLUEBYTE", "WAVE AIR" },
+		accent = WHITE,
+	}),
+	style("banners_gold", "banners", "Gold set", { 235, 190, 50 }, { robux = 129 }, {
+		pattern = { { 235, 190, 50 }, NAVY },
+		brands = { "GOLDEN BOOT", "TROPHY BANK" },
+		accent = NAVY,
+	}),
+	style("banners_neon", "banners", "Neon set", { 70, 240, 200 }, { robux = 129 }, {
+		pattern = { { 70, 240, 200 }, { 150, 90, 220 } },
+		brands = { "NEON NOVA", "ZAPP" },
+		accent = NAVY,
+	}),
+	-- The floodlight models, on the masts of every tier (shared/CourtPlan).
+	style(
+		"lamps_led",
+		"lamps",
+		"LED light",
+		{ 32, 38, 56 },
+		nil,
+		{ model = "led", accent = { 255, 244, 214 } }
+	),
+	style(
+		"lamps_twin",
+		"lamps",
+		"Twin panels",
+		{ 32, 38, 56 },
+		nil,
+		{ model = "twin", accent = { 255, 244, 214 } }
+	),
+	style(
+		"lamps_bank",
+		"lamps",
+		"Lamp bank",
+		{ 82, 88, 100 },
+		nil,
+		{ model = "bank", accent = { 255, 244, 214 } }
+	),
+	style("lamps_tower", "lamps", "Tower", { 82, 88, 100 }, { cash = 8_000_000 }, {
+		model = "tower",
+		accent = { 255, 244, 214 },
+	}),
+	style("lamps_arena", "lamps", "Arena tower", { 82, 88, 100 }, { cash = 20_000_000 }, {
+		model = "arena",
+		accent = { 255, 244, 214 },
+	}),
+	style("lamps_halo", "lamps", "Halo", { 150, 90, 220 }, { robux = 149 }, {
+		model = "halo",
+		accent = { 255, 244, 214 },
+	}),
+	style("lamps_gold", "lamps", "Gold tower", { 235, 190, 50 }, { robux = 149 }, {
+		model = "gold",
+		accent = { 255, 244, 214 },
+	}),
+	-- The colour the floodlights glow (the lamp faces and the lamps under the roofs).
+	style("floodlights_white", "floodlights", "White", { 255, 250, 235 }),
+	style("floodlights_warm", "floodlights", "Sunny", { 255, 200, 90 }),
+	style("floodlights_cool", "floodlights", "Sky blue", { 110, 190, 255 }),
+	style("floodlights_gold", "floodlights", "Red", { 255, 80, 80 }, { cash = 120_000_000 }),
+	style("floodlights_ice", "floodlights", "Green", { 90, 240, 120 }, { cash = 300_000_000 }),
+	style("floodlights_aurora", "floodlights", "Aurora", { 80, 255, 210 }, { robux = 149 }),
+	style("floodlights_rose", "floodlights", "Pink", { 255, 110, 200 }, { robux = 149 }),
+	-- Each scoreboard is its own design (shared/StadiumLook) in its own colours.
+	style("scoreboard_classic", "scoreboard", "Classic", { 40, 44, 60 }, nil, {
+		design = "classic",
+		accent = GOLD,
+	}),
+	style("scoreboard_light", "scoreboard", "Framed", { 225, 228, 238 }, nil, {
+		design = "framed",
+		accent = { 60, 120, 230 },
+	}),
+	style("scoreboard_retro", "scoreboard", "Retro", { 50, 120, 70 }, nil, {
+		design = "retro",
+		accent = WHITE,
+	}),
+	style("scoreboard_navy", "scoreboard", "Neon", NAVY, { cash = 800_000_000 }, {
+		design = "neon",
+		accent = { 120, 235, 140 },
+	}),
+	style("scoreboard_ruby", "scoreboard", "Derby", { 200, 50, 70 }, { cash = 2_000_000_000 }, {
+		design = "split",
+		pattern = { { 200, 50, 70 }, { 40, 110, 210 } },
+		accent = WHITE,
+	}),
+	style("scoreboard_gold", "scoreboard", "Gold", { 235, 190, 50 }, { robux = 199 }, {
+		design = "framed",
+		accent = NAVY,
+	}),
+	style("scoreboard_crystal", "scoreboard", "Crystal", { 20, 30, 60 }, { robux = 199 }, {
+		design = "neon",
+		accent = { 120, 220, 255 },
+	}),
+	-- The outside of the roof arena: its roofs, pillars and stands.
+	style("stadium_white", "stadium", "White", { 226, 229, 236 }),
+	style("stadium_silver", "stadium", "Silver", { 170, 176, 190 }),
+	style("stadium_sky", "stadium", "Sky", { 120, 180, 240 }),
+	style("stadium_red", "stadium", "Red", { 210, 60, 70 }, { cash = 3_000_000_000 }),
+	style("stadium_green", "stadium", "Green", { 60, 170, 100 }, { cash = 7_500_000_000 }),
+	style("stadium_gold", "stadium", "Gold", { 235, 190, 50 }, { robux = 199 }),
+	style("stadium_midnight", "stadium", "Midnight", { 40, 44, 70 }, { robux = 199 }),
 } :: { CosmeticDef }
 
 Config.CosmeticsById = {} :: { [string]: CosmeticDef }
@@ -557,8 +840,20 @@ for _, def in Config.Cosmetics do
 	end
 end
 
+-- The roof arena's name (tier 6), typed by the player: filtered by Roblox on the server before
+-- anyone sees it, and paid for each time it changes (about 5 minutes of tier 6 income).
+Config.StadiumName = {
+	price = 1_500_000_000,
+	minLength = 3,
+	maxLength = 20,
+}
+
 Config.Season = {
-	bonusPerSeason = 0.5, -- permanent multiplier: season 2 = x1.5, season 3 = x2.0
+	-- Permanent multiplier: season 2 = x1.5, season 3 = x2.0, up to season `fullBonusSeasons`
+	-- (x5.5), then `lateBonusPerSeason` a season, so resetting again and again stops paying off.
+	bonusPerSeason = 0.5,
+	fullBonusSeasons = 10,
+	lateBonusPerSeason = 0.1,
 }
 
 -- The Legend Trials (docs/PLAN.md, Step 1): goals that use only training, owned players and stadium
@@ -587,20 +882,16 @@ Config.LegendTrials = {
 		{ id = "train", kind = "trained", target = 8, level = 10 },
 		{ id = "tier", kind = "tier", target = 5 },
 	},
+	-- Pelé asks for about 75K TP of training (it was 10 players at level 15, about 144K TP, which was
+	-- three quarters of the whole game in the finish simulation).
 	pele = {
 		{ id = "own", kind = "ownFloors", target = 3 },
-		{ id = "train", kind = "trained", target = 10, level = 15 },
+		{ id = "train", kind = "trained", target = 8, level = 12 },
 		{ id = "tier", kind = "tier", target = 5 },
 	},
 } :: { [string]: { TrialGoal } }
 
 Config.Store = {
-	cashPerMatch = {
-		id = "cashPerMatch",
-		baseValue = 1,
-		prices = { 15, 60, 240, 960, 3_800, 15_000, 61_000, 246_000 },
-		values = { 1.5, 2.1, 2.7, 3.5, 4.3, 5.1, 5.9, 6.7 },
-	},
 	matchSpeed = {
 		id = "matchSpeed",
 		baseValue = 10, -- seconds
@@ -610,17 +901,22 @@ Config.Store = {
 	},
 	hatTrick = {
 		id = "hatTrick",
-		baseValue = 0.10, -- chance
-		prices = { 300, 5_000, 80_000, 1_500_000, 25_000_000 },
-		values = { 0.12, 0.14, 0.17, 0.21, 0.25 },
+		baseValue = 0.05, -- chance
+		prices = { 2_000, 60_000, 1_500_000 },
+		values = { 0.10, 0.20, 0.25 },
 		floorsComplete = 1,
 	},
-	offline = {
-		id = "offline",
-		baseValue = 0.10, -- share of normal income
-		prices = { 500, 10_000, 200_000, 4_000_000, 80_000_000 },
-		values = { 0.15, 0.20, 0.25, 0.30, 0.35 },
-		floorsComplete = 1,
+	-- Faster training: the TP a minute of the treadmill and the bench press (the pad stands between
+	-- them in the gym hall). It stays under the ~50 a minute of a juggler, so the skill games stay
+	-- worth playing. Prices are a few minutes of income at the tier each level is meant for (2, 3, 5
+	-- and 6); a New Season resets it like the other upgrades.
+	gymRate = {
+		id = "gymRate",
+		baseValue = Config.Training.idleTpPerMinute,
+		prices = { 5_000, 500_000, 50_000_000, 2_000_000_000 },
+		values = { 25, 30, 35, 40 },
+		minTier = 2,
+		showLocked = true, -- it stands alone in the gym, so a Tier 1 player sees what is coming
 	},
 } :: { [StoreUpgradeId]: StoreUpgradeDef }
 
@@ -640,12 +936,47 @@ Config.Cinematic = {
 	buildDelaySeconds = 1.8,
 }
 
+-- Each tier also multiplies the match cash, in place of the removed "More cash per match" upgrade:
+-- from tier 2 on, the values that upgrade had reached by about that point of the climb. Tier 1 is
+-- x1.25, so the first stadium upgrade still comes at about 4:15 (tests/pacing). Tier 5 is a little
+-- above tier 4 so its bigger field is worth buying (at x6.7 it added only 3%).
 Config.StadiumTiers = {
-	{ tier = 1, price = 0, field = 4, courtLength = 60, courtWidth = 36 },
-	{ tier = 2, price = 250, field = 5, courtLength = 70, courtWidth = 42 },
-	{ tier = 3, price = 25_000, field = 6, courtLength = 84, courtWidth = 50 },
-	{ tier = 4, price = 750_000, field = 8, courtLength = 100, courtWidth = 60 },
-	{ tier = 5, price = 45_000_000, field = 11, courtLength = 120, courtWidth = 72 },
+	{ tier = 1, price = 0, field = 4, courtLength = 60, courtWidth = 36, cashMultiplier = 1.25 },
+	{ tier = 2, price = 250, field = 5, courtLength = 70, courtWidth = 42, cashMultiplier = 2.7 },
+	{
+		tier = 3,
+		price = 25_000,
+		field = 6,
+		courtLength = 84,
+		courtWidth = 50,
+		cashMultiplier = 5.1,
+	},
+	{
+		tier = 4,
+		price = 750_000,
+		field = 8,
+		courtLength = 100,
+		courtWidth = 60,
+		cashMultiplier = 6.7,
+	},
+	{
+		tier = 5,
+		price = 45_000_000,
+		field = 11,
+		courtLength = 120,
+		courtWidth = 72,
+		cashMultiplier = 7.3,
+	},
+	-- The roof arena: the same pitch and field under a retractable roof. Provisional, tune in the
+	-- simulation (about 30 times tier 5, like the step from tier 4 to 5).
+	{
+		tier = 6,
+		price = 1_500_000_000,
+		field = 11,
+		courtLength = 120,
+		courtWidth = 72,
+		cashMultiplier = 8,
+	},
 } :: { StadiumTierDef }
 
 -- Saving (Step 6). Studio uses ProfileStore's Mock store (memory only) unless useRealStoreInStudio

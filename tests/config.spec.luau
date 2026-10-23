@@ -127,7 +127,6 @@ T.test("basic constants", function()
 	T.eq(Config.Daily.penaltyKicks, 3)
 	T.eq(Config.Offline.capSeconds, 14_400)
 	T.eq(Config.Boost.totalCap, 4)
-	T.eq(Config.Boost.matchBankMax, 60)
 	T.truthy(Config.MaxCash < 2 ^ 53, "MaxCash must stay exact in a double")
 end)
 
@@ -135,10 +134,31 @@ T.test("penalty boost minutes are 0 / 3 / 5 / 10", function()
 	T.deepEq(Config.Daily.penaltyBoostSeconds, { [0] = 0, [1] = 180, [2] = 300, [3] = 600 })
 end)
 
-T.test("cash per match gives x1.5 to x6.7 over 8 levels", function()
-	local def = Config.Store.cashPerMatch
-	T.deepEq(def.values, { 1.5, 2.1, 2.7, 3.5, 4.3, 5.1, 5.9, 6.7 })
-	T.deepEq(def.prices, { 15, 60, 240, 960, 3_800, 15_000, 61_000, 246_000 })
+T.test(
+	"the stadium tiers multiply the match cash x1.25 to x8 (the old cash upgrade is gone)",
+	function()
+		local multipliers = {}
+		for _, tier in Config.StadiumTiers do
+			table.insert(multipliers, tier.cashMultiplier)
+		end
+		T.deepEq(multipliers, { 1.25, 2.7, 5.1, 6.7, 7.3, 8 })
+		T.eq(Config.Store.cashPerMatch, nil)
+	end
+)
+
+T.test("the three x2 boost pads cost 39, 39 and 69 Robux: 10 minutes of cash, 20 of TP", function()
+	T.eq(Config.Products.boost_cash.robux, 39)
+	T.eq(Config.Products.boost_tp.robux, 39)
+	T.eq(Config.Products.boost_both.robux, 69)
+	T.eq(Config.Boost.paidCashSeconds, 600)
+	T.eq(Config.Boost.paidTpSeconds, 1200)
+end)
+
+T.test("the cases cost 49 and 79 Robux, and only the Elite Case skips owned players", function()
+	T.eq(Config.Products.caseStandard.robux, 49)
+	T.eq(Config.Products.caseElite.robux, 79)
+	T.eq(Config.Cases.standard.newOnly, nil)
+	T.eq(Config.Cases.elite.newOnly, true)
 end)
 
 T.test("match speed never goes below 5 seconds and unlocks at tier 2", function()
@@ -147,13 +167,17 @@ T.test("match speed never goes below 5 seconds and unlocks at tier 2", function(
 	T.eq(def.minTier, 2)
 end)
 
-T.test("hat-trick and offline upgrades unlock after floor 1", function()
-	T.eq(Config.Store.hatTrick.floorsComplete, 1)
-	T.eq(Config.Store.offline.floorsComplete, 1)
-	T.eq(Config.Store.hatTrick.baseValue, 0.10)
-	T.eq(Config.Store.offline.baseValue, 0.10)
-	T.eq(Config.Store.hatTrick.values[5], 0.25)
-	T.eq(Config.Store.offline.values[5], 0.35)
+T.test("the hat-trick upgrade unlocks after floor 1 and has 3 levels up to 25%", function()
+	local def = Config.Store.hatTrick
+	T.eq(def.floorsComplete, 1)
+	T.eq(def.baseValue, 0.05)
+	T.deepEq(def.prices, { 2_000, 60_000, 1_500_000 })
+	T.deepEq(def.values, { 0.10, 0.20, 0.25 })
+end)
+
+T.test("offline earnings are no upgrade: everyone earns 25% while away", function()
+	T.eq((Config.Store :: any).offline, nil)
+	T.eq(Config.Offline.rate, 0.25)
 end)
 
 T.test("store prices rise within every upgrade", function()
@@ -167,19 +191,19 @@ end)
 
 T.test("stadium tiers", function()
 	local tiers = Config.StadiumTiers
-	T.eq(#tiers, 5)
-	T.deepEq(
-		{ tiers[1].price, tiers[2].price, tiers[3].price, tiers[4].price, tiers[5].price },
-		{ 0, 250, 25_000, 750_000, 45_000_000 }
-	)
-	T.deepEq(
-		{ tiers[1].field, tiers[2].field, tiers[3].field, tiers[4].field, tiers[5].field },
-		{ 4, 5, 6, 8, 11 }
-	)
+	T.eq(#tiers, 6)
+	local prices, fields = {}, {}
+	for _, def in tiers do
+		table.insert(prices, def.price)
+		table.insert(fields, def.field)
+	end
+	T.deepEq(prices, { 0, 250, 25_000, 750_000, 45_000_000, 1_500_000_000 })
+	T.deepEq(fields, { 4, 5, 6, 8, 11, 11 })
 	for index, def in tiers do
 		T.eq(def.tier, index)
 	end
-	-- the pitch grows with every tier and stays inside the 160 x 112 pitch zone
+	-- the pitch grows with every tier up to the arena (the roof arena keeps its pitch) and stays
+	-- inside the 160 x 112 pitch zone
 	T.deepEq({
 		tiers[1].courtLength,
 		tiers[2].courtLength,
@@ -194,10 +218,12 @@ T.test("stadium tiers", function()
 		tiers[4].courtWidth,
 		tiers[5].courtWidth,
 	}, { 36, 42, 50, 60, 72 })
-	for index = 2, #tiers do
+	for index = 2, 5 do
 		T.truthy(tiers[index].courtLength > tiers[index - 1].courtLength)
 		T.truthy(tiers[index].courtWidth > tiers[index - 1].courtWidth)
 	end
+	T.eq(tiers[6].courtLength, tiers[5].courtLength)
+	T.eq(tiers[6].courtWidth, tiers[5].courtWidth)
 end)
 
 T.test("stars, training and season constants", function()
@@ -205,12 +231,15 @@ T.test("stars, training and season constants", function()
 	T.eq(Config.Stars.maxStars, 5)
 	T.eq(Config.Training.bonusPerLevel, 0.03)
 	T.eq(Config.Training.levelCostBase, 40)
-	T.eq(Config.Training.idleTpPerMinute, 10)
-	T.eq(Config.Training.juggleTpPerMinuteMax, 40)
+	T.eq(Config.Training.idleTpPerMinute, 20)
+	T.eq(Config.Training.freekickTpPerMinuteMax, 40)
 	T.truthy(
-		Config.Training.juggleTpPerMinuteMax > Config.Training.idleTpPerMinute,
-		"the keepie-uppies must beat the treadmill"
+		Config.Training.freekickTpPerMinuteMax > Config.Training.idleTpPerMinute,
+		"the breakaway must beat the treadmill"
 	)
+	T.eq(Config.Training.juggleTpTiers[1].tp, 1)
 	T.eq(Config.Season.bonusPerSeason, 0.5)
+	T.eq(Config.Season.fullBonusSeasons, 10)
+	T.eq(Config.Season.lateBonusPerSeason, 0.1)
 	T.eq(Config.Match.momentumCap, 0.25)
 end)

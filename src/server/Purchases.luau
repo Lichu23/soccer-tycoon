@@ -47,6 +47,9 @@ local function announce(
 		runtime.sessionCases += 1
 	end
 	Analytics.event(session, "robux_" .. product.kind)
+	-- The notice goes first: for a case it opens the roulette, which holds the reveal sent next
+	-- until the strip has landed (remotes to one client arrive in order).
+	Remotes.fireClient("Notice", session.player, { kind = "purchaseDone", result = result })
 	local playerId = result.playerId
 	if type(playerId) == "string" then
 		Actions.onChange(session, "case", playerId)
@@ -55,7 +58,6 @@ local function announce(
 	else
 		Sync.all(session)
 	end
-	Remotes.fireClient("Notice", session.player, { kind = "purchaseDone", result = result })
 end
 
 -- Grants and saves one purchase. Returns true once the grant is stored, so the receipt may be
@@ -63,7 +65,8 @@ end
 local function grantAndStore(
 	session: Session.Session,
 	product: Config.ProductDef,
-	purchaseId: string
+	purchaseId: string,
+	robuxSpent: number?
 ): boolean
 	local result = Grants.process(
 		session.data,
@@ -75,7 +78,8 @@ local function grantAndStore(
 			return Session.saveAndConfirm(session.player, function(saved)
 				return saved.receipts ~= nil and saved.receipts[purchaseId] ~= nil
 			end)
-		end
+		end,
+		robuxSpent
 	)
 	if result == nil then
 		return false
@@ -99,7 +103,8 @@ local function processReceipt(info: { [string]: any }): Enum.ProductPurchaseDeci
 		warn("[Purchases] unknown product " .. tostring(info.ProductId))
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
-	if grantAndStore(session, product, tostring(info.PurchaseId)) then
+	local spent = if type(info.CurrencySpent) == "number" then info.CurrencySpent else nil
+	if grantAndStore(session, product, tostring(info.PurchaseId), spent) then
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 	end
 	return Enum.ProductPurchaseDecision.NotProcessedYet
@@ -127,7 +132,7 @@ local function request(player: Player, key: string)
 	if session == nil or product == nil then
 		return
 	end
-	local ok, reason = ShopRules.canOffer(session.data, key, os.time())
+	local ok, reason = ShopRules.canOffer(session.data, key)
 	if not ok then
 		refuse(player, reason or "unavailable")
 		return

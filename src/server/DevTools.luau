@@ -10,6 +10,7 @@ local Boosts = require(script.Parent.Boosts)
 local Config = require(ReplicatedStorage.Shared.Config)
 local DevCommands = require(script.Parent.DevCommands)
 local Offline = require(script.Parent.Offline)
+local Plots = require(script.Parent.Plots)
 local Remotes = require(script.Parent.Remotes)
 local Reveals = require(script.Parent.Reveals)
 local Session = require(script.Parent.Session)
@@ -59,6 +60,32 @@ function DevTools.start()
 				session.data.fieldStarted = true
 				session.runtime.nextMatchAt = 0
 				Actions.onChange(session, "player", target)
+			end
+		elseif command == "quickStart" then
+			-- Skips the opening: claims a plot (no tour), floor 1, the level-up tutorial done, the
+			-- first match without its camera.
+			DevCommands.apply(session.data, "quickStart", 0)
+			session.runtime.firstMatchShown = true
+			session.runtime.nextMatchAt = 0
+			Plots.assign(session, nil)
+			Actions.onChange(session, "dev", nil)
+			-- Stands the player just inside the gate, where the claim ring was.
+			local plot = session.runtime.plot
+			local gate = plot and plot:FindFirstChild("Gate")
+			local character = player.Character
+			if plot and gate and gate:IsA("BasePart") and character then
+				local inward = plot:GetBoundingBox().Position - gate.Position
+				inward = Vector3.new(inward.X, 0, inward.Z).Unit
+				local spot = gate.Position + inward * 8 + Vector3.new(0, 3, 0)
+				character:PivotTo(CFrame.lookAt(spot, spot + inward))
+			end
+			print(string.format("[DevTools] %s: quickStart", player.Name))
+		elseif command == "playIntro" then
+			-- Plays an intro cinematic again (1 the plot tour, 2 the first-match camera), also while
+			-- DevSkipIntros is on. The client checks that the plot exists.
+			local kind = if amount == 1 then "plotTour" elseif amount == 2 then "firstMatch" else nil
+			if kind and session.runtime.plot then
+				Remotes.fireClient("Notice", player, { kind = kind })
 			end
 		elseif command == "simulateAway" then
 			-- Pretends the player was away for `amount` hours and pays it the way a join does.

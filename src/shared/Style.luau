@@ -30,6 +30,7 @@ Style.ui = {
 	idle = Color3.fromRGB(170, 175, 190),
 	gold = Color3.fromRGB(255, 205, 60),
 	bar = Color3.fromRGB(90, 170, 255),
+	purple = Color3.fromRGB(150, 90, 220), -- the Very Rare colour, the Seasons leaderboard accent
 }
 
 Style.font = Enum.Font.GothamBold

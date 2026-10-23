@@ -1,6 +1,6 @@
 --!strict
 -- The one "Next goal" shown under the money label (docs/PLAN.md, Step 1). It follows the buying
--- path: first player (who starts the matches), first upgrade, next players, stadium upgrade.
+-- path: first player (who starts the matches), next players, stadium upgrade.
 
 local Config = require(script.Parent.Config)
 local Progress = require(script.Parent.Progress)
@@ -36,19 +36,6 @@ function Goals.next(data: ProgressData, hasPlot: boolean): Goal
 		local first = playerGoal(data, "Buy your first player")
 		if first then
 			return first
-		end
-	end
-
-	-- The first Store upgrade comes before the second player (Step 2, minute 1).
-	if data.storeLevels.cashPerMatch == 0 then
-		local price = Progress.storePrice(data, "cashPerMatch")
-		if price then
-			return {
-				kind = "store",
-				id = "cashPerMatch",
-				label = "More cash per match",
-				cost = price,
-			}
 		end
 	end
 

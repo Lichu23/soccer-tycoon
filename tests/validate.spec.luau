@@ -77,20 +77,23 @@ local CLIENT_TO_SERVER = {
 	"UpgradeStadium",
 	"BuyStoreUpgrade",
 	"ClaimDaily",
-	"PenaltyKick",
+	"PenaltyStart",
+	"PenaltyTap",
 	"SetCosmetic",
 	"SetNotifications",
 	"StartNewSeason",
 	"TrainingTap",
 	"FreekickTap",
-	"FreekickContact",
+	"FreekickMove",
 	"RequestPurchase",
+	"BuyCosmetic",
+	"RenameStadium",
 	"AckReveal",
 	"DevCommand",
 }
 
 T.test(
-	"the client-to-server remotes (the eleven of Step 5, the three of the Training Gym) and the Studio-only DevCommand exist",
+	"the client-to-server remotes (the ten of Step 5, the three of the Training Gym, the Locker room cash buy and stadium name) and the Studio-only DevCommand exist",
 	function()
 		local count = 0
 		for name, def in RemoteSpec.remotes do
@@ -98,7 +101,7 @@ T.test(
 				count += 1
 			end
 		end
-		T.eq(count, 15)
+		T.eq(count, 18)
 		for _, name in CLIENT_TO_SERVER do
 			local def = RemoteSpec.remotes[name]
 			T.truthy(def, name .. " is missing")
@@ -128,7 +131,7 @@ end)
 T.test("the store upgrade enum matches Config", function()
 	local schema = RemoteSpec.remotes.BuyStoreUpgrade.args[1]
 	T.eq(schema.kind, "enum")
-	T.eq(#schema.values, 4)
+	T.eq(#schema.values, 3) -- matchSpeed, hatTrick, gymRate
 	for id in Config.Store do
 		T.truthy(table.find(schema.values, id), id .. " is in the enum")
 	end
@@ -137,7 +140,8 @@ end)
 T.test("the stadium upgrade accepts only real tiers", function()
 	local args = RemoteSpec.remotes.UpgradeStadium.args
 	T.eq((Validate.args(args, { 2 }, 1)), true)
-	T.eq((Validate.args(args, { 6 }, 1)), false)
+	T.eq((Validate.args(args, { 6 }, 1)), true)
+	T.eq((Validate.args(args, { 7 }, 1)), false)
 	T.eq((Validate.args(args, { 2.5 }, 1)), false)
 end)
 

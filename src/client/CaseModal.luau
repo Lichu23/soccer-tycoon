@@ -1,9 +1,11 @@
 --!strict
--- The free case screen (docs/PLAN.md, Steps 3 and 7), opened from the Shop. A title, the roulette strip,
--- one button and, under it, when the next one opens. The server has already rolled and paid the reward
--- when the strip starts; the strip is only a show that slows down and lands on it. When it has landed the
--- screen closes and the reward card says what was won (RewardCard). With reduced motion the strip is
--- skipped and the card shows at once. The Standard and Elite cases are bought in the Shop itself.
+-- The case screen (docs/PLAN.md, Steps 3 and 7). The free case opens it from the Shop: a title, the
+-- roulette strip, one button and, under it, when the next one opens. A bought Standard or Elite case
+-- opens it by itself when the purchase is done, with the same strip of its own players and boosts and
+-- no button. The server has already rolled and paid the reward when the strip starts; the strip is only
+-- a show that slows down and lands on it. When it has landed the screen closes and the reward card says
+-- what was won (RewardCard), or a player's rarity reveal plays (Reveal, held until then). With reduced
+-- motion the strip is skipped and the result shows at once.
 
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
@@ -12,32 +14,45 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
+local Cases = require(ReplicatedStorage.Shared.Cases)
 local Config = require(ReplicatedStorage.Shared.Config)
 local DailyInfo = require(ReplicatedStorage.Shared.DailyInfo)
+local Icons = require(script.Parent.Icons)
+local Mannequin = require(ReplicatedStorage.Shared.Mannequin)
 local Net = require(script.Parent.Net)
 local NumberFormat = require(ReplicatedStorage.Shared.NumberFormat)
 local Panel = require(script.Parent.Panel)
+local Reveal = require(script.Parent.Reveal)
 local RewardCard = require(script.Parent.RewardCard)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
 
-local PANEL_W, PANEL_H = 520, 292
-local WINDOW_W, WINDOW_H = 480, 92
-local TILE_W, TILE_H, TILE_GAP = 96, 74, 6
-local TILE_COUNT = 50
-local WIN_INDEX = 40
+local PANEL_W, PANEL_H = 520, 342
+local PAID_PANEL_H = 246 -- a bought case has no button or time under the strip
+local WINDOW_W, WINDOW_H = 480, 156
+local TILE_W, TILE_H, TILE_GAP = 114, 136, 8
+local BAND_H = 34 -- the navy name band at the foot of a tile
+local TILE_COUNT = 40 -- fewer than before: a player tile is a ViewportFrame
+local WIN_INDEX = 32
 local IDLE_CENTER_INDEX = 3 -- the tile under the marker before a spin
 local SPIN_SECONDS = 6
 local HOLD_SECONDS = 0.9 -- the landed tile stays in view this long before the screen closes
+local WIN_ZOOM, WIN_ZOOM_SECONDS = 1.08, 0.25 -- the landed tile grows to this (it still fits the window)
 local REPLY_TIMEOUT = 4
+local FIGURE_FOV = 30
 
--- Bright flat colours with dark text, like the cards of the Shop.
+-- Each reward kind is its icon on a tile of the icon's own colour (the boost arrows are green too).
 local KIND_COLORS: { [string]: Color3 } = {
-	cash = Color3.fromRGB(96, 205, 128),
-	boost = Color3.fromRGB(255, 200, 70),
-	tp = Color3.fromRGB(100, 175, 255),
+	cash = Style.ui.good,
+	boost = Style.ui.good,
+	tp = Style.ui.bar,
+}
+local KIND_ICONS: { [string]: string } = {
+	cash = "cash",
+	boost = "boost",
+	tp = "tp",
 }
 
 local CaseModal = {}
@@ -83,56 +98,170 @@ local function randomReward(random: Random): Config.CaseReward
 	return Config.Daily.caseRewards[1]
 end
 
--- What a tile says: the label and a detail line. The winning tile shows the real amount.
-local function tileTexts(reward: Config.CaseReward, prize: any?): (string, string)
+-- The line in a tile's band. The winning tile of the free case shows the real amount.
+local function bandText(reward: Config.CaseReward, prize: any?): string
 	if prize ~= nil and type(prize.amount) == "number" then
 		if prize.kind == "cash" then
-			return reward.label, "+" .. NumberFormat.money(prize.amount)
+			return "+" .. NumberFormat.money(prize.amount)
 		elseif prize.kind == "tp" then
-			return reward.label, "+" .. prize.amount .. " TP"
+			return "+" .. prize.amount .. " TP"
 		end
 	end
-	return reward.label, reward.detail
+	return reward.detail
 end
 
-local function makeTile(parent: Instance, reward: Config.CaseReward, index: number, prize: any?)
-	local label, detail = tileTexts(reward, prize)
+-- One figure per player, built the first time a tile shows him and cloned for every other tile.
+local figures: { [string]: Model } = {}
+local function figureOf(def: Config.PlayerDef): Model
+	local figure = figures[def.id]
+	if figure == nil then
+		figure = Mannequin.build(def, nil, false)
+		figures[def.id] = figure
+	end
+	return (figure :: Model):Clone()
+end
+
+-- A rounded tile in `color`, a little lighter at the top, with a navy band at its foot that holds
+-- `bandLine`. Returns the tile and the area above the band.
+local function makeTile(
+	parent: Instance,
+	index: number,
+	color: Color3,
+	bandLine: string
+): (Frame, Frame)
 	local tile = new("Frame", {
 		Name = "Tile" .. index,
 		Position = UDim2.fromOffset((index - 1) * (TILE_W + TILE_GAP), (WINDOW_H - TILE_H) / 2),
 		Size = UDim2.fromOffset(TILE_W, TILE_H),
-		BackgroundColor3 = KIND_COLORS[reward.kind],
+		BackgroundColor3 = Color3.new(1, 1, 1),
 	}, parent)
-	rounded(tile, 10)
+	rounded(tile, 12)
+	new("UIGradient", {
+		Color = ColorSequence.new(color:Lerp(Color3.new(1, 1, 1), 0.35), color),
+		Rotation = 90,
+	}, tile)
 	new("UIStroke", {
 		Name = "Outline",
 		Color = Style.ui.dark,
 		Thickness = 3,
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 	}, tile)
-	new("TextLabel", {
-		Name = "Label",
-		Position = UDim2.fromOffset(4, 8),
-		Size = UDim2.new(1, -8, 0, 30),
-		BackgroundTransparency = 1,
-		Text = label,
-		TextWrapped = true,
-		Font = Style.font,
-		TextSize = 15,
-		TextColor3 = Style.ui.dark,
+	local band = new("Frame", {
+		Name = "Band",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.new(1, 0, 0, BAND_H),
+		BackgroundColor3 = Style.ui.panel,
+		ZIndex = 3,
 	}, tile)
-	new("TextLabel", {
-		Name = "Detail",
-		Position = UDim2.fromOffset(4, 40),
-		Size = UDim2.new(1, -8, 0, 26),
+	rounded(band, 10)
+	-- Squares off the band's top corners, so only the tile's own corners are round.
+	new("Frame", {
+		Name = "Top",
+		Size = UDim2.new(1, 0, 0, 10),
+		BackgroundColor3 = Style.ui.panel,
+		BorderSizePixel = 0,
+		ZIndex = 3,
+	}, band)
+	local text = new("TextLabel", {
+		Name = "Line",
+		Position = UDim2.fromOffset(5, 2),
+		Size = UDim2.new(1, -10, 1, -4),
 		BackgroundTransparency = 1,
-		Text = detail,
+		Text = bandLine,
 		TextWrapped = true,
+		TextScaled = true,
 		Font = Style.font,
-		TextSize = 13,
-		TextColor3 = Panel.TEXT,
+		TextColor3 = Style.ui.text,
+		ZIndex = 4,
+	}, band)
+	new("UITextSizeConstraint", { MaxTextSize = 15, MinTextSize = 9 }, text)
+	local area = new("Frame", {
+		Name = "Area",
+		Size = UDim2.new(1, 0, 1, -BAND_H),
+		BackgroundTransparency = 1,
+		ZIndex = 2,
 	}, tile)
-	return tile
+	return tile, area
+end
+
+-- The kind's icon in the middle of the area. A boost puts "x2" in front of it.
+-- `times` puts "x2" beside the picture (the boost, or a cash or TP boost of a bought case).
+local function addIcon(area: Frame, kind: string, times: boolean?)
+	local picture = Icons.id(KIND_ICONS[kind] or "")
+	local boost = kind == "boost" or times == true
+	local iconSize = if boost then 62 else 74
+	new("ImageLabel", {
+		Name = "Icon",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = if boost then UDim2.new(0.5, 20, 0.5, 2) else UDim2.new(0.5, 0, 0.5, 2),
+		Size = UDim2.fromOffset(iconSize, iconSize),
+		BackgroundTransparency = 1,
+		Image = picture,
+		ZIndex = 2,
+	}, area)
+	if boost then
+		local x2 = new("TextLabel", {
+			Name = "Times",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(0.5, -30, 0.5, 2),
+			Size = UDim2.fromOffset(52, 40),
+			BackgroundTransparency = 1,
+			Text = "x2",
+			Font = Style.font,
+			TextSize = 32,
+			TextColor3 = Style.ui.text,
+			ZIndex = 3,
+		}, area)
+		new("UIStroke", { Color = Style.ui.dark, Thickness = 3 }, x2)
+	end
+end
+
+-- The player from the chest up, turned a little, in the area.
+local function addFigure(area: Frame, def: Config.PlayerDef)
+	local view = new("ViewportFrame", {
+		Name = "Figure",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Ambient = Color3.fromRGB(200, 200, 210),
+		LightColor = Color3.fromRGB(255, 244, 225),
+		LightDirection = Vector3.new(0.4, -0.7, 0.6),
+		ZIndex = 2,
+	}, area)
+	local figure = figureOf(def)
+	figure:PivotTo(CFrame.Angles(0, math.rad(-20), 0))
+	figure.Parent = view
+	-- The torso's middle is the model's origin; the frame runs from the belt to just over the hair.
+	local middle = Vector3.new(0, 1.1, 0)
+	local distance = 2.2 / math.tan(math.rad(FIGURE_FOV / 2))
+	local camera = new("Camera", {
+		FieldOfView = FIGURE_FOV,
+		CFrame = CFrame.lookAt(middle + Vector3.new(0, 0.3, -distance), middle),
+	}, view)
+	view.CurrentCamera = camera
+end
+
+local function freeTile(parent: Instance, reward: Config.CaseReward, index: number, prize: any?)
+	local _, area = makeTile(parent, index, KIND_COLORS[reward.kind], bandText(reward, prize))
+	addIcon(area, reward.kind)
+end
+
+-- A tile of a bought case: the player on his rarity colour with his full name, or a boost.
+local function paidTile(parent: Instance, index: number, id: string)
+	local boost = Config.CaseBoostsById[id]
+	if boost then
+		local _, area = makeTile(parent, index, KIND_COLORS[boost.kind], boost.detail)
+		addIcon(area, boost.kind, true)
+		return
+	end
+	local def = Config.PlayersById[id]
+	if def == nil then
+		makeTile(parent, index, Style.rarityColors.Common, "?")
+		return
+	end
+	local color = Style.rarityColors[def.rarity] or Style.rarityColors.Common
+	local _, area = makeTile(parent, index, color, def.name)
+	addFigure(area, def)
 end
 
 function CaseModal.init()
@@ -163,7 +292,7 @@ function CaseModal.init()
 	new("UIStroke", { Color = Style.ui.dark, Thickness = 4 }, panel)
 	local scale = new("UIScale", {}, panel)
 
-	new("TextLabel", {
+	local title = new("TextLabel", {
 		Name = "Title",
 		Position = UDim2.fromOffset(18, 10),
 		Size = UDim2.fromOffset(300, 36),
@@ -233,7 +362,7 @@ function CaseModal.init()
 			Text = arrow.text,
 			Font = Enum.Font.GothamBold,
 			TextSize = 24,
-			TextColor3 = Color3.fromRGB(232, 64, 96),
+			TextColor3 = Panel.MUTED, -- grey, so the only red on the screen stays the X
 			ZIndex = 6,
 		}, marker)
 	end
@@ -302,7 +431,7 @@ function CaseModal.init()
 		end
 		local rewards = Config.Daily.caseRewards
 		for index = 1, TILE_COUNT do
-			makeTile(strip, rewards[(index - 1) % #rewards + 1], index, nil)
+			freeTile(strip, rewards[(index - 1) % #rewards + 1], index, nil)
 		end
 		strip.Position =
 			UDim2.fromOffset(WINDOW_W / 2 - ((IDLE_CENTER_INDEX - 1) * step + TILE_W / 2), 0)
@@ -320,6 +449,7 @@ function CaseModal.init()
 	-- The prize of the spin that is running (already paid by the server). It is shown once, when the
 	-- strip has landed, or at once when the screen is closed early; the HUD shows it from then on.
 	local pendingPrize: any = nil
+	local pendingPaid: any = nil -- the result of a bought case
 	local function deliver()
 		local prize = pendingPrize
 		pendingPrize = nil
@@ -327,6 +457,23 @@ function CaseModal.init()
 			RewardCard.freeCase(prize)
 		end
 		State.releaseReward()
+		local paid = pendingPaid
+		pendingPaid = nil
+		if paid ~= nil then
+			local boost = Config.CaseBoostsById[paid.boostId or ""]
+			local def = Config.Cases[paid.caseId or ""]
+			if boost then
+				RewardCard.show({
+					title = string.upper(if def then def.name else "Case"),
+					big = boost.label .. " · " .. boost.detail,
+					detail = if boost.kind == "tp"
+						then "Double TP, added to your boost time"
+						else "Double cash, added to your boost time",
+					icon = boost.kind,
+				})
+			end
+			Reveal.release() -- a player won: his reveal plays now
+		end
 	end
 
 	local function close_()
@@ -337,47 +484,34 @@ function CaseModal.init()
 	close.Activated:Connect(close_)
 	backdrop.Activated:Connect(close_)
 
-	-- Builds the strip with the won reward on WIN_INDEX and spins it to a stop under the marker.
-	local function spin(prize: any)
-		pendingPrize = prize
-		State.setHeldPrize(prize)
-		local won = rewardById(prize.id)
-		if won == nil then
-			close_()
-			return
-		end
-		for _, child in strip:GetChildren() do
-			child:Destroy()
-		end
-		for index = 1, TILE_COUNT do
-			if index == WIN_INDEX then
-				makeTile(strip, won, index, prize)
-			else
-				makeTile(strip, randomReward(random), index, nil)
-			end
-		end
-
+	-- Spins the strip (already built, with the win on WIN_INDEX) to a stop under the marker.
+	local function spin()
 		local jitter = (random:NextNumber() - 0.5) * TILE_W * 0.6
 		local landed = WINDOW_W / 2 - ((WIN_INDEX - 1) * step + TILE_W / 2 + jitter)
 		mode = "spinning"
 		token += 1
 		local myToken = token
-		-- The strip has landed: the winning tile is outlined in gold, then the screen closes and the
-		-- reward card says what was won.
+		-- The strip has landed: the winning tile grows a little (a short zoom over its neighbours),
+		-- then the screen closes and the reward card says what was won.
 		local function finish()
-			local tile = strip:FindFirstChild("Tile" .. WIN_INDEX)
-			if tile then
-				local outline = tile:FindFirstChild("Outline")
-				if outline and outline:IsA("UIStroke") then
-					outline.Color = Color3.fromRGB(232, 64, 96)
-					outline.Thickness = 5
-				end
-			end
 			strip.Position = UDim2.fromOffset(landed, 0)
 			mode = "idle"
 			if GuiService.ReducedMotionEnabled then
 				close_()
 				return
+			end
+			local tile = strip:FindFirstChild("Tile" .. WIN_INDEX)
+			if tile and tile:IsA("GuiObject") then
+				tile.ZIndex = 2
+				-- A UIScale grows around the anchor: from the centre, so it stays inside the window.
+				tile.AnchorPoint = Vector2.new(0.5, 0.5)
+				tile.Position += UDim2.fromOffset(TILE_W / 2, TILE_H / 2)
+				local zoom = new("UIScale", { Name = "Zoom" }, tile)
+				TweenService:Create(
+					zoom,
+					TweenInfo.new(WIN_ZOOM_SECONDS, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+					{ Scale = WIN_ZOOM }
+				):Play()
 			end
 			task.delay(HOLD_SECONDS, function()
 				if token == myToken and gui.Enabled then
@@ -404,6 +538,46 @@ function CaseModal.init()
 			end
 		end)
 		tween:Play()
+	end
+
+	-- The free case: the strip of its rewards with the won one on WIN_INDEX.
+	local function spinFree(prize: any)
+		pendingPrize = prize
+		State.setHeldPrize(prize)
+		local won = rewardById(prize.id)
+		if won == nil then
+			close_()
+			return
+		end
+		for _, child in strip:GetChildren() do
+			child:Destroy()
+		end
+		for index = 1, TILE_COUNT do
+			if index == WIN_INDEX then
+				freeTile(strip, won, index, prize)
+			else
+				freeTile(strip, randomReward(random), index, nil)
+			end
+		end
+		spin()
+	end
+
+	-- A bought case: the strip of its players and boosts, drawn by the odds shown in the Shop, with
+	-- the won one on WIN_INDEX.
+	local function spinPaid(result: any)
+		pendingPaid = result
+		local entries = Cases.odds(State.data, result.caseId)
+		for _, child in strip:GetChildren() do
+			child:Destroy()
+		end
+		local wonId = result.boostId or result.playerId
+		for index = 1, TILE_COUNT do
+			local id = if index == WIN_INDEX
+				then wonId
+				else Cases.pick(entries, random:NextNumber())
+			paidTile(strip, index, id)
+		end
+		spin()
 	end
 
 	openButton.Activated:Connect(function()
@@ -448,11 +622,42 @@ function CaseModal.init()
 	end)
 
 	CaseModal.open = function()
+		if pendingPaid ~= nil then
+			return -- a bought case is on screen
+		end
 		stopSpin()
 		fitScale()
 		lastLayout = ""
+		title.Text = "Free Case"
+		panel.Size = UDim2.fromOffset(PANEL_W, PANEL_H)
+		openButton.Visible = true
+		timeLabel.Visible = true
 		showIdleStrip()
 		gui.Enabled = true
+	end
+
+	-- A bought case is done (the purchase notice): opens the screen on its roulette. A player's
+	-- reveal waits until the strip lands.
+	CaseModal.openPaid = function(result: any)
+		local def = Config.Cases[if type(result.caseId) == "string" then result.caseId else ""]
+		local wonId = result.boostId or result.playerId
+		if def == nil or type(wonId) ~= "string" then
+			return
+		end
+		if gui.Enabled then
+			close_() -- a case still on screen gives its prize now
+		end
+		if result.playerId ~= nil then
+			Reveal.hold()
+		end
+		RewardCard.hide()
+		fitScale()
+		title.Text = def.name
+		panel.Size = UDim2.fromOffset(PANEL_W, PAID_PANEL_H)
+		openButton.Visible = false
+		timeLabel.Visible = false
+		gui.Enabled = true
+		spinPaid(result)
 	end
 
 	-- The server's answer to a claim. Returns true when the screen took it.
@@ -461,13 +666,14 @@ function CaseModal.init()
 			return false
 		end
 		lastLayout = ""
-		spin(prize)
+		spinFree(prize)
 		return true
 	end
 end
 
 -- Replaced by init once the interface is built.
 CaseModal.open = function() end
+CaseModal.openPaid = function(_result: any) end
 CaseModal.onResult = function(_prize: any): boolean
 	return false
 end

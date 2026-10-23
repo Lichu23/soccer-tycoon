@@ -44,15 +44,12 @@ function Reveals.grant(
 		if not first and not fromCase then
 			return nil
 		end
+		-- The very first purchase gets the full reveal too; the first match waits for it (Match).
 		local entry: ProfileSchema.PendingReveal = {
 			playerId = id,
 			isNew = true,
 			firstOfRarity = first,
-			-- The very first purchase is shorter and never holds the player back.
-			short = first
-				and not fromCase
-				and def.rarity == "Common"
-				and Roster.ownedCount(data) == 1,
+			short = false,
 		}
 		push(data, entry)
 		return entry

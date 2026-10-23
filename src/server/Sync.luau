@@ -23,6 +23,7 @@ function Sync.scalars(session: Session.Session)
 	local player, data = session.player, session.data
 	Economy.publish(player, data)
 	player:SetAttribute("stadiumTier", data.stadiumTier)
+	player:SetAttribute("stadiumName", session.runtime.stadiumName or "") -- filtered, safe to show
 	player:SetAttribute("seasonNumber", data.season.number)
 	player:SetAttribute("fieldStarted", data.fieldStarted)
 	player:SetAttribute("notificationsOn", data.flags.notificationsOn)
@@ -34,12 +35,18 @@ function Sync.scalars(session: Session.Session)
 	local left = Boosts.nextEnd(data)
 	player:SetAttribute("boostEndsAt", if left > 0 then Workspace:GetServerTimeNow() + left else 0)
 	player:SetAttribute("boostMultiplier", Formulas.boostMultiplier(Boosts.active(data)))
+	-- The x2 TP boost has its own badge.
+	local tpLeft = data.boosts.tpBoostLeft
+	player:SetAttribute(
+		"tpBoostEndsAt",
+		if tpLeft > 0 then Workspace:GetServerTimeNow() + tpLeft else 0
+	)
 	player:SetAttribute("trainingUnlocked", Progress.trainingUnlocked(data))
 	player:SetAttribute("staminaMax", Config.Training.staminaSeconds)
 	player:SetAttribute("keepieBestStreak", data.gym.keepieBestStreak)
 	player:SetAttribute("freekickBestStreak", data.gym.freekickBestStreak)
 	-- The shop: whether cases are on offer yet, the banked boost matches and this visit's total.
-	player:SetAttribute("casesOpen", ShopRules.casesOpen(data, os.time()))
+	player:SetAttribute("casesOpen", ShopRules.casesOpen(data))
 	player:SetAttribute("bankedMatches", data.boosts.bankedMatches)
 	player:SetAttribute("sessionCases", session.runtime.sessionCases)
 	player:SetAttribute("sessionRobux", session.runtime.sessionRobux)
@@ -71,14 +78,18 @@ function Sync.snapshot(session: Session.Session)
 		tp = data.tp,
 		stadiumTier = data.stadiumTier,
 		storeLevels = {
-			cashPerMatch = data.storeLevels.cashPerMatch,
 			matchSpeed = data.storeLevels.matchSpeed,
 			hatTrick = data.storeLevels.hatTrick,
-			offline = data.storeLevels.offline,
+			gymRate = data.storeLevels.gymRate,
 		},
 		fieldStarted = data.fieldStarted,
 		players = players,
-		flags = { milestones = { first_match = data.flags.milestones["first_match"] } },
+		flags = {
+			milestones = {
+				first_match = data.flags.milestones["first_match"],
+				first_level = data.flags.milestones["first_level"],
+			},
+		},
 	})
 end
 

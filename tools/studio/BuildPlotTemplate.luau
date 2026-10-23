@@ -40,8 +40,9 @@ local Def = {
 	-- building (x 50 to 130, z 20 to 160, door at x 50, z 90) is on their left, training on the right.
 	ToPlot = { A = -70, B = 60 },
 	Path = { Half = 20, Length = 172 }, -- the central path from the gate to the stadium pad
-	-- The training yard on the right, reached by a walkway from the path.
-	Training = { X0 = -130, X1 = -50, Z0 = 60, Z1 = 140, WalkHalf = 8 },
+	-- The training yard on the right, reached by a walkway from the path. It is centred on the
+	-- building's door (z 90), so the two walkways face each other across the path.
+	Training = { X0 = -130, X1 = -50, Z0 = 50, Z1 = 130, WalkHalf = 8 },
 	Stadium = { Z0 = 182, Z1 = 296 }, -- the lawn of the stadium zone at the back
 	-- A capsule stands against a wall (CapsuleInset from the wall's inner face to its middle) and
 	-- its pad is PadOffset further into the room.
@@ -335,10 +336,16 @@ for _, entry in Def.Legends do
 	addCapsule(4, entry[1], "back", entry[2], "legend")
 end
 
--- Store pads in the open middle of floor 1 (no counter, locker block or trophy shelf any more).
+-- The open middle of floor 1 (no counter, locker block or trophy shelf any more): the three x2 boost
+-- pads (Robux, Config.Products boost_*) in a line down the middle from the door, and the Store pads
+-- in a row behind them. Plot (x, z) is building (bz - 70, 60 - bx): the boosts at x 88, z 75 to 105,
+-- the Store at x 76 to 100, z 124.
 local fixtures = folder("Fixtures")
-for index, id in { "cashPerMatch", "matchSpeed", "hatTrick", "offline" } do
-	marker("Store_" .. id, id, "store", Vector3.new(-60 + (index - 1) * 18, FLOOR + 0.1, 158), PAD)
+for index, id in { "matchSpeed", "hatTrick" } do
+	marker("Store_" .. id, id, "store", Vector3.new(-64, FLOOR + 0.1, 146 + (index - 1) * 12), PAD)
+end
+for index, key in { "boost_cash", "boost_tp", "boost_both" } do
+	marker("RobuxPad_" .. key, key, "robux", Vector3.new(-15 - (index - 1) * 15, FLOOR + 0.1, 158), PAD)
 end
 
 -- The central path, the walkways and the training yard (not part of the building) ----------------

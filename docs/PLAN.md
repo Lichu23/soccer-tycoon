@@ -14,9 +14,9 @@ Status: steps 1 to 6 agreed (step 3 numbers are a draft to be playtested), step 
 payout = base x sum(field player income) x upgrades x momentum x daily boost x (hat-trick 2x if rolled)
 ```
 
-- **Hat-trick:** small random chance (about 10%) of a 2x match. The same text reads "HAT-TRICK x2" in a different colour, and "+$N" is the doubled amount. A Store upgrade can raise the chance later.
+- **Hat-trick:** small random chance (5%, raised by a Store upgrade) of a 2x match. The same text reads "HAT-TRICK x2" in a different colour, and "+$N" is the doubled amount. A Store upgrade can raise the chance later.
 - **Momentum:** session-only bonus for matches played in a row (for example +1% per match, capped). Never saved. Resets to 0 on join.
-- **Offline earnings:** capped at 4 hours of income. The offline rate starts at 10% of normal income and an upgrade raises it up to 35% (see Step 3).
+- **Offline earnings:** capped at 4 hours of income. Everyone earns 25% of normal income while away; there is no upgrade (owner decision, 2026-10-22).
 
 ### Stadium: 4 floors of capsules
 Players are physical displays in the world (glass capsules on pedestals, like a tycoon). There is no inventory menu and no picker.
@@ -51,12 +51,13 @@ Players are physical displays in the world (glass capsules on pedestals, like a 
 ### Legends (floor 4)
 Two routes:
 - **Legend Trials (free):** each Legend has a short checklist of goals plus the cash price. The goals use only training, owned players and stadium tiers, never stars (stars are paid-only, see Cases and stars). First Legend (*provisional*, to be tuned in the step 3 simulation): own all players of floors 1 to 3, train three players to level 5, and reach stadium tier 4. Later Legends ask for more (more players trained, higher levels, stadium tier 5). Reachable in roughly 2 to 4 weeks of casual play. The checklist is shown on each Legend capsule's panel in the Legends hall (no HUD row). The hall is visible through glass from floor 2, so the panel can be read early, with goals greyed out until floor 4 is reached. Progress is recorded permanently, so a New Season does not undo a completed goal. No streak, no daily cap, no expiry.
-- **Direct Robux purchase** at a clearly shown price, which skips the trials and the cash price.
+- **Direct Robux purchase** at a clearly shown price, which skips the cash price but **not the trials** (owner decision, 2026-10-22: skipping both let a payer finish the game in about 3 hours against about 130 for a free player).
 
 There is no separate expensive cash route: everyone pays the cash price and completes the trials, or buys with Robux. A Legend bought with Robux can only be bought inside the building once floor 4 has been reached, so the rule is the same for everyone. Legends stay across New Seasons, and so does anything bought with Robux.
 
 ### Training ground
-- **Owner decision (2026-10-20): the training ground is the Training Gym, four soccer exercises, no "AFK" or "active" names.** Conditioning stations that run by themselves at 10 TP a minute: **treadmill** and **agility ladder** (the player's own avatar runs in place on the treadmill and runs the ladder and back). Skill stations you play, as an endless streak with Bronze, Silver and Gold milestones and the longest streak kept in the profile (`gym`): **keepie-uppies** (tap when the ball comes back to the foot of your best player; the beat gets quicker with every touch; a clean touch pays 0.35 TP plus 0.05 per streak step up to 10) and **free kicks** (owner decision 2026-10-20, replacing the dribble run: three taps per kick like an old rugby place kick, a power bar, a contact point on the ball that curls or lifts the shot, and an aim marker that sweeps the goal, against a wall and a keeper that move every kick; a goal pays 1.5 TP plus 0.25 per streak step up to 10). Both skill games share one cap of 40 TP a minute, above the treadmill, and share the stamina. The server judges every tap on its own clock (`Juggle`, `Freekick`); a free-kick tap may be stamped up to 0.2 s in the past for a slow connection. Profile version 2 dropped the old round records.
+- **Owner decision (2026-10-20): the training ground is the Training Gym, four soccer exercises, no "AFK" or "active" names.** Conditioning stations that run by themselves at 10 TP a minute: **treadmill** and **agility ladder** (the player's own avatar runs in place on the treadmill and runs the ladder and back). Skill stations you play, as an endless streak with Bronze, Silver and Gold milestones and the longest streak kept in the profile (`gym`): **keepie-uppies** (tap when the ball comes back to the foot of your best player; the beat gets quicker with every touch; a clean touch pays 0.35 TP plus 0.05 per streak step up to 10) and **free kicks** (owner decision 2026-10-20, replacing the dribble run: three taps per kick like an old rugby place kick, a power bar, a contact point on the ball that curls or lifts the shot, and an aim marker that sweeps the goal, against a wall and a keeper that move every kick; a goal pays 1.5 TP plus 0.25 per streak step up to 10). **Owner decision (2026-10-21): the free-kick spot became the 1v1 breakaway.** Three quick inputs per attack: a skill move (cut left, step-over, cut right) pressed before its bar runs out (1.4 s, 0.06 s less per goal, at least 0.6 s; arrows, A/S/D, the D-pad or three on-screen buttons), an aim reticle that glides over the goal mouth (tap to lock), and a power hold (let go in the green; too hard lifts it over the bar). Then the attack plays as a film on a private full-screen stadium with the player's own avatar: a side tracking shot of the dribble, a slow-motion strike from the front, and the result from behind the net. The streak, medals, best and pay are unchanged. Both skill games share one cap of 40 TP a minute, above the treadmill, and share the stamina. The server judges every tap on its own clock (`Juggle`, `Freekick`); a free-kick tap may be stamped up to 0.2 s in the past for a slow connection. Profile version 2 dropped the old round records.
+- **The level-up tutorial (owner decision 2026-10-22):** until the first level-up ever, only the treadmill is open. It pays 40 TP a minute until the player has the 5 TP of Rashford's first level (about 8 seconds), holds the runner on the belt with the jump off until then, and lets them step off by itself when the TP are in. The bench, keepie-uppies and the breakaway show "Level up a player first" until the first level, which is kept as a milestone so a New Season never locks them again. Tapping during the keepie-uppies' "how to play" skips it: the 3, 2, 1 countdown starts at once.
 - **Owner decision (2026-10-20): training opens after the first match** (it used to wait for floor 1, about minute 11). The guide chevrons lead to the AFK farm once, right after the first match; floor 1 still opens it for an old save. This replaces "training ground" in the floor 1 rows of the pacing tables below.
 - One training ground where standing earns **training points (TP)**, spent on levelling any owned player (more income) (*provisional*: no position stations, since rosters are fixed).
 - **Spending TP on a specific player:** every owned player's capsule has a **level-up pad** in front of it (the same spot as the purchase pad, which becomes the training pad once the player is owned). The pad shows the player's level ("Level 3/10"), the TP cost of the next level, and the income bonus it gives. Standing on it for 1 second (the circular ring fills, like a purchase) spends TP and raises that player's level. At the level cap it reads "MAX". If the player is **on the bench** (not among the top N earning on the field), the pad also shows "On the bench: not earning yet" so TP are not wasted by accident. No menu. The HUD shows the TP balance once the training ground is unlocked.
@@ -68,9 +69,9 @@ There is no separate expensive cash route: everyone pays the cash price and comp
 - The server judges each kick (the client only sends the aim) and decides the reset time. No day-streak, no penalty for skipping.
 
 ### Store
-- **Cash upgrades:** cash per match (from the start), match speed (after stadium tier 2), hat-trick chance and offline earnings (after floor 1 is complete). No daily limit: rising prices are the gate. Every upgrade is reachable with cash. Levels and prices are in Step 3.
-- **Robux packs (owner decision, 2026-10-20):** six pads in one row on the ground left of the building door, with the cash or TP icon above each. Cash: $10K, $100K, $1M. TP: 500, 2,500, 10,000. Fixed amounts, the same for everyone; Robux prices are placeholders in `Config.Products` (25 / 99 / 349). Standing on a pad for the usual hold asks the server, which shows the Robux prompt; like every paid offer nothing is offered in the first 30 minutes after the first purchase. No bundles, timers or popups. There is no shop booth: the SHOP button in the dock still holds the cases, the boost and the Legends.
-- **Robux match boost:** "next 30 matches x2" (developer product, price about 25 to 49 Robux, size and price on the button). Boosted matches are banked up to a **maximum of 60**, shown by a counter ("Boosted matches left: 27"). It can be bought again once the bank has room. Stacking with other boosts is capped (total boost never above x4).
+- **Cash upgrades:** cash per match (from the start), match speed (after stadium tier 2), hat-trick chance (after floor 1 is complete; offline earnings are no longer an upgrade). No daily limit: rising prices are the gate. Every upgrade is reachable with cash. Levels and prices are in Step 3.
+- **Robux packs (owner decision, 2026-10-20):** six pads in one row on the ground left of the building door, with the cash or TP icon above each. Cash: 15 minutes, 1 hour and 4 hours of the player's own normal income for 39 / 129 / 399 Robux (owner decision, 2026-10-22: the fixed $10K / $100K / $1M were worth nothing after minute 17). TP: 500, 2,500, 10,000 (fixed, the TP rate never grows) for 39 / 149 / 499. A cash pack is offered only once someone is on the field. Standing on a pad for the usual hold asks the server, which shows the Robux prompt; like every paid offer nothing is offered in the first 30 minutes after the first purchase. No bundles, timers or popups. There is no shop booth: the SHOP button in the dock still holds the cases, the boost and the Legends.
+- **Robux match boost: removed (owner decision, 2026-10-22).** 30 matches x2 is 2.5 minutes once matches take 5 s, a third of the value of the 10-minute x2 Cash pad at the same price. The x2 pads replace it: x2 Cash 10 minutes (39), x2 TP 20 minutes (39, it pays only while the stamina lasts), both (69). Total boost never above x4.
 - Purchases are granted by the server and must be safe if the purchase message arrives twice (`roblox-monetization`).
 - The offer lives in the Store only: no purchase popups after matches, nothing in the first 5 minutes.
 
@@ -83,8 +84,11 @@ There is no separate expensive cash route: everyone pays the cash price and comp
 | 1 (start) | Street futsal court: walled, painted lines, centre circle, flags and murals (blocky) | 4 | free |
 | 2 | Walled court with proper lines and a small bench | 5 | $250 |
 | 3 | Local ground: fences and a small stand | 6 | $25K |
-| 4 | Club stadium: floodlights, bigger stand | 8 | $750K |
+| 4 | Club stadium: floodlight towers, bigger stand | 8 | $750K |
 | 5 | Pro stadium: roof, crowd, scoreboard, fireworks | 11 | $45M |
+| 6 | Roof arena: one ring of roof with a retractable roof over the pitch, towers outside (same pitch) | 11 | $1.5B (*provisional*) |
+
+- **Every tier has floodlight masts; the model on them is bought in the Locker room** (slot "Floodlights", from tier 3): LED light, twin panels and lamp bank are free, the tower and the arena tower cost cash, the halo and the gold tower Robux. Until then every tier shows the LED light. A separate "Light colour" slot (tier 4) colours the lamps, including the rows of lamps under the roofs of tiers 5 and 6. The tier 6 upgrade cinematic raises the arena with its roof closed, then opens it. Tier 6 multiplies match cash x8 (*provisional*, tune in the simulation).
 
 - **Each stadium upgrade gives a free x2 income boost for 5 minutes.** The timer counts only while the player is online (it waits if they leave), and a HUD badge shows the time left ("x2 · 4:32"). A new upgrade resets the timer, it does not add up. It stacks with other boosts inside the total x4 cap. It is free, never a Robux item, and repeats each New Season when the tiers are bought again.
 - The stadium tier costs cash only. Floors and stadium tier are two separate tracks (floors by completion, tier by cash). The price is taken from the player's cash, and the server charges and applies the upgrade in one step.
@@ -182,20 +186,21 @@ Income is cash per match for a player on the field. Prices rise faster than inco
 
 - **Starting cash:** $15.
 - **Legends (floor 4):** $400B, $1T, $2.5T, $6T, $15T. Everyone pays the cash price and completes the Legend Trials, or buys with Robux. The first Legend should take about 3 weeks of casual free play, but the cash price on top of the trials may now be the real bottleneck, so check it in the simulation. Re-check these after the first playtests.
-- **Stadium tiers (cash):** tier 2 $250 (field 5), tier 3 $25K (field 6), tier 4 $750K (field 8), tier 5 $45M (field 11). The final back test (with all boosts, momentum and stars) has a player buying them at about 4 min, 7 min, 10 min and 28 min. Raising tiers 3 to 5 about 3 times spread them out from about 4, 6, 9 and 20 minutes. A bigger field adds only about +5% to +27% income in total (the best players do most of the earning), so tiers are mostly milestones. Each one gives a free x2 boost for 5 minutes (counts only while online, resets if a new one starts, inside the x4 cap).
+- **Stadium tiers (cash):** tier 2 $250 (field 5), tier 3 $25K (field 6), tier 4 $750K (field 8), tier 5 $45M (field 11), tier 6 $1.5B (field 11, *provisional*: the roof arena, not in the back test yet). The final back test (with all boosts, momentum and stars) has a player buying them at about 4 min, 7 min, 10 min and 28 min. Raising tiers 3 to 5 about 3 times spread them out from about 4, 6, 9 and 20 minutes. A bigger field adds only about +5% to +27% income in total (the best players do most of the earning), so tiers are mostly milestones. Each one gives a free x2 boost for 5 minutes (counts only while online, resets if a new one starts, inside the x4 cap).
 - **"Cash per match" upgrade, 8 levels:** $15, $60, $240, $960, $3.8K, $15K, $61K, $246K, giving multipliers x1.5, x2.1, x2.7, x3.5, x4.3, x5.1, x5.9, x6.7.
 - **Match speed (unlocks after stadium tier 2, minimum 5 s so the bar, "VICTORY" text and counter stay readable):** $120 (9 s), $2K (8 s), $30K (7 s), $500K (6 s), $8M (5 s).
-- **Hat-trick chance (unlocks after floor 1):** base 10%, then $300 (12%), $5K (14%), $80K (17%), $1.5M (21%), $25M (25%). It is a cash upgrade, not a Robux luck boost.
-- **Offline earnings (unlocks after floor 1):** cap 4 hours of income. Rate starts at 10% and rises with $500 (15%), $10K (20%), $200K (25%), $4M (30%), $80M (35%). At 100% it out-earned active play, so it is deliberately low.
+- **Hat-trick chance (unlocks after floor 1):** base 5%, then 3 levels: $2K (10%), $60K (20%), $1.5M (25%) (owner decision, 2026-10-22). It is a cash upgrade, not a Robux luck boost.
+- **Faster training (owner decision, 2026-10-22):** a cash Store pad in the gym hall, between the treadmill and the bench press, unlocks at stadium tier 2. It raises the TP a minute of both machines from 20 to 25 / 30 / 35 / 40 for $5K / $500K / $50M / $2B (a few minutes of income at tiers 2, 3, 5 and 6). It stays under the ~50 a minute of a juggler, so the skill games stay worth playing, and a New Season resets it like the other upgrades. Cash, not Robux: training is the last wall, and a Robux skip would bring back the pay-to-finish gap.
+- **Offline earnings (no upgrade):** cap 4 hours of income at a fixed 25% of normal income for everyone (`Config.Offline.rate`). The upgrade pad was removed (owner decision, 2026-10-22). At 100% it out-earned active play, so it stays deliberately low.
 - **Stars:** +10% income per star, maximum 5 stars (+50%).
-- **Training points (TP):** stamina session of 5 minutes, refilling in about 5 minutes away. Placeholder rate 10 TP per minute (50 TP per session). Each level adds **+3% income**. Level caps: Common 5, Rare 10, Very Rare 15, Epic 20, Legend 25. Cost of level L = 40 x L x rarity factor (Common 1, Rare 2, Very Rare 3, Epic 4, Legend 5). A Common player reaches level 5 in about 1 hour of training (600 TP, about 12 sessions). A Legend at level 25 is a very long-term goal (about 65,000 TP).
+- **Training points (TP):** stamina session of 5 minutes, refilling in about 5 minutes away. Idle rate 20 TP per minute (100 TP per session; it was 10, owner decision 2026-10-22, so an idle trainer is about 2.5 times slower than a juggler, not 5). Each level adds **+3% income**. Level caps: Common 5, Rare 10, Very Rare 15, Epic 20, Legend 25. Cost of level L = 40 x L x rarity factor (Common 1, Rare 2, Very Rare 3, Epic 4, Legend 5). A Common player reaches level 5 in about 1 hour of training (600 TP, about 12 sessions). A Legend at level 25 is a very long-term goal (about 65,000 TP).
 - **Momentum:** +1% per match in a row this session, maximum +25%. Resets on join.
 - **Daily penalties:** x1.5 income for up to 10 minutes.
 - **Cases (Robux): two cases**, named Standard Case and Elite Case (neutral names, nothing that hints at luck).
 
 | | Standard Case | Elite Case |
 |---|---|---|
-| Price (placeholder, set in Step 8) | 49 Robux | about 149 Robux |
+| Price | 49 Robux | 79 Robux, players not owned yet only |
 | Unlocks | Floor 2 started | Floor 2 complete |
 | Player from floors you have reached | 70% | 40% |
 | From the next floor | 25% | 40% |
@@ -203,14 +208,21 @@ Income is cash per match for a player on the field. Prices rise faster than inco
 
   Within a floor, cheaper players are more likely (start at about 30% less likely for each step up the slot order, tune in the simulation). A new player is owned at once; a duplicate adds a star. All odds, including the chance of a duplicate, are shown before purchase on both cases. The Elite Case unlocks later because it is the bigger spend per tap. The 2% Legend chance in the Elite Case weakens the Legend Trials and the direct Robux price (another way to reach a Legend), so re-check it in the first playtests.
 - **Free daily case:** a mixed prize, either cash worth about 5 minutes of the player's income or a x2 boost for 5 minutes. Never players, never large amounts.
-- **Robux boost:** next 30 matches x2, banked up to 60, about 25 to 49 Robux. A 5-match pack was too small to feel worth buying (a 30-minute session has about 180 matches). Total boost never above x4.
-- **New Season:** the button appears when floor 3 is complete (no extra cash threshold). Each season adds +50% to the permanent multiplier (season 2 = x1.5, season 3 = x2.0, season 4 = x2.5).
+- **Robux boosts:** the x2 pads (see Store). The 30-match boost was removed (2026-10-22). Total boost never above x4.
+- **New Season:** the button appears when floor 3 is complete (no extra cash threshold). Each season adds +50% to the permanent multiplier up to season 10 (season 2 = x1.5, season 10 = x5.5), then +10% a season (owner decision, 2026-10-22: without a limit a bot that resets at once went through 3,631 seasons).
 
 ### Simulated pacing
 - First 5 minutes: first purchase 0:23, first upgrade 1:06, player 2 at 2:06, player 3 at 3:36, player 4 at 4:16, stadium tier 2 at 5:16. This matches the Step 2 script.
 - **Measured in the real game (Phase 3, an optimal bot that is always on the right pad):** plot claimed 0:08, first purchase 0:19, first upgrade 0:54, player 2 at 1:45, player 3 at 2:36, player 4 at 3:27, stadium tier 2 at 3:57. That is within 5 to 20 s of the simulation for the first upgrade and player 2, and 50 to 80 s faster from player 3 on (the 5 s first match, rounding of small payouts and the scripted hat-trick at about 3:35 all favour the player). A real player is slower by roughly 25 to 30%, which lands the first stadium upgrade at about 5:00 (the Step 2 peak). The economy numbers stay; re-check with real players and raise the tier 2 price if most reach it before minute 4. `tests/pacing.spec.luau` keeps this timeline in range.
 - Floor 1 complete at about 11 min, floor 2 at about 40 min, floor 3 in about 2.7 hours of play (day 2 for an efficient player, around day 4 for a 30-minute-a-day player). First Legend after about 3 weeks of casual free play.
 - Spenders save time but not a lot. Boosts roughly equal playing twice as long, and a free player can catch up with time. **Cases are the strongest shortcut** (a regular spender skipped much of floor 3), so watch the 70 / 25 / 5 case pool in playtests and lower it (for example to 90 / 9 / 1) if players skip floors.
+
+### Robux prices and the finish line (2026-10-22)
+Method: the real economy code in Lune. A free player who always buys the cheapest next thing climbs to floor 3 complete; each product is given at five stages and the climb is run again ("minutes of play saved"). A second simulation adds New Seasons, training, the Legend Trials, the daily boosts and offline income, and measures the time to own all five Legends.
+- **One rate:** about 3 to 4 Robux per minute of play saved, set by the 10-minute x2 Cash pad (39 Robux saves 10 to 15 minutes).
+- **Prices:** x2 Cash 10 min 39, x2 TP 20 min 39, both 69; cash packs 15 min / 1 h / 4 h of income 39 / 129 / 399; TP packs 39 / 149 / 499; Standard Case 49 (its x2 boosts are most of its value); Elite Case 79, and it rolls only players not owned yet (at 149 with duplicates it saved 1 to 6 minutes); Legends 799 to 3,499 for the cash price only; Robux cosmetics unchanged.
+- **Cash prices:** income per minute depends on the stage, not the speed: tier 1 $30-325, tier 2 $0.7K-28K, tier 3 $55K-640K, tier 4 $0.9M-12M, tier 5 $12.6M-83M, tier 6 $99M-302M. Cosmetics are set from this; the stadium name is $1.5B; tier 5 multiplies x7.3 (at x6.7 it added only 3%). Pelé's trial is 8 players at level 12 (about 75K TP; 10 at level 15 was about 144K TP and three quarters of the game).
+- **Finish line after the changes** (best reset rule: a New Season unless the next Legend is within about 4 hours of income): a 30-minute-a-day juggler owns all five Legends on day 164 (was 253), a 2-hour-a-day juggler on day 45 (was 67), a 30-minute-a-day idle trainer on day 384 (was 1,172). The first Legend still comes on day 15 to 19 for a 30-minute player. Training stays the last wall.
 
 ### Still to test in playtests
 Real pacing of floors 2 and 3 with stars, TP, momentum and daily boosts, the Legend prices, the case pool, the hat-trick chance, the offline rate and whether the 30-match boost feels worth its price.
@@ -233,7 +245,7 @@ Return triggers are all **pull, not push**: a reason that is true (cash is waiti
 ### Pit and peak map (first sessions)
 - **Peaks:** first purchase (0:23), first hat-trick (about 4:15), first stadium upgrade (about 5:16, the main one), floor 1 complete (about 11 min), floor 2 complete (about 40 min).
 - **Pits to watch:** minutes 5 to 11 (after the big peak, before floor 1 is done), the long wait for items 10 to 12 on each floor, and the first New Season reset.
-- **Fix for the post-peak dip:** open one new thing right after the first upgrade (daily penalty pad), and open the next one when floor 1 completes (hat-trick and offline upgrades, training ground). One new idea at a time, never a menu dump.
+- **Fix for the post-peak dip:** open one new thing right after the first upgrade (daily penalty pad), and open the next one when floor 1 completes (hat-trick upgrade, training ground). One new idea at a time, never a menu dump.
 - **End on a high:** when a player leaves, the HUD shows what is banked ("Offline earnings ready: up to 4 h") so the last thing they see is progress, not a treadmill.
 - **Welcome back:** a single non-blocking line ("+$N while you were away", the cap is shown). It is the Day 1 hook, so it must always load correctly (see Step 6).
 
@@ -243,7 +255,7 @@ Return triggers are all **pull, not push**: a reason that is true (cash is waiti
 | Start | Claim plot, capsule pads, the field button |
 | About 1 min | Store: cash per match |
 | About 5 min | Daily penalties, free daily case, their two HUD icons, stadium tier 2 |
-| Floor 1 complete (about 11 min) | Hat-trick and offline upgrades, training ground, the notification opt-in (below) |
+| Floor 1 complete (about 11 min) | Hat-trick upgrade, training ground, the notification opt-in (below) |
 | Stadium tier 2 | Match speed |
 | Floor 2 started | The Standard Case, in the Store (not before, so the first 30 minutes are about the loop). The Legends hall becomes visible through glass |
 | Floor 2 complete | The Elite Case |
@@ -253,7 +265,7 @@ Return triggers are all **pull, not push**: a reason that is true (cash is waiti
 
 ### Active play during the waits
 The game stays idle by design. Two small additions, no chores:
-- **Training drill:** at the training ground, standing still earns the base 10 TP per minute. A timing drill (same aim-only input and server judging as the daily penalties, so one mechanic built once) raises the rate for as long as the player keeps hitting it, up to about 15 TP per minute (*provisional*). The stamina bar stays the cap. Pacing and the Legend Trials are always tuned on the idle rate, so nobody falls behind.
+- **Training drill:** at the training ground, standing still earns the base 20 TP per minute. A timing drill (same aim-only input and server judging as the daily penalties, so one mechanic built once) raises the rate for as long as the player keeps hitting it, up to about 15 TP per minute (*provisional*). The stamina bar stays the cap. Pacing and the Legend Trials are always tuned on the idle rate, so nobody falls behind.
 - **Team customization** (below).
 - Not in version 1: world collectibles, tap-to-boost during matches, daily quests.
 
@@ -267,10 +279,16 @@ Each stadium tier unlocks a new thing to customise, so a tier is more than a big
 | 3 | Fence banners, stand colours | Premium stand and banner sets |
 | 4 | Floodlight colour, flags | Premium floodlight and flag sets |
 | 5 | Scoreboard style, crowd chant style, fireworks colour | Premium stadium themes |
+| 6 | Outside colour of the roof arena; its name (typed, paid in cash each time) | Premium outside colours |
 
-- **Each tier has several free styles and a few premium ones** (counts are *provisional*). Premium styles are purely cosmetic: no income, no capacity, no advantage.
+- **Each tier has several free styles, a few bought with cash and a few with Robux** (counts are *provisional*). The two cash prices of a slot are about 10 and 25 minutes of income near the end of the slot's tier (raised 2026-10-22, they were 10 to 40 times too low), so late tiers keep a cash sink. Bought styles are purely cosmetic: no income, no capacity, no advantage.
+- **The Locker room shows a copy of the player's stadium:** the panel docks at the left and the camera frames the slot on a copy of the pitch lifted high above the map, so the match going on below never gets in the way (one of the player's team in the kit at the centre circle, the crest over the gate, the boards, a floodlight, the scoreboard). Tapping a style paints it on the copy only, for free; one button under the cards uses or buys it, and closing throws the copy away. The server paints the choices on the real pitch for everyone (`shared/StadiumLook`).
+- **Each scoreboard style is its own design** (classic, framed, retro tiles, neon, split home and away), not only a colour.
+- **The roof arena's name is typed by the player** and costs $100M (*provisional*) each time. The server tidies it (3 to 20 letters, digits, spaces, a little punctuation), filters it with Roblox's text filter before anyone sees it, and refuses a name the filter changes, without charging. The typed text is saved and filtered again on every join; only the filtered text is shown to others, over the gate and on a long board across the front of the arena, under a big club crest on the roof. While typing, the player alone sees the name on their Locker room copy. Every panel (Locker room, store) opens scrolled to its top.
+- **A slot that is not open yet** shows its tier on every card ("Tier 5"), never "In use".
+- **Crests are pictures** (flat cartoon shields drawn by `tools/art/crests.py` and uploaded as decals). **Banner sets are made-up sponsors** on wedge-shaped boards (never real brands: Roblox does not allow unlicensed trademarks, and betting ads are not allowed at all).
 - A premium style is shown only for tiers the player has reached, with a preview before buying. It is a direct purchase of a visible style: no random cosmetic crates. Offers live only in the Locker room, with no popups and nothing in the first 30 minutes. Prices are placeholders (set in Step 8).
-- Bought styles are kept across New Seasons, like anything bought with Robux. Free choices are also kept and re-apply as the player reaches each tier again.
+- Bought styles (cash or Robux) are kept across New Seasons. Free choices are also kept and re-apply as the player reaches each tier again.
 - The client sends only an option ID from `Config` and the server checks it against what the tier unlocks and what the player owns. No free-text names in version 1 (presets avoid filtering). Purchases follow the Step 1 rule of being safe if a message arrives twice (`roblox-monetization`).
 - Art cost: kit colours and banners are cheap, crowd chants and fireworks are the most expensive. Tier 5 is the first thing to cut if time is short.
 
@@ -297,7 +315,7 @@ Each stadium tier unlocks a new thing to customise, so a tier is more than a big
 | Offline earnings | Low rate, no punishment for being away | None | Pass |
 | Stamina and TP | Free, never sold | Could be a chore | Pass. Never sell stamina refills |
 | Daily penalties and free case | No streak, no penalty for skipping | None | Pass |
-| Robux match boost | Bank never expires, cap 60, price on the button | Stacking cap x4 | Pass |
+| Robux x2 boosts | Online time only, price and length on the pad, at most an hour banked | Stacking cap x4 | Pass |
 | **Robux player case** | **Main risk: a paid random item, likely young players** | Repeat buying for duplicates | **Pass only with the rules below** |
 | New Season reset | Player loses progress for a bonus | Feels forced if cash Legends become unreachable without it | Pass with a clear confirm and a re-climb estimate. Verify in playtests that it stays optional |
 
@@ -353,7 +371,7 @@ Principle: the server owns every game fact and the client only draws. No framewo
 | `UpgradeStadium` | the tier the client saw | It is the next tier, affordable, nothing in progress |
 | `BuyStoreUpgrade` | an upgrade ID | The ID exists, unlocked, the next level, affordable |
 | `ClaimDaily` | which one (case) | 20 hours since the last claim |
-| `PenaltyKick` | an aim zone (small enum) | Kicks left, cooldown, the server rolls the result |
+| `PenaltyStart`, `PenaltyTap` | nothing; a server-time stamp per tap (the first locks the aim, the second stops the power meter and shoots) | Kicks left, cooldown, the stamp within the grace window; the server judges the shot (`shared/Penalty`) |
 | `SetCosmetic` | an option ID | Tier reached and the style is free or owned |
 | `StartNewSeason` | the season number the client saw | Floor 3 complete, number matches, then reset |
 | `TrainingDrillHit` | the press only | Drill active, 15 TP per minute cap, stamina |
@@ -389,7 +407,7 @@ Principle: the server owns every game fact and the client only draws. No framewo
 | Store levels | `Store` | Store pad or `BuyStoreUpgrade` |
 | Season, trophies, head start | `Season` | `StartNewSeason` |
 | Legend trial progress | `Legends` | Recomputed by the server from state |
-| Cooldowns, kicks | `Daily` | `ClaimDaily`, `PenaltyKick` |
+| Cooldowns, kicks | `Daily` | `ClaimDaily`, `PenaltyStart` / `PenaltyTap` |
 | Cosmetics owned and chosen | `Cosmetics` | `SetCosmetic`, receipts |
 | Plot ownership | `Plots` | Claim ring, join, leave |
 | Receipts | `Purchases` | `ProcessReceipt` |
@@ -411,7 +429,7 @@ cash, tp
 staminaLeft            seconds left in the current session
 lastSeen               server time, for offline earnings
 stadiumTier
-storeLevels            { cashPerMatch, matchSpeed, hatTrick, offline }
+storeLevels            { matchSpeed, hatTrick }
 fieldStarted           true once the first player is on the field
 players                { [playerId] = { level, stars } }   owned only, Legends included
 season                 { number }
@@ -490,7 +508,7 @@ Step 7 is the whole implementation: the map, the scripts and the UI. Studio hold
     - Supported in version 1: phone, tablet, desktop. A controller works for walking and pads; full gamepad navigation of the screens and a console release are not targeted yet.
 11. **Lighting: one fixed bright late afternoon, no day and night cycle.** Brightness about 2, warm sun (ClockTime about 15 to 16), strong ambient fill so blocky shapes stay readable, low-density atmosphere, one ColorCorrection (slightly higher saturation) and a light Bloom with a high threshold so only neon glows. No cycle: it costs frames, changes colours of rarity glows, and every player and visitor should see the same stadium. Floodlights, the scoreboard and the capsule glow are neon plus transparent beam parts, not real light objects (no shadow-casting lights). Lighting technology is set in Studio and checked on a phone simulator.
 12. **Art source: native parts first.** Plastic and SmoothPlastic blocks, saturated colours, a modular kit (floor slab, glass front, fence, stand block, capsule, pad), built in Studio through MCP in small batches with readback. No Toolbox models with scripts. HUD icons are UI shapes and text at first and become uploaded images in the polish phase, using the game owner's account with the asset permission granted. Sounds: only audio that is confirmed usable in the experience.
-13. **Cost control: a worst-case fixture.** A test fixture fills all 8 plots at tier 5 with every player owned (from the Studio-only test profiles), and is run on a low-end phone preset before polish is called done.
+13. **Cost control: a worst-case fixture.** A test fixture fills all 8 plots at tier 6 with every player owned (from the Studio-only test profiles), and is run on a low-end phone preset before polish is called done.
 
 ### What "done" means for each phase (evidence required)
 - **Greybox:** every marker present and named, bounds and pivot read back, the walk from spawn to claim, first capsule and field button timed from a player camera.
@@ -509,8 +527,8 @@ Step 7 is the whole implementation: the map, the scripts and the UI. Studio hold
 |---|---|
 | Opponent | Cosmetic only, always a win |
 | Match feedback | Loading bar in HUD, then "VICTORY" (or "HAT-TRICK x2") text and "+$N" on the money label |
-| Store | Cash upgrades with no daily limit. Robux boost: next 30 matches x2, banked up to 60, total boost cap x4 |
-| Stadium | 5 tiers (field 4, 5, 6, 8, 11), each upgrade gives a free x2 boost for 5 minutes |
+| Store | Cash upgrades with no daily limit. Robux x2 pads (cash 10 min, TP 20 min), total boost cap x4 |
+| Stadium | 6 tiers (field 4, 5, 6, 8, 11, 11), each upgrade gives a free x2 boost for 5 minutes |
 | Streak | Momentum, session only |
 | Stadium | 4 floors of capsules, 10 + 10 + 10 + 5 players (35) |
 | Buying | Stand on the pad in front of the capsule |

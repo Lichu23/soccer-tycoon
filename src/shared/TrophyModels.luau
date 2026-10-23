@@ -1,6 +1,8 @@
 --!strict
--- The trophy models made in Studio from the trophy drawings (ReplicatedStorage.Trophies, saved in the
--- place: one per tier, standing on their pivot, about 3.5 studs tall). The trophy case shows them on its
+-- The trophy models (ReplicatedStorage.Trophies, saved in the place): one per tier, each a single
+-- cartoon MeshPart generated in Studio, flat SmoothPlastic in the tier's colour (bronze, silver, gold),
+-- standing on its pivot, 3 to 3.8 studs tall. The old part-built ones are kept in
+-- ServerStorage.TrophiesOld. The trophy case shows them on its
 -- pedestals (server/TrophyCase) and the New Season screens show the one being played for
 -- (client/SeasonUi). Replicated because the client draws them; they hold no scripts or secrets.
 

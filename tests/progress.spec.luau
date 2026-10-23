@@ -43,14 +43,6 @@ end)
 
 T.suite("progress store")
 
-T.test("cash per match is available from the start", function()
-	local data = newData()
-	T.eq(Progress.storeStatus(data, "cashPerMatch"), "ready") -- $15
-	data.cash = 14
-	T.eq(Progress.storeStatus(data, "cashPerMatch"), "cannotAfford")
-	T.eq(Progress.storePrice(data, "cashPerMatch"), 15)
-end)
-
 T.test("match speed unlocks at stadium tier 2", function()
 	local data = newData()
 	data.cash = 1000
@@ -63,30 +55,30 @@ T.test("hat-trick and offline upgrades unlock when floor 1 is complete", functio
 	local data = newData()
 	data.cash = 1_000_000
 	T.eq(Progress.storeStatus(data, "hatTrick"), "locked")
-	T.eq(Progress.storeStatus(data, "offline"), "locked")
 	ownFloor(data, 1)
 	T.eq(Progress.storeStatus(data, "hatTrick"), "ready")
-	T.eq(Progress.storeStatus(data, "offline"), "ready")
+	data.storeLevels.hatTrick = 3
+	T.eq(Progress.storeStatus(data, "hatTrick"), "maxed") -- 3 levels at most
 end)
 
 T.test("an upgrade at its last level is maxed", function()
 	local data = newData()
-	data.storeLevels.cashPerMatch = 8
-	T.eq(Progress.storeStatus(data, "cashPerMatch"), "maxed")
-	T.eq(Progress.storePrice(data, "cashPerMatch"), nil)
+	data.stadiumTier = 2
+	data.storeLevels.matchSpeed = 5
+	T.eq(Progress.storeStatus(data, "matchSpeed"), "maxed")
+	T.eq(Progress.storePrice(data, "matchSpeed"), nil)
 end)
 
 T.test("match speed, hat-trick chance and offline rate follow the levels", function()
 	local data = newData()
 	T.eq(Progress.matchSeconds(data), 10)
-	T.eq(Progress.hatTrickChance(data), 0.10)
-	T.eq(Progress.offlineRate(data), 0.10)
+	T.eq(Progress.hatTrickChance(data), 0.05)
+	T.eq(Progress.offlineRate(data), 0.25)
 	data.storeLevels.matchSpeed = 3
 	data.storeLevels.hatTrick = 2
-	data.storeLevels.offline = 5
 	T.eq(Progress.matchSeconds(data), 7)
-	T.eq(Progress.hatTrickChance(data), 0.14)
-	T.eq(Progress.offlineRate(data), 0.35)
+	T.eq(Progress.hatTrickChance(data), 0.20)
+	T.eq(Progress.offlineRate(data), 0.25)
 end)
 
 T.suite("progress stadium")
@@ -102,7 +94,7 @@ end)
 
 T.test("the top tier is maxed", function()
 	local data = newData()
-	data.stadiumTier = 5
+	data.stadiumTier = 6
 	T.eq(Progress.stadiumStatus(data), "maxed")
 	T.eq(Progress.nextTier(data), nil)
 end)
@@ -122,13 +114,7 @@ T.test("the goal path of the first five minutes", function()
 	-- buying the first player also starts the matches
 	Roster.add(data, "rashford")
 	data.fieldStarted = true
-	goal = Goals.next(data, true)
-	T.eq(goal.kind, "store")
-	T.eq(goal.id, "cashPerMatch")
-	T.eq(goal.cost, 15)
-
-	data.storeLevels.cashPerMatch = 1
-	goal = Goals.next(data, true)
+	goal = Goals.next(data, true) -- no Store step any more: straight to the next player
 	T.eq(goal.kind, "player")
 	T.eq(goal.id, "grealish")
 	T.eq(goal.cost, 30)
@@ -149,8 +135,7 @@ end)
 T.test("with everything bought there is nothing to chase", function()
 	local data = newData()
 	data.fieldStarted = true
-	data.storeLevels.cashPerMatch = 1
-	data.stadiumTier = 5
+	data.stadiumTier = 6
 	ownFloor(data, 1)
 	ownFloor(data, 2)
 	ownFloor(data, 3)
@@ -203,13 +188,16 @@ end)
 
 T.test("store and stadium pads", function()
 	local data = newData()
-	local store = PadInfo.describe("store", "cashPerMatch", data)
-	T.eq(store.title, "More cash per match")
-	T.eq(store.price, "$15")
-	T.eq(store.state, "ready")
 	T.eq(PadInfo.describe("store", "matchSpeed", data).state, "locked")
-	data.storeLevels.cashPerMatch = 8
-	T.eq(PadInfo.describe("store", "cashPerMatch", data).price, "MAX")
+	data.stadiumTier = 2
+	data.cash = 120
+	local store = PadInfo.describe("store", "matchSpeed", data)
+	T.eq(store.title, "Faster matches")
+	T.eq(store.price, "$120")
+	T.eq(store.state, "ready")
+	data.storeLevels.matchSpeed = 5
+	T.eq(PadInfo.describe("store", "matchSpeed", data).price, "MAX")
+	data.stadiumTier = 1
 
 	data.cash = 100
 	local stadium = PadInfo.describe("stadium", "stadium", data)
@@ -217,6 +205,6 @@ T.test("store and stadium pads", function()
 	T.eq(stadium.note, "Need $150 more")
 	data.cash = 250
 	T.eq(PadInfo.describe("stadium", "stadium", data).note, "")
-	data.stadiumTier = 5
+	data.stadiumTier = 6
 	T.eq(PadInfo.describe("stadium", "stadium", data).state, "maxed")
 end)

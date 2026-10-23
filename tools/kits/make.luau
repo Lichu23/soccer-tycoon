@@ -394,17 +394,14 @@ end
 local WHITE = { 255, 255, 255 }
 save(
 	"shirt_plain",
-	shirtImage(
-		{
-			shirt = WHITE,
-			trim = WHITE,
-			shorts = WHITE,
-			socks = WHITE,
-			accent = { 200, 200, 200 },
-			pattern = "plain",
-		},
-		true
-	)
+	shirtImage({
+		shirt = WHITE,
+		trim = WHITE,
+		shorts = WHITE,
+		socks = WHITE,
+		accent = { 200, 200, 200 },
+		pattern = "plain",
+	}, true)
 )
 save(
 	"pants_plain",
@@ -436,6 +433,85 @@ local function buzzImage(height: number): Image
 	end
 	return image
 end
+-- The TP tile of the HUD (client/Icons "tp"): the cyan tile of the other icons with a dark outline,
+-- a darker lip at the bottom, and "TP" in bold white letters with a dark outline.
+local function tpTile(): Image
+	local size = 256
+	local image = newImage(size, size)
+	local function inRounded(
+		x: number,
+		y: number,
+		x0: number,
+		y0: number,
+		x1: number,
+		y1: number,
+		r: number
+	): boolean
+		if x < x0 or x > x1 or y < y0 or y > y1 then
+			return false
+		end
+		local cx = math.clamp(x, x0 + r, x1 - r)
+		local cy = math.clamp(y, y0 + r, y1 - r)
+		local dx, dy = x - cx, y - cy
+		return dx * dx + dy * dy <= r * r
+	end
+	-- The letters as shapes that can grow by `d` pixels (for the outline): T, then P (stem, two bars and
+	-- a half ring for the bowl).
+	local function inLetters(x: number, y: number, d: number): boolean
+		local function box(x0: number, y0: number, x1: number, y1: number): boolean
+			return x >= x0 - d and x <= x1 + d and y >= y0 - d and y <= y1 + d
+		end
+		if box(40, 74, 122, 106) or box(65, 74, 97, 184) then -- T
+			return true
+		end
+		if box(136, 74, 168, 184) then -- P stem
+			return true
+		end
+		local cx, cy, outer, inner = 178, 116, 42 + d, math.max(0, 16 - d)
+		if box(136, 74, 178, 100) or box(136, 132, 178, 158) then -- the bowl's top and bottom bars
+			return true
+		end
+		if x >= cx - d then
+			local dx, dy = x - cx, y - cy
+			local dist = math.sqrt(dx * dx + dy * dy)
+			if dist <= outer and dist >= inner then
+				return true
+			end
+		end
+		return false
+	end
+	local outline = { 22, 30, 58 }
+	local cyan = { 44, 200, 236 }
+	local lip = { 22, 140, 196 }
+	local shine = { 120, 226, 248 }
+	for y = 0, size - 1 do
+		for x = 0, size - 1 do
+			local px, py = x + 0.5, y + 0.5
+			local color: Color? = nil
+			if inRounded(px, py, 4, 4, 252, 252, 46) then
+				color = outline
+				if inRounded(px, py, 16, 14, 240, 238, 36) then
+					color = if py > 206 then lip elseif py < 40 then shine else cyan
+				end
+				if inLetters(px - 4, py - 8, 0) then
+					color = outline -- the drop shadow
+				end
+				if inLetters(px, py, 9) then
+					color = outline
+				end
+				if inLetters(px, py, 0) then
+					color = { 255, 255, 255 }
+				end
+			end
+			if color then
+				put(image, x, y, color)
+			end
+		end
+	end
+	return image
+end
+save("icon_tp", tpTile())
+
 save("buzz_top", buzzImage(FACE))
 save("buzz_side", buzzImage(FACE * 0.42))
 save("buzz_front", buzzImage(FACE * 0.2))

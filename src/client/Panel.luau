@@ -1,9 +1,12 @@
 --!strict
 -- The shared look of the big screens (Shop, Locker room, Reminders): a light panel in the middle of
--- the screen with a centred title, a red X in the corner and a scrolling column, over a dimmed game.
+-- the screen with a centred title, a red X in the corner and a scrolling column, over the game (no
+-- dimming).
 -- While a panel is open its ScreenGui sits above every other HUD screen. The X is the only way to
 -- close it, so a stray tap outside never loses the player's place. Text colours are dark, for contrast
 -- on the light panel.
+
+local TweenService = game:GetService("TweenService")
 
 local Icons = require(script.Parent.Icons)
 local Style = require(game:GetService("ReplicatedStorage").Shared.Style)
@@ -13,13 +16,17 @@ local EDGE_COLOR = Color3.fromRGB(20, 24, 35)
 local HEADER_HEIGHT = 64
 local OPEN_ORDER = 6
 local CLOSED_ORDER = 4
+local TOAST_SECONDS = 2.5
+local TOAST_COLOR = Color3.fromRGB(232, 64, 96) -- the red of the ribbons and the X
 
 local Panel = {}
 
 Panel.TEXT = Color3.fromRGB(28, 30, 48) -- body text on the panel
 Panel.MUTED = Color3.fromRGB(70, 74, 100) -- secondary text on the panel
 Panel.GOOD = Color3.fromRGB(14, 110, 48) -- an answer such as "Yours"
+Panel.BACKGROUND = PANEL_COLOR
 Panel.MAX_WIDTH = 640
+Panel.HEADER_HEIGHT = HEADER_HEIGHT
 
 local function new(className: string, props: { [string]: any }, parent: Instance?): any
 	local instance = Instance.new(className)
@@ -34,8 +41,13 @@ end
 
 export type Built = {
 	backdrop: Frame,
+	panel: Frame, -- the light panel itself (the Locker room docks it at the left)
+	scroll: ScrollingFrame,
 	card: Frame, -- the column the screen fills with rows (a UIListLayout is already on it)
 	setTitle: (text: string) -> (),
+	-- Shows one short line on a red chip at the bottom of the panel for a couple of seconds (why a
+	-- card is closed, a refused purchase). A new line replaces the one showing; closing hides it.
+	toast: (text: string) -> (),
 }
 
 -- Builds the panel inside `gui`. `heightScale` is the share of the screen height it takes.
@@ -48,8 +60,12 @@ function Panel.build(gui: ScreenGui, title: string, heightScale: number, onClose
 		Active = true, -- swallows taps so nothing behind it is pressed
 		ZIndex = 5,
 	}, gui)
+	local scroll: ScrollingFrame
 	backdrop:GetPropertyChangedSignal("Visible"):Connect(function()
 		gui.DisplayOrder = if backdrop.Visible then OPEN_ORDER else CLOSED_ORDER
+		if backdrop.Visible then
+			scroll.CanvasPosition = Vector2.zero -- every screen opens at its top
+		end
 	end)
 
 	local panel = new("Frame", {
@@ -93,7 +109,7 @@ function Panel.build(gui: ScreenGui, title: string, heightScale: number, onClose
 	new("UIStroke", { Color = Color3.fromRGB(255, 255, 255), Thickness = 3 }, close)
 	close.Activated:Connect(onClose)
 
-	local scroll = new("ScrollingFrame", {
+	scroll = new("ScrollingFrame", {
 		Name = "Scroll",
 		Position = UDim2.fromOffset(0, HEADER_HEIGHT),
 		Size = UDim2.new(1, 0, 1, -HEADER_HEIGHT),
@@ -120,11 +136,85 @@ function Panel.build(gui: ScreenGui, title: string, heightScale: number, onClose
 	}, card)
 	new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, card)
 
+	-- The toast floats over the content, so the cards never move when it comes and goes.
+	local toastChip = new("TextLabel", {
+		Name = "Toast",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -16),
+		Size = UDim2.fromOffset(0, 44),
+		AutomaticSize = Enum.AutomaticSize.X,
+		BackgroundColor3 = TOAST_COLOR,
+		Font = Style.font,
+		TextSize = 18,
+		TextColor3 = Style.ui.text,
+		Visible = false,
+		ZIndex = 10,
+	}, panel)
+	new("UICorner", { CornerRadius = UDim.new(0, 12) }, toastChip)
+	local toastEdge = new("UIStroke", {
+		Color = EDGE_COLOR,
+		Thickness = 3,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+	}, toastChip)
+	local toastOutline = new("UIStroke", {
+		Color = EDGE_COLOR,
+		Thickness = 1.5,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
+	}, toastChip)
+	new("UIPadding", { PaddingLeft = UDim.new(0, 18), PaddingRight = UDim.new(0, 18) }, toastChip)
+	local toastScale = new("UIScale", {}, toastChip)
+	local toastToken = 0
+	local function showToast(visible: boolean)
+		local fade = if visible then 0 else 1
+		toastChip.BackgroundTransparency = fade
+		toastChip.TextTransparency = fade
+		toastEdge.Transparency = fade
+		toastOutline.Transparency = fade
+		toastChip.Visible = visible
+	end
+	backdrop:GetPropertyChangedSignal("Visible"):Connect(function()
+		if not backdrop.Visible then
+			toastToken += 1
+			showToast(false)
+		end
+	end)
+
 	return {
 		backdrop = backdrop,
+		panel = panel,
+		scroll = scroll,
 		card = card,
 		setTitle = function(text: string)
 			titleLabel.Text = text
+		end,
+		toast = function(text: string)
+			toastToken += 1
+			local token = toastToken
+			toastChip.Text = text
+			showToast(true)
+			toastScale.Scale = 0.85
+			TweenService:Create(
+				toastScale,
+				TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+				{ Scale = 1 }
+			):Play()
+			task.delay(TOAST_SECONDS, function()
+				if token ~= toastToken then
+					return
+				end
+				local info = TweenInfo.new(0.25)
+				for _, item: Instance in { toastChip, toastEdge, toastOutline } do
+					local goal = if item:IsA("TextLabel")
+						then { BackgroundTransparency = 1, TextTransparency = 1 }
+						else { Transparency = 1 }
+					TweenService:Create(item, info, goal):Play()
+				end
+				task.delay(0.25, function()
+					if token == toastToken then
+						toastChip.Visible = false
+					end
+				end)
+			end)
 		end,
 	}
 end

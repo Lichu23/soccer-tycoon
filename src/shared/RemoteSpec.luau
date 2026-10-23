@@ -29,15 +29,6 @@ table.sort(storeIds)
 
 local RemoteSpec = {}
 
--- The five aim targets of the daily penalty kick: the four corners of the goal and the middle.
-RemoteSpec.aimZones = {
-	"topLeft",
-	"topRight",
-	"bottomLeft",
-	"bottomRight",
-	"center",
-} :: { string }
-
 local ID_FIELD: FieldSchema = { kind = "string", maxLength = 40 }
 
 RemoteSpec.remotes = {
@@ -71,11 +62,20 @@ RemoteSpec.remotes = {
 		ratePerSecond = 0.5,
 		burst = 2,
 	},
-	PenaltyKick = {
+	-- The daily penalty kicks (shared/Penalty): the screen opens (a new visit to the spot, or the film
+	-- that was playing), then the same two taps as the breakaway, each stamped with the server
+	-- time the player's screen showed (never trusted more than a fraction of a second into the past).
+	PenaltyStart = {
 		direction = "toServer",
-		args = { { kind = "enum", values = RemoteSpec.aimZones } },
+		args = {},
 		ratePerSecond = 1,
 		burst = 2,
+	},
+	PenaltyTap = {
+		direction = "toServer",
+		args = { { kind = "number", min = 0, max = 4_000_000_000 } },
+		ratePerSecond = 6,
+		burst = 6,
 	},
 	SetCosmetic = {
 		direction = "toServer",
@@ -83,6 +83,21 @@ RemoteSpec.remotes = {
 		args = { { kind = "string", maxLength = 24 }, ID_FIELD },
 		ratePerSecond = 2,
 		burst = 4,
+	},
+	-- A Locker room style sold for cash: its id from Config. The server checks the tier and the price.
+	BuyCosmetic = {
+		direction = "toServer",
+		args = { ID_FIELD },
+		ratePerSecond = 1,
+		burst = 2,
+	},
+	-- The roof arena's new name as typed. The server tidies it, checks the tier and the price, and
+	-- filters it before anyone sees it.
+	RenameStadium = {
+		direction = "toServer",
+		args = { { kind = "string", maxLength = 60 } },
+		ratePerSecond = 0.2,
+		burst = 1,
 	},
 	SetNotifications = {
 		direction = "toServer",
@@ -111,21 +126,21 @@ RemoteSpec.remotes = {
 		ratePerSecond = 6,
 		burst = 6,
 	},
-	-- A tap on the bar of the free kicks (it sets the power, or the aim and kicks) and the server time
-	-- the player's screen showed when he tapped (the server never trusts it more than a fraction of a
-	-- second into the past).
+	-- The 1v1 breakaway at the free-kick spot. Each input carries the server time the player's screen
+	-- showed when it was made (the server never trusts it more than a fraction of a second into the
+	-- past). A tap locks the aim reticle, or stops the moving power meter and shoots.
 	FreekickTap = {
 		direction = "toServer",
 		args = { { kind = "number", min = 0, max = 4_000_000_000 } },
 		ratePerSecond = 6,
 		burst = 6,
 	},
-	-- A tap on the ball of the free kicks: the contact point, each axis -1 to 1.
-	FreekickContact = {
+	-- A skill move against the defender: 1 cuts left, 2 is a step-over, 3 cuts right.
+	FreekickMove = {
 		direction = "toServer",
 		args = {
-			{ kind = "number", min = -1, max = 1 },
-			{ kind = "number", min = -1, max = 1 },
+			{ kind = "number", min = 1, max = 3, integer = true },
+			{ kind = "number", min = 0, max = 4_000_000_000 },
 		},
 		ratePerSecond = 6,
 		burst = 6,
@@ -153,7 +168,8 @@ RemoteSpec.remotes = {
 					"resetDaily",
 					"grantTp",
 					"revealRarity",
-					"offerWait",
+					"playIntro",
+					"quickStart",
 				},
 			},
 			{ kind = "number", min = 0, max = 1e15 },

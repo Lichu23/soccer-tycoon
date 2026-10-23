@@ -24,20 +24,56 @@ local function firstPremium(slot)
 	end
 end
 
-T.test("every slot has free styles and premium ones, and each premium one has a product", function()
+T.test("every slot has free, cash and Robux styles, and each Robux one has a product", function()
 	for _, slot in Config.CosmeticSlots do
-		local free, premium = 0, 0
+		local free, cash, premium = 0, 0, 0
 		for _, def in Cosmetics.styles(slot.id) do
+			T.truthy(not (def.cash and def.robux), def.id .. " has two prices")
 			if def.robux then
 				premium += 1
 				T.truthy(Config.Products["cosmetic_" .. def.id] ~= nil, def.id)
+			elseif def.cash then
+				cash += 1
+				T.eq(Config.Products["cosmetic_" .. def.id], nil)
 			else
 				free += 1
 			end
 		end
 		T.truthy(free >= 3, slot.id)
+		T.truthy(cash >= 2, slot.id)
 		T.truthy(premium >= 2, slot.id)
 	end
+end)
+
+T.test("cash prices rise with the tier that opens the slot", function()
+	local last = 0
+	for _, slot in Config.CosmeticSlots do
+		local cheapest = math.huge
+		for _, def in Cosmetics.styles(slot.id) do
+			if def.cash then
+				cheapest = math.min(cheapest, def.cash)
+			end
+		end
+		T.truthy(cheapest > last, slot.id)
+		last = cheapest
+	end
+end)
+
+T.test("a cash style is for sale once its tier is reached and the cash is there", function()
+	local data = profile(1)
+	data.cash = 1_000
+	T.eq(select(2, Cosmetics.canBuyCash(data, "kit_red")), "cannotAfford")
+	T.eq(select(2, Cosmetics.canBuyCash(data, "crest_ruby")), "tier")
+	T.eq(select(2, Cosmetics.canBuyCash(data, "kit_blue")), "free")
+	T.eq(select(2, Cosmetics.canBuyCash(data, "kit_gold")), "free") -- sold for Robux only
+	T.eq(select(2, Cosmetics.canBuyCash(data, "nothing")), "unknown")
+	data.cash = 3_000
+	T.eq(Cosmetics.canBuyCash(data, "kit_red"), true)
+	T.eq(select(2, Cosmetics.choose(data, "kit_red")), "locked")
+	Cosmetics.grant(data, "kit_red")
+	T.eq(select(2, Cosmetics.canBuyCash(data, "kit_red")), "owned")
+	T.eq(Cosmetics.choose(data, "kit_red"), true)
+	T.eq(select(2, Cosmetics.canBuy(data, "kit_red")), "free") -- never a Robux product
 end)
 
 T.test("a slot opens with its stadium tier", function()
@@ -100,15 +136,12 @@ T.test("granting a free style does nothing", function()
 	T.eq(next(data.cosmetics.owned), nil)
 end)
 
-T.test("a cosmetic offer waits 30 minutes after the first purchase", function()
+T.test("a cosmetic offer has no waiting time, only its tier", function()
 	local data = profile(1)
 	local key = "cosmetic_" .. firstPremium("kit").id
-	T.eq(select(2, ShopRules.canOffer(data, key, 5000)), "early")
-	data.flags.milestones.first_purchase = 1000
-	T.eq(select(2, ShopRules.canOffer(data, key, 1000 + 1799)), "early")
-	T.eq(ShopRules.canOffer(data, key, 1000 + 1800), true)
+	T.eq(ShopRules.canOffer(data, key), true) -- never bought anything
 	local crest = "cosmetic_" .. firstPremium("crest").id
-	T.eq(select(2, ShopRules.canOffer(data, crest, 1000 + 1800)), "tier")
+	T.eq(select(2, ShopRules.canOffer(data, crest)), "tier")
 end)
 
 T.test("a bought style is owned, put on, and a resent receipt grants nothing again", function()

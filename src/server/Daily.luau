@@ -1,8 +1,8 @@
 --!strict
 -- The daily return (docs/PLAN.md, Steps 1, 3 and 7): the free case and the three penalty kicks.
 -- Both come back 20 hours after they were used, judged by the server clock (`now` is os.time()).
--- There is no streak and nothing is lost by skipping a day. The kick result is rolled here from
--- numbers the caller passes in, so the rules are unit tested with fixed rolls.
+-- There is no streak and nothing is lost by skipping a day. A kick is played and judged in
+-- shared/Penalty; this only counts it and pays the boost, so the rules are unit tested.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -12,7 +12,6 @@ local Economy = require(script.Parent.Economy)
 local Formulas = require(ReplicatedStorage.Shared.Formulas)
 local ProfileSchema = require(script.Parent.ProfileSchema)
 local Progress = require(ReplicatedStorage.Shared.Progress)
-local RemoteSpec = require(ReplicatedStorage.Shared.RemoteSpec)
 local Roster = require(ReplicatedStorage.Shared.Roster)
 
 type Profile = ProfileSchema.Profile
@@ -23,10 +22,7 @@ export type CasePrize =
 	| { id: string, kind: "tp", amount: number }
 
 export type KickResult = {
-	aim: string,
-	keeper: string, -- the zone the keeper dived to
 	goal: boolean,
-	wide: boolean, -- the kick missed the target on its own (not a save)
 	kicksLeft: number,
 	goals: number,
 	boostSeconds: number, -- penalty boost seconds this kick added
@@ -71,7 +67,7 @@ function Daily.caseCash(data: Profile, minutes: number): number
 	end
 	local base = Formulas.basePayout({
 		fieldIncomes = fieldIncomes,
-		cashUpgradeLevel = data.storeLevels.cashPerMatch,
+		stadiumTier = data.stadiumTier,
 		season = data.season.number,
 	})
 	local matches = minutes * 60 / Progress.matchSeconds(data)
@@ -141,25 +137,13 @@ function Daily.penaltyReadyAt(data: Profile, now: number): number
 	return data.daily.penaltyBatchAt + Config.Daily.cooldownSeconds
 end
 
-local function isZone(aim: string): boolean
-	return table.find(RemoteSpec.aimZones, aim) ~= nil
-end
-
--- One kick. `rolls.miss` decides whether the kick goes wide, `rolls.keeper` picks the zone the
--- keeper dives to (both in [0, 1)). The boost is topped up goal by goal, so the total matches the
--- plan (3 goals 10 min, 2 goals 5 min, 1 goal 3 min) even when the player leaves after one or two
--- kicks. Returns the result, or nil and why it was refused ("locked", "badAim" or "notReady").
-function Daily.kick(
-	data: Profile,
-	now: number,
-	aim: string,
-	rolls: { miss: number, keeper: number }
-): (KickResult?, string?)
+-- Counts one kick, a goal or not (shared/Penalty judged it). The boost is topped up goal by goal,
+-- so the total matches the plan (3 goals 10 min, 2 goals 5 min, 1 goal 3 min) even when the player
+-- leaves after one or two kicks. Returns the result, or nil and why it was refused ("locked" or
+-- "notReady").
+function Daily.recordKick(data: Profile, now: number, goal: boolean): (KickResult?, string?)
 	if not Daily.unlocked(data) then
 		return nil, "locked"
-	end
-	if not isZone(aim) then
-		return nil, "badAim"
 	end
 	if Daily.kicksLeft(data, now) <= 0 then
 		return nil, "notReady"
@@ -170,11 +154,6 @@ function Daily.kick(
 	end
 	daily.kicksUsed += 1
 
-	local zones = RemoteSpec.aimZones
-	local keeper = zones[math.clamp(math.floor(rolls.keeper * #zones) + 1, 1, #zones)]
-	local wide = rolls.miss < (Config.Daily.zoneMissChance[aim] or 0)
-	local goal = not wide and keeper ~= aim
-
 	local added = 0
 	if goal then
 		local before = Config.Daily.penaltyBoostSeconds[daily.goals] or 0
@@ -183,10 +162,7 @@ function Daily.kick(
 		Boosts.addPenalty(data, added)
 	end
 	local result: KickResult = {
-		aim = aim,
-		keeper = keeper,
 		goal = goal,
-		wide = wide,
 		kicksLeft = Config.Daily.penaltyKicks - daily.kicksUsed,
 		goals = daily.goals,
 		boostSeconds = added,

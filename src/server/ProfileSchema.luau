@@ -16,7 +16,7 @@ export type PendingReveal = {
 	playerId: string,
 	isNew: boolean,
 	firstOfRarity: boolean?, -- the first player of this rarity the player ever owned
-	short: boolean?, -- the first purchase: a shorter reveal that never blocks movement
+	short: boolean?, -- a banner instead of the full reveal (old saves; new reveals are always full)
 	starsGained: number?, -- a duplicate from a case: the star it added (0 at the cap)
 	stars: number?, -- the player's stars after a duplicate
 }
@@ -28,19 +28,33 @@ export type Profile = {
 	staminaLeft: number, -- seconds left in the current training session
 	lastSeen: number, -- os.time(), for offline earnings
 	stadiumTier: number,
-	storeLevels: { cashPerMatch: number, matchSpeed: number, hatTrick: number, offline: number },
+	stadiumName: string, -- the roof arena's name as typed ("" = none); filtered again before it is shown
+	storeLevels: { matchSpeed: number, hatTrick: number, gymRate: number },
 	fieldStarted: boolean,
 	players: { [string]: { level: number, stars: number } }, -- owned only, Legends included
 	season: { number: number },
 	trials: { [string]: { [string]: boolean } }, -- Legend Trial goals, never unset
 	cosmetics: { owned: { [string]: boolean }, chosen: { [string]: string } },
 	daily: { caseClaimedAt: number, penaltyBatchAt: number, kicksUsed: number, goals: number },
-	boosts: { bankedMatches: number, stadiumBoostLeft: number, penaltyBoostLeft: number },
+	-- Seconds left of each timed boost (online time). cash/tpBoostLeft are the x2 boosts bought with Robux.
+	boosts: {
+		bankedMatches: number,
+		stadiumBoostLeft: number,
+		penaltyBoostLeft: number,
+		cashBoostLeft: number,
+		tpBoostLeft: number,
+	},
 	-- The Training Gym: the longest streak of the keepie-uppies (touches) and of the free kicks
 	-- (goals), kept across seasons. The medal of a streak comes from its length, so it is not stored.
 	gym: {
 		keepieBestStreak: number,
 		freekickBestStreak: number,
+	},
+	-- Totals for the plaza leaderboards, kept across seasons: the Robux spent on products (what
+	-- Roblox charged) and all the cash ever earned (spending and a New Season never lower it).
+	stats: {
+		robuxSpent: number,
+		cashEarned: number,
 	},
 	receipts: { [string]: Receipt },
 	pendingReveals: { PendingReveal },
@@ -59,7 +73,7 @@ export type Profile = {
 
 local ProfileSchema = {}
 
-ProfileSchema.CURRENT_VERSION = 2
+ProfileSchema.CURRENT_VERSION = 4
 
 -- Receipts are kept for 30 days or the newest 100, whichever keeps more (Step 6).
 ProfileSchema.RECEIPT_KEEP_SECONDS = 30 * 24 * 60 * 60
@@ -74,17 +88,28 @@ function ProfileSchema.newProfile(): Profile
 		staminaLeft = Config.Training.staminaSeconds,
 		lastSeen = 0,
 		stadiumTier = 1,
-		storeLevels = { cashPerMatch = 0, matchSpeed = 0, hatTrick = 0, offline = 0 },
+		stadiumName = "",
+		storeLevels = { matchSpeed = 0, hatTrick = 0, gymRate = 0 },
 		fieldStarted = false,
 		players = {},
 		season = { number = 1 },
 		trials = {},
 		cosmetics = { owned = {}, chosen = {} },
 		daily = { caseClaimedAt = 0, penaltyBatchAt = 0, kicksUsed = 0, goals = 0 },
-		boosts = { bankedMatches = 0, stadiumBoostLeft = 0, penaltyBoostLeft = 0 },
+		boosts = {
+			bankedMatches = 0,
+			stadiumBoostLeft = 0,
+			penaltyBoostLeft = 0,
+			cashBoostLeft = 0,
+			tpBoostLeft = 0,
+		},
 		gym = {
 			keepieBestStreak = 0,
 			freekickBestStreak = 0,
+		},
+		stats = {
+			robuxSpent = 0,
+			cashEarned = 0,
 		},
 		receipts = {},
 		pendingReveals = {},
@@ -142,6 +167,27 @@ migrations[1] = function(data)
 		gym.keepieBestMedal = nil
 		gym.dribbleBestPasses = nil
 		gym.dribbleBestMedal = nil
+	end
+end
+
+-- 2 -> 3: the "More cash per match" upgrade is gone (the stadium tier multiplies the match cash now).
+-- Its level is dropped; reconcile adds the timed boost timers bought with Robux at 0.
+migrations[2] = function(data)
+	local levels = data.storeLevels
+	if type(levels) == "table" then
+		levels.cashPerMatch = nil
+	end
+end
+
+-- 3 -> 4: the "Offline earnings" upgrade is gone (every player earns Config.Offline.rate while away),
+-- and the hat-trick chance has 3 levels instead of 5 (a higher level keeps the top one).
+migrations[3] = function(data)
+	local levels = data.storeLevels
+	if type(levels) == "table" then
+		levels.offline = nil
+		if type(levels.hatTrick) == "number" then
+			levels.hatTrick = math.min(levels.hatTrick, #(Config.Store :: any).hatTrick.prices)
+		end
 	end
 end
 
@@ -247,6 +293,12 @@ function ProfileSchema.validate(profile: { [string]: any }): (boolean, string?)
 	if not isCount(profile.stadiumTier, #Config.StadiumTiers) or profile.stadiumTier < 1 then
 		return false, "profile.stadiumTier is out of range"
 	end
+	if
+		type(profile.stadiumName) ~= "string"
+		or #profile.stadiumName > Config.StadiumName.maxLength * 4
+	then
+		return false, "profile.stadiumName is not a short string"
+	end
 	for id, def in Config.Store do
 		local level = profile.storeLevels[id]
 		if not isCount(level, #def.prices) then
@@ -276,6 +328,10 @@ function ProfileSchema.validate(profile: { [string]: any }): (boolean, string?)
 		or profile.boosts.stadiumBoostLeft < 0
 		or not isFiniteNumber(profile.boosts.penaltyBoostLeft)
 		or profile.boosts.penaltyBoostLeft < 0
+		or not isFiniteNumber(profile.boosts.cashBoostLeft)
+		or profile.boosts.cashBoostLeft < 0
+		or not isFiniteNumber(profile.boosts.tpBoostLeft)
+		or profile.boosts.tpBoostLeft < 0
 	then
 		return false, "profile.boosts is out of range"
 	end
@@ -291,6 +347,14 @@ function ProfileSchema.validate(profile: { [string]: any }): (boolean, string?)
 		or not isCount(profile.gym.freekickBestStreak, 100_000)
 	then
 		return false, "profile.gym is out of range"
+	end
+	if
+		not isCount(profile.stats.robuxSpent)
+		or not isFiniteNumber(profile.stats.cashEarned)
+		or profile.stats.cashEarned < 0
+		or profile.stats.cashEarned > Config.MaxCash
+	then
+		return false, "profile.stats is out of range"
 	end
 	return true, nil
 end

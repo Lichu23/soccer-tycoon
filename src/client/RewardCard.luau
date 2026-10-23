@@ -1,6 +1,6 @@
 --!strict
 -- The one card that says what the player just got: a bought item (the sign after a Robux purchase), the
--- prize of the free case and the result of the penalty kicks. It shares the look of the Shop and the
+-- prize of the free case, the result of the penalty kicks and what a level-up gave. It shares the look of the Shop and the
 -- Locker room (light lavender, dark outline, a red ribbon with the title), pops in, goes away by itself
 -- after a few seconds and on a tap. It never asks for anything and never blocks the game.
 
@@ -11,6 +11,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Formulas = require(ReplicatedStorage.Shared.Formulas)
 local Icons = require(script.Parent.Icons)
 local Net = require(script.Parent.Net)
 local NumberFormat = require(ReplicatedStorage.Shared.NumberFormat)
@@ -197,6 +198,14 @@ function RewardCard.show(content: Content)
 	task.delay(SHOW_SECONDS, hide)
 end
 
+-- Takes the card off the screen now (a screen that opens in its place).
+function RewardCard.hide()
+	token += 1
+	if gui then
+		gui.Enabled = false
+	end
+end
+
 -- What the free case gave, as the card's text.
 function RewardCard.freeCase(prize: any)
 	if type(prize) ~= "table" then
@@ -231,18 +240,28 @@ local function purchaseCard(result: any): Content?
 	if type(result) ~= "table" then
 		return nil
 	end
-	if result.kind == "boost" then
+	if result.kind == "timedBoost" then
+		local cashMinutes = math.floor((tonumber(result.cashSeconds) or 0) / 60)
+		local tpMinutes = math.floor((tonumber(result.tpSeconds) or 0) / 60)
+		local detail = if result.cash and result.tp
+			then `Cash for {cashMinutes} min, TP for {tpMinutes} min of play`
+			else `For the next {if result.tp then tpMinutes else cashMinutes} minutes you play`
 		return {
 			title = "PURCHASE",
-			big = "Match boost",
-			detail = `Your next {result.matches or Config.Boost.matchPackSize} matches pay x{Config.Boost.matchMultiplier}`,
-			icon = "boost",
+			big = if result.cash and result.tp
+				then "x2 Cash + TP"
+				elseif result.tp then "x2 TP"
+				else "x2 Cash",
+			detail = detail,
+			icon = if result.cash and result.tp then "boost" elseif result.tp then "tp" else "cash",
 		}
 	elseif result.kind == "cash" and type(result.amount) == "number" then
 		return {
 			title = "PURCHASE",
 			big = "+" .. NumberFormat.money(result.amount),
-			detail = "Added to your cash",
+			detail = if type(result.minutes) == "number"
+				then `{NumberFormat.minutes(result.minutes)} of your income, added to your cash`
+				else "Added to your cash",
 			icon = "cash",
 		}
 	elseif result.kind == "tp" and type(result.amount) == "number" then
@@ -282,12 +301,48 @@ local function purchaseCard(result: any): Content?
 	return nil -- the cases show their reveal
 end
 
+-- Small amounts with cents, so a +3% step is visible ($3.00 -> $3.09).
+local function income(amount: number): string
+	if amount < 100 then
+		return string.format("$%.2f", amount)
+	end
+	return NumberFormat.money(amount)
+end
+
+-- What a level-up gave: the player's new level and his income before and after.
+local function levelUpCard(info: any): Content?
+	local def = Config.PlayersById[if type(info.playerId) == "string" then info.playerId else ""]
+	local level = info.level
+	if def == nil or type(level) ~= "number" or level < 1 then
+		return nil
+	end
+	local stars = if type(info.stars) == "number" then info.stars else 0
+	local before = Formulas.playerIncome(def.income, level - 1, stars)
+	local after = Formulas.playerIncome(def.income, level, stars)
+	local maxed = level >= Formulas.levelCap(def.rarity)
+	return {
+		title = "LEVEL UP",
+		big = `{def.name} · Lv {level}`,
+		detail = string.format(
+			"+%d%% income: %s → %s a match%s",
+			math.floor(Config.Training.bonusPerLevel * 100 + 0.5),
+			income(before),
+			income(after),
+			if maxed then " · max level" else ""
+		),
+		icon = "tp",
+	}
+end
+
 function RewardCard.init()
 	Net.on("Notice", function(info: any)
-		if type(info) ~= "table" or info.kind ~= "purchaseDone" then
+		if type(info) ~= "table" then
 			return
 		end
-		local content = purchaseCard(info.result)
+		local content = if info.kind == "purchaseDone"
+			then purchaseCard(info.result)
+			elseif info.kind == "levelUp" then levelUpCard(info)
+			else nil
 		if content then
 			RewardCard.show(content)
 		end

@@ -1,43 +1,43 @@
 --!strict
--- The rarity reveal (docs/PLAN.md, Step 7): the first player of each rarity and every case win. A
--- full screen card in the rarity colour with the name, number, nationality and a mannequin doing a
--- ball trick, about 3 seconds, a tap skips it. The very first purchase gets a short banner instead
--- that does not catch touches, so the player can keep walking. Only slow fades, no flashes. With
--- reduced motion the card is still and shorter. The server already granted the player: this only
--- shows it, then tells the server it was seen (AckReveal) so it is not replayed after a rejoin.
+-- The rarity reveal (docs/PLAN.md, Step 7): the first player of each rarity and every case win. It
+-- opens on a bright screen in the rarity colour with turning light rays and the rarity name, then cuts
+-- to the keepie-uppy stadium (client/KeepieScene) where the footballer just won, in his own kit, keeps
+-- a ball up, with his name, number and nationality over bands of the rarity colour. About 5 seconds, a
+-- tap skips it. The very first purchase gets a short banner instead that does not catch touches, so
+-- the player can keep walking. Only slow fades, no flashes. With reduced motion the rays stand still,
+-- the player stands with the ball at his feet and it is shorter. A Robux case holds its reveal until
+-- its roulette has landed (Reveal.hold, client/CaseModal). The server already granted the player:
+-- this only shows it, then tells the server it was seen (AckReveal) so it is not replayed after a
+-- rejoin.
 
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local Workspace = game:GetService("Workspace")
 
+local CinemaScreen = require(script.Parent.CinemaScreen)
 local Config = require(ReplicatedStorage.Shared.Config)
-local Mannequin = require(ReplicatedStorage.Shared.Mannequin)
+local Juggle = require(ReplicatedStorage.Shared.Juggle)
+local KeepieScene = require(script.Parent.KeepieScene)
 local Net = require(script.Parent.Net)
 local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
 
-local CARD_W, CARD_H = 420, 320
-local VIEW_W, VIEW_H = 200, 150
-local FULL_SECONDS = 3
-local REDUCED_SECONDS = 2
+local WHITE = Color3.fromRGB(255, 255, 255)
+local INTRO_SECONDS = 1.3 -- the rarity screen before the stadium
+local SCENE_SECONDS = 3.6
+local REDUCED_INTRO_SECONDS = 0.8
+local REDUCED_SCENE_SECONDS = 2
 local SHORT_SECONDS = 2
 local SKIP_AFTER = 0.6 -- a skip tap is ignored right after the start (a leftover tap)
-local FADE = 0.3
-
--- The ball trick, in studs and seconds, in the mannequin's own space (it looks along -Z).
-local JUGGLE_SECONDS = 1.1 -- from one kick to the next
-local JUGGLE_HEIGHT = 3.2 -- how high the ball goes above the foot
-local BALL_X, BALL_Z = 0.7, -1.6
-local BALL_REST_Y = -2.3 -- the ball at the foot
-local HIP_RIGHT = Mannequin.HIP
-local SHOULDER_RIGHT = Mannequin.SHOULDER
-local SHOULDER_LEFT = Vector3.new(-SHOULDER_RIGHT.X, SHOULDER_RIGHT.Y, SHOULDER_RIGHT.Z)
-local KICK_BACK = 0.5 -- radians
-local KICK_FORWARD = 0.9
+local FADE = 0.35
+local RAY_COUNT = 8 -- each ray crosses the middle, so twice as many beams show
+local RAY_WIDTH = 0.07 -- of the screen's longer side
+local RAY_TURN = 0.25 -- radians a second
+local KICK_UP_AFTER = 0.3 -- the first ball leaves the foot this long after the cut to the stadium
+local HOLD_TIMEOUT = 20 -- a hold always ends, even if the roulette never lands
 
 type Entry = {
 	playerId: string,
@@ -49,6 +49,29 @@ type Entry = {
 }
 
 local Reveal = {}
+
+-- The hold of a Robux case: the reveal waits in the queue until the roulette has landed.
+local held = false
+local holdToken = 0
+local resume: () -> () = function() end
+
+function Reveal.hold()
+	held = true
+	holdToken += 1
+	local myToken = holdToken
+	task.delay(HOLD_TIMEOUT, function()
+		if held and holdToken == myToken then
+			Reveal.release()
+		end
+	end)
+end
+
+function Reveal.release()
+	if held then
+		held = false
+		resume()
+	end
+end
 
 local function new(className: string, props: { [string]: any }, parent: Instance?): any
 	local instance = Instance.new(className)
@@ -70,79 +93,6 @@ local function label(parent: Instance, props: { [string]: any }): TextLabel
 	return text
 end
 
--- The kick angle (radians, positive swings the foot forward) around the moment the foot meets the
--- ball, `offset` in cycles from that moment: a slow wind-up backwards, a quick swing through, then
--- the leg settles.
-local function legAngle(offset: number): number
-	if offset < -0.3 or offset > 0.2 then
-		return 0
-	elseif offset < -0.14 then
-		return -KICK_BACK * (offset + 0.3) / 0.16
-	elseif offset < 0 then
-		return -KICK_BACK + (KICK_FORWARD + KICK_BACK) * (offset + 0.14) / 0.14
-	end
-	return KICK_FORWARD * (1 - offset / 0.2)
-end
-
--- Turns a limb about its joint (a pivot on the X axis); `reach` is the distance from the joint to
--- the middle of the limb, along its length.
-local function swingLimb(limb: BasePart, joint: Vector3, angle: number, reach: number)
-	limb.CFrame = CFrame.new(joint) * CFrame.Angles(angle, 0, 0) * CFrame.new(0, reach, 0)
-end
-
--- The player juggling in a small 3D view, facing the camera: the right foot kicks the ball up and
--- catches it on the way down. Returns the update function to call every frame (nil when still).
-local function buildTrick(parent: Instance, def: Config.PlayerDef, animated: boolean): (() -> ())?
-	local view = new("ViewportFrame", {
-		Name = "Trick",
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 78),
-		Size = UDim2.fromOffset(VIEW_W, VIEW_H),
-		BackgroundTransparency = 1,
-		Ambient = Color3.fromRGB(190, 190, 190),
-		LightColor = Color3.fromRGB(255, 255, 255),
-	}, parent)
-	local model = Mannequin.build(def, nil, false)
-	model.Parent = view
-	local ball = new("Part", {
-		Name = "Ball",
-		Shape = Enum.PartType.Ball,
-		Size = Vector3.new(1.3, 1.3, 1.3),
-		Color = Color3.fromRGB(245, 245, 245),
-		Material = Enum.Material.SmoothPlastic,
-		Anchored = true,
-		CanCollide = false,
-		CFrame = CFrame.new(BALL_X, BALL_REST_Y, BALL_Z),
-	}, view)
-	local camera = new("Camera", {
-		-- The mannequin looks along -Z, so the camera stands on that side, with the ball in front.
-		CFrame = CFrame.lookAt(Vector3.new(0, 0.8, -11), Vector3.new(0, 0.8, 0)),
-		FieldOfView = 50,
-	}, view)
-	view.CurrentCamera = camera
-	if not animated then
-		return nil
-	end
-	local rightLeg = model:FindFirstChild("Right Leg") :: BasePart?
-	local leftArm = model:FindFirstChild("Left Arm") :: BasePart?
-	local rightArm = model:FindFirstChild("Right Arm") :: BasePart?
-	if rightLeg == nil or leftArm == nil or rightArm == nil then
-		return nil
-	end
-	-- One clock drives both: the ball leaves the foot at phase 0 and comes back at phase 1, and the
-	-- leg swings through the ball exactly at that moment. The figure itself never turns.
-	local startedAt = os.clock()
-	return function()
-		local phase = ((os.clock() - startedAt) / JUGGLE_SECONDS) % 1
-		ball.CFrame =
-			CFrame.new(BALL_X, BALL_REST_Y + JUGGLE_HEIGHT * 4 * phase * (1 - phase), BALL_Z)
-		local swing = legAngle(if phase > 0.5 then phase - 1 else phase)
-		swingLimb(rightLeg, HIP_RIGHT, swing, -Mannequin.LEG_REACH)
-		swingLimb(leftArm, SHOULDER_LEFT, -swing * 0.4, -Mannequin.ARM_REACH)
-		swingLimb(rightArm, SHOULDER_RIGHT, swing * 0.4, -Mannequin.ARM_REACH)
-	end
-end
-
 local function starsText(entry: Entry): string?
 	if entry.isNew or entry.stars == nil then
 		return nil
@@ -152,6 +102,281 @@ local function starsText(entry: Entry): string?
 		return string.format("+%d star · %d/%d", entry.starsGained :: number, entry.stars, max)
 	end
 	return string.format("Max stars · %d/%d", entry.stars, max)
+end
+
+-- A band of the rarity colour along the top or the bottom of the screen, fading out towards the
+-- middle, so the colour frames the stadium without hiding the player.
+local function band(parent: Instance, color: Color3, atTop: boolean, height: number)
+	local frame = new("Frame", {
+		Name = if atTop then "TopBand" else "BottomBand",
+		AnchorPoint = Vector2.new(0, if atTop then 0 else 1),
+		Position = UDim2.fromScale(0, if atTop then 0 else 1),
+		Size = UDim2.fromScale(1, height),
+		BackgroundColor3 = color,
+		BorderSizePixel = 0,
+	}, parent)
+	new("UIGradient", {
+		Rotation = 90, -- top to bottom
+		Transparency = if atTop
+			then NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0.05),
+				NumberSequenceKeypoint.new(0.55, 0.35),
+				NumberSequenceKeypoint.new(1, 1),
+			})
+			else NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(0.45, 0.35),
+				NumberSequenceKeypoint.new(1, 0.05),
+			}),
+	}, frame)
+end
+
+-- The rarity name on a chip of its colour with the dark outline of the game's chips.
+local function chip(parent: Instance, color: Color3, text: string, y: number)
+	local frame = new("Frame", {
+		Name = "Rarity",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, y),
+		Size = UDim2.fromOffset(0, 34),
+		AutomaticSize = Enum.AutomaticSize.X,
+		BackgroundColor3 = color,
+	}, parent)
+	new("UICorner", { CornerRadius = UDim.new(0, 10) }, frame)
+	new("UIStroke", {
+		Color = Style.ui.dark,
+		Thickness = 3,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+	}, frame)
+	new("UIPadding", { PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 16) }, frame)
+	new("TextLabel", {
+		Size = UDim2.fromScale(0, 1),
+		AutomaticSize = Enum.AutomaticSize.X,
+		BackgroundTransparency = 1,
+		Text = string.upper(text),
+		Font = Style.font,
+		TextSize = 22,
+		TextColor3 = Style.ui.dark,
+	}, frame)
+end
+
+-- The opening screen: a bright gradient of the rarity colour with light rays turning out of the
+-- middle, the tag and the rarity name popping in. Returns the group (to fade out) and the frame step.
+local function buildBurst(
+	parent: Instance,
+	color: Color3,
+	tag: string,
+	rarityName: string,
+	reduced: boolean
+): (CanvasGroup, (seconds: number) -> ())
+	local group = new("CanvasGroup", {
+		Name = "Burst",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		ZIndex = 5,
+	}, parent)
+	-- The gradient sits on its own fill: on the group it would tint the rays and the words too.
+	local fill = new("Frame", {
+		Name = "Fill",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = WHITE,
+		BorderSizePixel = 0,
+	}, group)
+	new("UIGradient", {
+		Rotation = 90,
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, color:Lerp(WHITE, 0.45)),
+			ColorSequenceKeypoint.new(0.5, color),
+			ColorSequenceKeypoint.new(1, color:Lerp(Style.ui.dark, 0.3)),
+		}),
+	}, fill)
+	local rays: { Frame } = {}
+	for index = 1, RAY_COUNT do
+		local ray = new("Frame", {
+			Name = "Ray" .. index,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			SizeConstraint = Enum.SizeConstraint.RelativeXX,
+			Size = UDim2.fromScale(RAY_WIDTH, 2.4),
+			BackgroundColor3 = WHITE,
+			BorderSizePixel = 0,
+		}, group)
+		-- Bright in the middle, gone at the ends.
+		new("UIGradient", {
+			Rotation = 90,
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(0.5, 0.45),
+				NumberSequenceKeypoint.new(1, 1),
+			}),
+		}, ray)
+		table.insert(rays, ray)
+	end
+	local words = new("Frame", {
+		Name = "Words",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.new(1, -32, 0, 150),
+		BackgroundTransparency = 1,
+	}, group)
+	new("UISizeConstraint", { MaxSize = Vector2.new(560, 150) }, words)
+	local pop = new("UIScale", { Scale = if reduced then 1 else 0.5 }, words)
+	label(words, {
+		Size = UDim2.new(1, 0, 0, 40),
+		Text = tag,
+		TextSize = 32,
+	})
+	local big = label(words, {
+		Position = UDim2.fromOffset(0, 44),
+		Size = UDim2.new(1, 0, 0, 96),
+		Text = string.upper(rarityName),
+		TextScaled = true,
+	})
+	local stroke = big:FindFirstChildOfClass("UIStroke")
+	if stroke then
+		stroke.Thickness = 4
+	end
+	if not reduced then
+		TweenService:Create(
+			pop,
+			TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+			{ Scale = 1 }
+		):Play()
+	end
+	local function step(seconds: number)
+		local turn = if reduced then 0 else math.deg(seconds * RAY_TURN)
+		for index, ray in rays do
+			ray.Rotation = turn + (index - 1) * 180 / RAY_COUNT
+		end
+	end
+	step(0)
+	return group, step
+end
+
+-- The full reveal under `root`: the burst, then the stadium with the footballer juggling and his
+-- details. `skip` is called on a tap. Returns what puts everything back (the camera, the scene).
+local function buildFull(
+	root: Frame,
+	entry: Entry,
+	def: Config.PlayerDef,
+	reduced: boolean,
+	skip: () -> ()
+): () -> ()
+	local color = Style.rarityColors[def.rarity] or Style.rarityColors.Common
+	local rarityName = Style.rarityNames[def.rarity] or def.rarity
+	-- The tag says why this is special, over the rarity (always written, not only coloured).
+	local tag = if entry.firstOfRarity == true
+		then "YOUR FIRST"
+		elseif entry.isNew then "NEW PLAYER"
+		else "DUPLICATE"
+
+	local catcher = new("TextButton", {
+		Name = "Skip",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Text = "",
+		AutoButtonColor = false,
+		ZIndex = 10,
+	}, root)
+	catcher.Activated:Connect(skip)
+
+	-- Over the stadium: the rarity bands, the tag and the chip at the top, the name at the bottom.
+	local overlay = new("Frame", {
+		Name = "Overlay",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Visible = false,
+	}, root)
+	band(overlay, color, true, 0.24)
+	band(overlay, color, false, 0.36)
+	label(overlay, {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 18),
+		Size = UDim2.new(1, -32, 0, 34),
+		Text = tag,
+		TextSize = 28,
+	})
+	chip(overlay, color, rarityName, 58)
+	local bottom = new("Frame", {
+		Name = "Details",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -18),
+		Size = UDim2.new(1, -32, 0, 112),
+		BackgroundTransparency = 1,
+	}, overlay)
+	local name = label(bottom, {
+		Size = UDim2.new(1, 0, 0, 48),
+		Text = def.name,
+		TextScaled = true,
+	})
+	new("UITextSizeConstraint", { MaxTextSize = 44 }, name)
+	label(bottom, {
+		Position = UDim2.fromOffset(0, 50),
+		Size = UDim2.new(1, 0, 0, 24),
+		Text = string.format("#%d · %s", def.number, def.nationality),
+		TextSize = 20,
+	})
+	local stars = starsText(entry)
+	label(bottom, {
+		Position = UDim2.fromOffset(0, 78),
+		Size = UDim2.new(1, 0, 0, 26),
+		Text = stars or "Tap to continue",
+		TextSize = if stars then 22 else 15,
+		TextColor3 = if stars then Style.ui.gold else WHITE,
+	})
+
+	local burst, burstStep = buildBurst(root, color, tag, rarityName, reduced)
+	local scene = KeepieScene.new(def)
+	local takeover = CinemaScreen.takeover()
+	local inScene = false
+	local startedAt = os.clock()
+	local round: Juggle.State = {
+		phase = "running",
+		startedAt = math.huge, -- set at the cut to the stadium
+		lastIndex = 0,
+		combo = 0, -- stays 0: the camera holds still instead of creeping in with a streak
+		overAt = 0,
+	}
+
+	local connection = RunService.RenderStepped:Connect(function()
+		local now = os.clock()
+		if burst.Parent then
+			burstStep(now - startedAt)
+		end
+		if not inScene then
+			return
+		end
+		takeover.keep()
+		if now > round.startedAt then
+			round.lastIndex = Juggle.beatAt(round, now) - 1 -- every touch is clean
+		end
+		scene.frame({ round = round, now = now })
+	end)
+
+	-- The cut: the camera goes to the stadium and the rarity screen fades away over it.
+	task.delay(if reduced then REDUCED_INTRO_SECONDS else INTRO_SECONDS, function()
+		if not root.Parent then
+			return
+		end
+		inScene = true
+		takeover.take()
+		-- With reduced motion the ball stays at his feet (the kick-up never comes).
+		round.startedAt = if reduced then math.huge else os.clock() + KICK_UP_AFTER
+		scene.frame({ round = round, now = os.clock() })
+		overlay.Visible = true
+		local fade = TweenService:Create(burst, TweenInfo.new(FADE), { GroupTransparency = 1 })
+		fade.Completed:Connect(function()
+			burst:Destroy()
+		end)
+		fade:Play()
+	end)
+
+	return function()
+		connection:Disconnect()
+		scene.destroy()
+		if inScene then
+			takeover.give()
+		end
+	end
 end
 
 function Reveal.init()
@@ -184,11 +409,6 @@ function Reveal.init()
 
 	local playNext: () -> ()
 
-	local function fadeTo(root: GuiObject, transparency: number)
-		TweenService:Create(root, TweenInfo.new(FADE), { BackgroundTransparency = transparency })
-			:Play()
-	end
-
 	local function play(entry: Entry)
 		local def = Config.PlayersById[entry.playerId]
 		if def == nil then
@@ -211,16 +431,15 @@ function Reveal.init()
 			{ Name = "Run", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 },
 			gui
 		)
-		local update: (() -> ())? = nil
-		local connection: RBXScriptConnection? = nil
+		local cleanup: (() -> ())? = nil
 
 		local function finish()
 			if token ~= myToken then
 				return
 			end
 			token += 1 -- stops every timer of this run
-			if connection then
-				connection:Disconnect()
+			if cleanup then
+				cleanup()
 			end
 			root:Destroy()
 			current = nil
@@ -262,98 +481,22 @@ function Reveal.init()
 			end
 			task.delay(SHORT_SECONDS, finish)
 		else
-			local backdrop = new("TextButton", {
-				Name = "Backdrop",
-				Size = UDim2.fromScale(1, 1),
-				BackgroundColor3 = color:Lerp(Style.ui.dark, 0.75),
-				BackgroundTransparency = 1,
-				Text = "",
-				AutoButtonColor = false,
-			}, root)
-			fadeTo(backdrop, 0.15)
-
-			local card = new("Frame", {
-				Name = "Card",
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.fromScale(0.5, 0.5),
-				Size = UDim2.fromOffset(CARD_W, CARD_H),
-				BackgroundTransparency = 1,
-			}, backdrop)
-			local scale = new("UIScale", {}, card)
-			local camera = Workspace.CurrentCamera
-			if camera then
-				local size = camera.ViewportSize
-				scale.Scale = math.min(1, size.X / (CARD_W + 40), size.Y / (CARD_H + 20))
-			end
-
-			-- The tag says why this is special; the rarity is always written, not only coloured.
-			local tag = if entry.firstOfRarity == true
-				then "FIRST " .. string.upper(rarityName)
-				elseif entry.isNew then "NEW PLAYER"
-				else "DUPLICATE"
-			label(card, {
-				Position = UDim2.fromOffset(0, 0),
-				Size = UDim2.new(1, 0, 0, 34),
-				Text = tag,
-				TextSize = 28,
-				TextColor3 = color,
-			})
-			label(card, {
-				Position = UDim2.fromOffset(0, 36),
-				Size = UDim2.new(1, 0, 0, 26),
-				Text = rarityName,
-				TextSize = 20,
-			})
-			update = buildTrick(card, def, not reduced)
-			label(card, {
-				Position = UDim2.fromOffset(0, 232),
-				Size = UDim2.new(1, 0, 0, 34),
-				Text = def.name,
-				TextScaled = true,
-			})
-			label(card, {
-				Position = UDim2.fromOffset(0, 268),
-				Size = UDim2.new(1, 0, 0, 22),
-				Text = detail,
-				TextSize = 18,
-			})
-			local stars = starsText(entry)
-			if stars then
-				label(card, {
-					Position = UDim2.fromOffset(0, 292),
-					Size = UDim2.new(1, 0, 0, 24),
-					Text = stars,
-					TextSize = 20,
-					TextColor3 = Style.ui.gold,
-				})
-			else
-				label(card, {
-					Position = UDim2.fromOffset(0, 296),
-					Size = UDim2.new(1, 0, 0, 20),
-					Text = "Tap to continue",
-					TextSize = 14,
-					TextColor3 = Style.ui.idle,
-				})
-			end
-
-			backdrop.Activated:Connect(function()
+			cleanup = buildFull(root, entry, def, reduced, function()
 				if os.clock() - startedAt > SKIP_AFTER then
 					finish()
 				end
 			end)
-			task.delay(if reduced then REDUCED_SECONDS else FULL_SECONDS, finish)
-		end
-
-		if update then
-			local step = update
-			connection = RunService.RenderStepped:Connect(function()
-				step()
-			end)
+			task.delay(
+				if reduced
+					then REDUCED_INTRO_SECONDS + REDUCED_SCENE_SECONDS
+					else INTRO_SECONDS + SCENE_SECONDS,
+				finish
+			)
 		end
 	end
 
 	playNext = function()
-		if current ~= nil then
+		if current ~= nil or held then
 			return
 		end
 		local nextEntry = table.remove(queue, 1)
@@ -361,6 +504,8 @@ function Reveal.init()
 			play(nextEntry)
 		end
 	end
+
+	resume = playNext
 
 	Net.on("Reveal", function(entry: any)
 		if type(entry) ~= "table" or type(entry.playerId) ~= "string" then
