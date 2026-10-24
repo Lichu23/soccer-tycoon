@@ -96,10 +96,10 @@ for _, name in { "WallBack", "WallLeft", "WallRight" } do
 		glassify(wall, 0.72)
 	end
 end
--- Steps in a lighter colour, so the stairs stand out from the floor.
+-- Dark steps (the Style.ui.panel navy), so the stairs stand out from the light floor.
 for _, step in stairs:GetChildren() do
 	if step.Name:match("^Step_") then
-		step.Color = Color3.fromRGB(205, 175, 235)
+		step.Color = Color3.fromRGB(32, 38, 56)
 	end
 end
 
