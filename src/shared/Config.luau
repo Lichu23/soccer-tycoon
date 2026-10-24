@@ -894,7 +894,7 @@ Config.LegendTrials = {
 	maradona = {
 		{ id = "own", kind = "ownFloors", target = 3 },
 		{ id = "train", kind = "trained", target = 8, level = 12 },
-		{ id = "tier", kind = "tier", target = 5 },
+		{ id = "tier", kind = "tier", target = 6 },
 	},
 } :: { [string]: { TrialGoal } }
 
