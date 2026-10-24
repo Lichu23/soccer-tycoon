@@ -1,7 +1,7 @@
 --!strict
 -- The New Season badge, its screen and the trophy celebration (docs/PLAN.md, Steps 1 and 7). The badge
--- sits under the HUD column: hidden before floor 3 opens, a locked preview while floor 3 is open,
--- glowing once the season can start. The screen is a light panel like the Shop's: the trophy being
+-- sits under the HUD column: hidden until floor 1 is done, then always shown in gold (it always opens
+-- the screen), with a red "1" once the season can start. The screen is a light panel like the Shop's: the trophy being
 -- played for turns in a tile (a silhouette until floor 3 is done), beside what is gained, restarted and
 -- kept, with the re-climb estimate. The celebration shows that trophy, big, with the lineup cheering
 -- around it. The server decides everything; this only asks and shows.
@@ -41,7 +41,7 @@ local OFF_FILL = Color3.fromRGB(196, 194, 214) -- a button that cannot be presse
 local OFF_TEXT = Color3.fromRGB(120, 122, 140)
 local CELEBRATION_SECONDS = 6
 local CELEBRATION_REDUCED_SECONDS = 2.5
-local HIGHLIGHT_SECONDS = 2 -- the badge is bright this long when floor 3 opens
+local HIGHLIGHT_SECONDS = 2 -- the badge has a gold edge this long when it first appears
 local RETRY_SECONDS = 4 -- the button comes back if the server never answered
 
 local SeasonUi = {}
@@ -110,7 +110,7 @@ function SeasonUi.init()
 		AutoButtonColor = true,
 		Font = Style.font,
 		TextSize = 13,
-		TextColor3 = Style.ui.idle,
+		TextColor3 = Style.ui.gold,
 		Text = "",
 		Visible = false,
 	}, gui)
@@ -443,22 +443,11 @@ function SeasonUi.init()
 	end
 	badge.Activated:Connect(open)
 
-	-- The badge follows the progress. It lights up for a moment when floor 3 opens (floor 2 done), then
-	-- goes grey; when the season can start it carries a red "1".
+	-- The badge follows the progress. It appears once floor 1 is done, always in its gold colours since
+	-- it can always be opened, with a gold edge for a moment when it first appears; when the season can
+	-- start it carries a red "1".
 	local lastState: string? = nil
 	local highlightUntil = 0
-	local function paintIcon(color: Color3)
-		for _, bit in icon:GetChildren() do
-			if bit:IsA("Frame") then
-				bit.BackgroundColor3 = color
-			elseif bit:IsA("ImageLabel") then
-				-- The picture is white when lit and greyed otherwise.
-				bit.ImageColor3 = if color == Style.ui.gold
-					then Color3.fromRGB(255, 255, 255)
-					else Color3.fromRGB(125, 128, 140)
-			end
-		end
-	end
 	local function refresh()
 		local season = currentSeason()
 		local state = Season.state(State.data)
@@ -467,8 +456,6 @@ function SeasonUi.init()
 			task.delay(HIGHLIGHT_SECONDS + 0.05, function()
 				if os.clock() >= highlightUntil then
 					glow.Transparency = 1
-					paintIcon(Style.ui.idle)
-					badge.TextColor3 = Style.ui.idle
 				end
 			end)
 		end
@@ -483,10 +470,7 @@ function SeasonUi.init()
 		badge.Text = if state == "hidden"
 			then `Season {season} · {multiplierText(season)}`
 			else "New Season"
-		local lit = os.clock() < highlightUntil
-		badge.TextColor3 = if lit then Style.ui.gold else Style.ui.idle
-		paintIcon(if lit then Style.ui.gold else Style.ui.idle)
-		glow.Transparency = if lit then 0.1 else 1
+		glow.Transparency = if os.clock() < highlightUntil then 0.1 else 1
 		if backdrop.Visible and not starting then
 			render() -- the screen follows a change under it (a purchase, a new season)
 		end
