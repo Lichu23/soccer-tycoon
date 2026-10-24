@@ -37,11 +37,12 @@ Icons.ids = {
 	slot_scoreboard = "rbxassetid://128404299109983",
 	slot_stadium = "rbxassetid://108981510454492", -- the same tile as the HUD stadium
 	-- The Shop's Legend cards: the Developer Product icons (tools/art/products/legend_<id>.png).
-	legend_ronaldinho = "rbxassetid://139650041898916",
-	legend_zidane = "rbxassetid://96217599319324",
-	legend_ronaldo_nazario = "rbxassetid://97100651912177",
-	legend_pele = "rbxassetid://100354181083031",
-	legend_maradona = "rbxassetid://99119514142132",
+	-- A new dashboard icon gets a new id: read it with MarketplaceService:GetProductInfo.
+	legend_ronaldinho = "rbxassetid://129980038848122",
+	legend_zidane = "rbxassetid://96663859772388",
+	legend_ronaldo_nazario = "rbxassetid://94638371244462",
+	legend_pele = "rbxassetid://103961158751394",
+	legend_maradona = "rbxassetid://123781460519682",
 } :: { [string]: string }
 
 function Icons.id(name: string): string

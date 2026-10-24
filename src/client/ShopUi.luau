@@ -32,6 +32,12 @@ local BOX_PADDING = 12
 local CARDS_PER_ROW = 3
 local CARD_WIDTH = 0.31
 local CARD_GAP = 0.035
+local SECTION_GAP = 14 -- the extra space above every section's chip but the first
+-- A picture that is not a tile already (a Legend's card) is framed like the chest tiles: rounded,
+-- the dark outline, and a darker base under it.
+local TILE_SIZE = 80
+local TILE_BASE = 6
+local TILE_CORNER = 14
 local DISABLED = Color3.fromRGB(196, 194, 214) -- the grey of a button that cannot be pressed yet
 
 -- The short line on a closed card (the full sentences are for the answers of the server).
@@ -39,14 +45,12 @@ local CARD_REASONS: { [string]: string } = {
 	early = "After floor 1",
 	locked = "Locked",
 	owned = "Yours",
-	trials = "Trials first",
 }
 
 local REFUSALS: { [string]: string } = {
 	early = "Chests open once floor 1 is done.",
 	locked = "Not unlocked yet.",
 	owned = "You already have him.",
-	trials = "Finish his trials in the Legends hall first.",
 	restricted = "Chests are not available for you.",
 	off = "Not available right now.",
 	unavailable = "Not available right now.",
@@ -164,7 +168,11 @@ function ShopUi.init()
 			BackgroundTransparency = 1,
 			ZIndex = 7,
 		}, parent)
-		new("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder }, block)
+		new(
+			"UIListLayout",
+			{ Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder },
+			block
+		)
 		return block
 	end
 
@@ -250,11 +258,6 @@ function ShopUi.init()
 			end
 		elseif State.data.players[product.playerId or ""] ~= nil then
 			return false, "owned"
-		elseif product.kind == "legend" then
-			local done, goals = Legends.goalCount(State.data, product.playerId or "")
-			if done < goals then
-				return false, "trials"
-			end
 		end
 		return true, nil
 	end
@@ -262,6 +265,15 @@ function ShopUi.init()
 	-- A group of cards: a small red chip with its name, then one white box that holds the cards in rows
 	-- of three. Returns the box; `cardRow` adds the rows to it.
 	local function section(text: string): Frame
+		if order > 0 then
+			order += 1
+			new("Frame", {
+				Name = "Gap",
+				LayoutOrder = order,
+				Size = UDim2.new(1, 0, 0, SECTION_GAP),
+				BackgroundTransparency = 1,
+			}, card)
+		end
 		order += 1
 		local chip = new("TextLabel", {
 			Name = "Chip",
@@ -338,7 +350,8 @@ function ShopUi.init()
 		open: boolean,
 		pillText: string,
 		onTap: (() -> ())?,
-		greyPill: boolean?
+		greyPill: boolean?,
+		tileBase: Color3? -- frame a flat picture as a tile, on a base of this colour
 	)
 		local item = new("TextButton", {
 			Name = "Row_" .. key,
@@ -360,7 +373,36 @@ function ShopUi.init()
 		}, item)
 		new("UITextSizeConstraint", { MaxTextSize = 15 }, title)
 		local picture = if iconName then Icons.id(iconName) else ""
-		if picture ~= "" then
+		local dim = Color3.fromRGB(150, 150, 165)
+		if picture ~= "" and tileBase then
+			local function framed(instance: GuiObject)
+				rounded(instance, TILE_CORNER)
+				new("UIStroke", {
+					Color = Style.ui.dark,
+					Thickness = 3,
+					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+				}, instance)
+			end
+			-- The base peeks out under the picture, like the thick foot of the chest tiles.
+			framed(new("Frame", {
+				Name = "Base",
+				AnchorPoint = Vector2.new(0.5, 0),
+				Position = UDim2.new(0.5, 0, 0, 30 + TILE_BASE),
+				Size = UDim2.fromOffset(TILE_SIZE, TILE_SIZE),
+				BackgroundColor3 = if open then tileBase else tileBase:Lerp(dim, 0.6),
+				ZIndex = 8,
+			}, item))
+			framed(new("ImageLabel", {
+				Name = "Picture",
+				AnchorPoint = Vector2.new(0.5, 0),
+				Position = UDim2.new(0.5, 0, 0, 30),
+				Size = UDim2.fromOffset(TILE_SIZE, TILE_SIZE),
+				BackgroundTransparency = 1,
+				Image = picture,
+				ImageColor3 = if open then Color3.fromRGB(255, 255, 255) else dim,
+				ZIndex = 9,
+			}, item))
+		elseif picture ~= "" then
 			new("ImageLabel", {
 				Name = "Picture",
 				AnchorPoint = Vector2.new(0.5, 0),
@@ -368,9 +410,7 @@ function ShopUi.init()
 				Size = UDim2.fromOffset(88, 88),
 				BackgroundTransparency = 1,
 				Image = picture,
-				ImageColor3 = if open
-					then Color3.fromRGB(255, 255, 255)
-					else Color3.fromRGB(150, 150, 165),
+				ImageColor3 = if open then Color3.fromRGB(255, 255, 255) else dim,
 				ZIndex = 8,
 			}, item)
 		else
@@ -431,6 +471,8 @@ function ShopUi.init()
 	local function productCard(parent: Frame, key: string, name: string, iconName: string?)
 		local ok, reason = offer(key)
 		local product = Config.Products[key]
+		-- A Legend's picture is a flat card image: framed as a tile on a gold base.
+		local tileBase = if product.kind == "legend" then Style.rarityTrim.Legend else nil
 		if not ok and product.kind == "case" and (reason == "early" or reason == "locked") then
 			card_(parent, key, name, iconName, false, `{product.robux} Robux`, function()
 				built.toast(caseHint(product, reason))
@@ -449,7 +491,9 @@ function ShopUi.init()
 					view = key
 					render()
 				end
-				else nil
+				else nil,
+			nil,
+			tileBase
 		)
 	end
 
@@ -504,7 +548,10 @@ function ShopUi.init()
 					productCard(legendRow :: Frame, key, def.name, key)
 				end
 			end
-			line("Robux skips a Legend's cash price, not his trials.", { TextColor3 = Panel.MUTED })
+			line(
+				"Robux signs a Legend at once: no cash price and no trials.",
+				{ TextColor3 = Panel.MUTED }
+			)
 		end
 		total()
 	end
@@ -555,7 +602,11 @@ function ShopUi.init()
 							if kind == "cash" then Style.ui.gold else Style.ui.bar
 						)
 						for _, row in rows do
-							oddsRow(block, (string.gsub(row.boost.detail, "minutes", "min")), row.chance)
+							oddsRow(
+								block,
+								(string.gsub(row.boost.detail, "minutes", "min")),
+								row.chance
+							)
 						end
 					end
 				end
@@ -579,9 +630,7 @@ function ShopUi.init()
 		else
 			local def = Config.PlayersById[product.playerId or ""]
 			built.setTitle(if def then def.name else "Legend")
-			line(
-				"Yours at once, with no cash price (his trials are done). Legends stay across seasons."
-			)
+			line("Yours at once, with no cash price and no trials. Legends stay across seasons.")
 		end
 		total()
 		local buy: TextButton

@@ -24,31 +24,31 @@ Key: "caseElite",
 Key: "legend_ronaldinho",
  Category: "Legends",
   Name: "Ronaldinho",
-   Robux: 799,
+   Robux: 1499,
     Description: "Sign the legend Ronaldinho for your team."
 
 Key: "legend_zidane",
  Category: "Legends",
   Name: "Zidane",
-   Robux: 1199,
+   Robux: 1999,
     Description: "Sign the legend Zidane for your team."
 
 Key: "legend_ronaldo_nazario",
  Category: "Legends",
   Name: "Ronaldo Nazário",
-   Robux: 1799,
+   Robux: 2999,
     Description: "Sign the legend Ronaldo Nazário for your team."
 
 Key: "legend_maradona",
  Category: "Legends",
   Name: "Maradona",
-   Robux: 3499,
+   Robux: 7499,
     Description: "Sign the legend Maradona, the best player in the game."
 
 Key: "legend_pele",
  Category: "Legends",
   Name: "Pelé",
-   Robux: 2499,
+   Robux: 3999,
     Description: "Sign the legend Pelé for your team."
 
 ## Cash and TP packs
