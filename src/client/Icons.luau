@@ -36,6 +36,13 @@ Icons.ids = {
 	slot_floodlights = "rbxassetid://135541995662083", -- the light colour (tools/art/light_icon.py)
 	slot_scoreboard = "rbxassetid://128404299109983",
 	slot_stadium = "rbxassetid://108981510454492", -- the same tile as the HUD stadium
+	-- The Shop's Legend cards: the Developer Product icons (tools/art/products/legend_<id>.png).
+	-- A new dashboard icon gets a new id: read it with MarketplaceService:GetProductInfo.
+	legend_ronaldinho = "rbxassetid://129980038848122",
+	legend_zidane = "rbxassetid://96663859772388",
+	legend_ronaldo_nazario = "rbxassetid://94638371244462",
+	legend_pele = "rbxassetid://103961158751394",
+	legend_maradona = "rbxassetid://123781460519682",
 } :: { [string]: string }
 
 function Icons.id(name: string): string

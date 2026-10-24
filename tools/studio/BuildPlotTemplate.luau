@@ -72,7 +72,7 @@ local Def = {
 		{ "foden", "vinicius", "bellingham", "yamal", "salah", "neymar", "haaland", "mbappe", "cristiano", "messi" },
 	},
 	-- Floor 4, the Legends hall: five capsules along the back wall.
-	Legends = { { "ronaldinho", -52 }, { "zidane", -31 }, { "ronaldo_nazario", -10 }, { "maradona", 11 }, { "pele", 30 } },
+	Legends = { { "ronaldinho", -52 }, { "zidane", -31 }, { "ronaldo_nazario", -10 }, { "pele", 11 }, { "maradona", 30 } },
 }
 
 local COLORS = {

@@ -187,6 +187,7 @@ local players: { PlayerDef } = {
 		2_500_000_000_000,
 		2_600_000
 	),
+	player("pele", "Pelé", "Brazil", 10, "Legend", 4, 34, 6_000_000_000_000, 4_100_000),
 	player(
 		"maradona",
 		"Diego Maradona",
@@ -194,11 +195,10 @@ local players: { PlayerDef } = {
 		10,
 		"Legend",
 		4,
-		34,
-		6_000_000_000_000,
-		4_100_000
+		35,
+		15_000_000_000_000,
+		6_600_000
 	),
-	player("pele", "Pelé", "Brazil", 10, "Legend", 4, 35, 15_000_000_000_000, 6_600_000),
 }
 
 local playersById: { [string]: PlayerDef } = {}
@@ -224,6 +224,9 @@ Config.PlayersById = playersById
 -- Floors 1 to 3 are the cash floors; floor 4 holds the Legends.
 Config.CashFloors = 3
 Config.LegendFloor = 4
+-- Floors completed before a Legend can be bought with Robux (the shop shows them from the start).
+-- Earlier, a Legend's income would skip most of the game (owner decision 2026-10-24).
+Config.LegendRobuxFloors = 2
 
 Config.StartingCash = 15
 -- Attributes and doubles are exact up to about 9e15, so cash is clamped just under that.
@@ -559,35 +562,35 @@ Config.Products = {
 	legend_ronaldinho = {
 		key = "legend_ronaldinho",
 		kind = "legend",
-		robux = 799,
+		robux = 1499,
 		productId = 0,
 		playerId = "ronaldinho",
 	},
 	legend_zidane = {
 		key = "legend_zidane",
 		kind = "legend",
-		robux = 1199,
+		robux = 1999,
 		productId = 0,
 		playerId = "zidane",
 	},
 	legend_ronaldo_nazario = {
 		key = "legend_ronaldo_nazario",
 		kind = "legend",
-		robux = 1799,
+		robux = 2999,
 		productId = 0,
 		playerId = "ronaldo_nazario",
 	},
 	legend_maradona = {
 		key = "legend_maradona",
 		kind = "legend",
-		robux = 2499,
+		robux = 7499,
 		productId = 0,
 		playerId = "maradona",
 	},
 	legend_pele = {
 		key = "legend_pele",
 		kind = "legend",
-		robux = 3499,
+		robux = 3999,
 		productId = 0,
 		playerId = "pele",
 	},
@@ -884,17 +887,17 @@ Config.LegendTrials = {
 		{ id = "train", kind = "trained", target = 5, level = 10 },
 		{ id = "tier", kind = "tier", target = 5 },
 	},
-	maradona = {
+	pele = {
 		{ id = "own", kind = "ownFloors", target = 3 },
 		{ id = "train", kind = "trained", target = 8, level = 10 },
 		{ id = "tier", kind = "tier", target = 5 },
 	},
-	-- Pelé asks for about 75K TP of training (it was 10 players at level 15, about 144K TP, which was
-	-- three quarters of the whole game in the finish simulation).
-	pele = {
+	-- Maradona, the last Legend, asks for about 75K TP of training (it was 10 players at level 15,
+	-- about 144K TP, which was three quarters of the whole game in the finish simulation).
+	maradona = {
 		{ id = "own", kind = "ownFloors", target = 3 },
 		{ id = "train", kind = "trained", target = 8, level = 12 },
-		{ id = "tier", kind = "tier", target = 5 },
+		{ id = "tier", kind = "tier", target = 6 },
 	},
 } :: { [string]: { TrialGoal } }
 

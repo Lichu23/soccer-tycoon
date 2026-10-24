@@ -15,6 +15,7 @@ local Remotes = require(script.Parent.Remotes)
 local Reveals = require(script.Parent.Reveals)
 local Session = require(script.Parent.Session)
 local Sync = require(script.Parent.Sync)
+local Unlocks = require(ReplicatedStorage.Shared.Unlocks)
 
 local DevTools = {}
 
@@ -63,8 +64,10 @@ function DevTools.start()
 			end
 		elseif command == "quickStart" then
 			-- Skips the opening: claims a plot (no tour), floor 1, the level-up tutorial done, the
-			-- first match without its camera.
+			-- first match without its camera, and no unlock cinematics for the pads that this opens
+			-- (the skill games, the stadium, the store, floor 2). Later unlocks still play theirs.
 			DevCommands.apply(session.data, "quickStart", 0)
+			Unlocks.seed(session.data, session.data.flags.unlocksShown)
 			session.runtime.firstMatchShown = true
 			session.runtime.nextMatchAt = 0
 			Plots.assign(session, nil)
@@ -88,7 +91,19 @@ function DevTools.start()
 				Remotes.fireClient("Notice", player, { kind = kind })
 			end
 		elseif command == "simulateAway" then
-			-- Pretends the player was away for `amount` hours and pays it the way a join does.
+			-- Pretends the player was away for `amount` hours. Before the plot claim it only moves
+			-- lastSeen, so the claim pays it the way a return does; after it, it pays at once.
+			if session.runtime.awayHeld then
+				session.data.lastSeen = session.joinedAt - math.floor(amount * 3600)
+				print(
+					string.format(
+						"[DevTools] %s: away %sh, paid at the claim",
+						player.Name,
+						tostring(amount)
+					)
+				)
+				return
+			end
 			session.data.lastSeen = os.time() - math.floor(amount * 3600)
 			local earned, secondsAway = Offline.apply(session.data, os.time())
 			if earned > 0 then

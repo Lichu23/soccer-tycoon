@@ -105,8 +105,9 @@ local function starsText(entry: Entry): string?
 end
 
 -- A band of the rarity colour along the top or the bottom of the screen, fading out towards the
--- middle, so the colour frames the stadium without hiding the player.
-local function band(parent: Instance, color: Color3, atTop: boolean, height: number)
+-- middle, so the colour frames the stadium without hiding the player. A rarity with lines gets one
+-- along the screen's edge.
+local function band(parent: Instance, color: Color3, atTop: boolean, height: number, trim: Color3?)
 	local frame = new("Frame", {
 		Name = if atTop then "TopBand" else "BottomBand",
 		AnchorPoint = Vector2.new(0, if atTop then 0 else 1),
@@ -129,10 +130,21 @@ local function band(parent: Instance, color: Color3, atTop: boolean, height: num
 				NumberSequenceKeypoint.new(1, 0.05),
 			}),
 	}, frame)
+	if trim then
+		new("Frame", {
+			Name = "Trim",
+			AnchorPoint = Vector2.new(0, if atTop then 0 else 1),
+			Position = UDim2.new(0, 0, if atTop then 0 else 1, if atTop then 6 else -6),
+			Size = UDim2.new(1, 0, 0, 4),
+			BackgroundColor3 = trim,
+			BorderSizePixel = 0,
+		}, parent)
+	end
 end
 
--- The rarity name on a chip of its colour with the dark outline of the game's chips.
-local function chip(parent: Instance, color: Color3, text: string, y: number)
+-- The rarity name on a chip of its colour with the dark outline of the game's chips (and a line
+-- inside it for a rarity with lines).
+local function chip(parent: Instance, color: Color3, text: string, y: number, trim: Color3?)
 	local frame = new("Frame", {
 		Name = "Rarity",
 		AnchorPoint = Vector2.new(0.5, 0),
@@ -147,6 +159,22 @@ local function chip(parent: Instance, color: Color3, text: string, y: number)
 		Thickness = 3,
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 	}, frame)
+	if trim then
+		local line = new("Frame", {
+			Name = "Trim",
+			-- 3px inside the chip's edge; the offsets undo the chip's 16px side padding.
+			Position = UDim2.fromOffset(-13, 3),
+			Size = UDim2.new(1, 26, 1, -6),
+			BackgroundTransparency = 1,
+			ZIndex = 2,
+		}, frame)
+		new("UICorner", { CornerRadius = UDim.new(0, 8) }, line)
+		new("UIStroke", {
+			Color = trim,
+			Thickness = 2,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		}, line)
+	end
 	new("UIPadding", { PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 16) }, frame)
 	new("TextLabel", {
 		Size = UDim2.fromScale(0, 1),
@@ -166,7 +194,8 @@ local function buildBurst(
 	color: Color3,
 	tag: string,
 	rarityName: string,
-	reduced: boolean
+	reduced: boolean,
+	trim: Color3?
 ): (CanvasGroup, (seconds: number) -> ())
 	local group = new("CanvasGroup", {
 		Name = "Burst",
@@ -186,7 +215,8 @@ local function buildBurst(
 		Color = ColorSequence.new({
 			ColorSequenceKeypoint.new(0, color:Lerp(WHITE, 0.45)),
 			ColorSequenceKeypoint.new(0.5, color),
-			ColorSequenceKeypoint.new(1, color:Lerp(Style.ui.dark, 0.3)),
+			-- A rarity with lines shades into them (a Legend from white into gold).
+			ColorSequenceKeypoint.new(1, if trim then trim else color:Lerp(Style.ui.dark, 0.3)),
 		}),
 	}, fill)
 	local rays: { Frame } = {}
@@ -197,7 +227,8 @@ local function buildBurst(
 			Position = UDim2.fromScale(0.5, 0.5),
 			SizeConstraint = Enum.SizeConstraint.RelativeXX,
 			Size = UDim2.fromScale(RAY_WIDTH, 2.4),
-			BackgroundColor3 = WHITE,
+			BackgroundColor3 = trim or WHITE, -- white rays would vanish on a white Legend
+
 			BorderSizePixel = 0,
 		}, group)
 		-- Bright in the middle, gone at the ends.
@@ -262,6 +293,7 @@ local function buildFull(
 	skip: () -> ()
 ): () -> ()
 	local color = Style.rarityColors[def.rarity] or Style.rarityColors.Common
+	local trim = Style.rarityTrim[def.rarity]
 	local rarityName = Style.rarityNames[def.rarity] or def.rarity
 	-- The tag says why this is special, over the rarity (always written, not only coloured).
 	local tag = if entry.firstOfRarity == true
@@ -286,8 +318,8 @@ local function buildFull(
 		BackgroundTransparency = 1,
 		Visible = false,
 	}, root)
-	band(overlay, color, true, 0.24)
-	band(overlay, color, false, 0.36)
+	band(overlay, color, true, 0.24, trim)
+	band(overlay, color, false, 0.36, trim)
 	label(overlay, {
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 18),
@@ -295,7 +327,7 @@ local function buildFull(
 		Text = tag,
 		TextSize = 28,
 	})
-	chip(overlay, color, rarityName, 58)
+	chip(overlay, color, rarityName, 58, trim)
 	local bottom = new("Frame", {
 		Name = "Details",
 		AnchorPoint = Vector2.new(0.5, 1),
@@ -324,7 +356,7 @@ local function buildFull(
 		TextColor3 = if stars then Style.ui.gold else WHITE,
 	})
 
-	local burst, burstStep = buildBurst(root, color, tag, rarityName, reduced)
+	local burst, burstStep = buildBurst(root, color, tag, rarityName, reduced, trim)
 	local scene = KeepieScene.new(def)
 	local takeover = CinemaScreen.takeover()
 	local inScene = false
@@ -423,6 +455,7 @@ function Reveal.init()
 		local startedAt = os.clock()
 		local reduced = GuiService.ReducedMotionEnabled
 		local color = Style.rarityColors[def.rarity] or Style.rarityColors.Common
+		local trim = Style.rarityTrim[def.rarity]
 		local rarityName = Style.rarityNames[def.rarity] or def.rarity
 		local detail = string.format("#%d · %s", def.number, def.nationality)
 
@@ -458,13 +491,13 @@ function Reveal.init()
 				BackgroundTransparency = 0.1,
 			}, root)
 			new("UICorner", { CornerRadius = UDim.new(0, 12) }, banner)
-			new("UIStroke", { Color = color, Thickness = 3 }, banner)
+			new("UIStroke", { Color = trim or color, Thickness = 3 }, banner)
 			label(banner, {
 				Position = UDim2.fromOffset(8, 4),
 				Size = UDim2.new(1, -16, 0, 34),
 				Text = string.upper(rarityName) .. " · " .. def.name,
 				TextScaled = true,
-				TextColor3 = color,
+				TextColor3 = trim or color,
 			})
 			label(banner, {
 				Position = UDim2.fromOffset(8, 38),

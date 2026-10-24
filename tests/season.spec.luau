@@ -23,9 +23,9 @@ local function profile(floors)
 	return data
 end
 
-T.test("the button is hidden, then a locked preview from floor 3 open, then ready", function()
+T.test("the button is hidden, then a locked preview from floor 1 done, then ready", function()
 	T.eq(Season.state(profile(0)), "hidden")
-	T.eq(Season.state(profile(1)), "hidden")
+	T.eq(Season.state(profile(1)), "locked")
 	T.eq(Season.state(profile(2)), "locked")
 	T.eq(Season.state(profile(3)), "ready")
 end)

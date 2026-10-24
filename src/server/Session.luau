@@ -29,6 +29,9 @@ export type Runtime = {
 	nameFiltering: boolean, -- the saved name is being filtered
 	sessionCases: number, -- Robux cases bought in this visit, for the confirm screen total
 	sessionRobux: number, -- Robux spent in this visit
+	-- True until the offline earnings are paid at the plot claim: lastSeen keeps the time of the
+	-- last visit meanwhile, so an autosave or leaving before the claim does not lose them.
+	awayHeld: boolean,
 }
 
 export type Session = {
@@ -51,6 +54,13 @@ local store: any
 local started = false
 
 local Session = {}
+
+-- Stamps the time on the save, except while the offline earnings wait for the plot claim.
+local function stampLastSeen(session: Session)
+	if not session.runtime.awayHeld then
+		session.data.lastSeen = os.time()
+	end
+end
 
 local function startOne(player: Player): Session?
 	local began = os.clock()
@@ -94,10 +104,33 @@ local function startOne(player: Player): Session?
 		return nil
 	end
 
+	local session: Session = {
+		player = player,
+		profile = profile,
+		data = profile.Data,
+		loadedAt = os.clock(),
+		joinedAt = os.time(),
+		runtime = {
+			plot = nil,
+			slotIndex = nil,
+			matchesInRow = 0,
+			matchesPlayed = 0,
+			nextMatchAt = 0,
+			firstRevealWait = 0,
+			firstMatchShown = false,
+			upgrading = false,
+			stadiumName = nil,
+			nameFiltering = false,
+			sessionCases = 0,
+			sessionRobux = 0,
+			awayHeld = true,
+		},
+	}
+
 	-- A save is never blocked here, but a bad profile is logged loudly so it gets noticed.
 	profile.OnSave:Connect(function()
 		-- Every save (autosave too) stamps the time, so a crash costs at most a minute of "away".
-		profile.Data.lastSeen = os.time()
+		stampLastSeen(session)
 		local valid, problem = ProfileSchema.validate(profile.Data)
 		if not valid then
 			warn(
@@ -120,27 +153,6 @@ local function startOne(player: Player): Session?
 		end
 	end)
 
-	local session: Session = {
-		player = player,
-		profile = profile,
-		data = profile.Data,
-		loadedAt = os.clock(),
-		joinedAt = os.time(),
-		runtime = {
-			plot = nil,
-			slotIndex = nil,
-			matchesInRow = 0,
-			matchesPlayed = 0,
-			nextMatchAt = 0,
-			firstRevealWait = 0,
-			firstMatchShown = false,
-			upgrading = false,
-			stadiumName = nil,
-			nameFiltering = false,
-			sessionCases = 0,
-			sessionRobux = 0,
-		},
-	}
 	sessions[player] = session
 	return session
 end
@@ -167,7 +179,7 @@ local function onPlayerRemoving(player: Player)
 		return
 	end
 	sessions[player] = nil
-	session.data.lastSeen = os.time()
+	stampLastSeen(session)
 	for _, callback in leavingCallbacks do
 		local ok, err = Safe.call(callback, session)
 		if not ok then
@@ -246,7 +258,7 @@ function Session.save(player: Player): boolean
 		warn(string.format("[Session] refusing to save %s: %s", player.Name, problem or "?"))
 		return false
 	end
-	session.data.lastSeen = os.time()
+	stampLastSeen(session)
 	session.profile:Save()
 	return true
 end

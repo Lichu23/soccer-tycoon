@@ -705,7 +705,12 @@ function LockerUi.init()
 
 	icon.Activated:Connect(function()
 		if locked then
-			Dock.reason(tile, "Put a player on the field first.")
+			Dock.reason(
+				tile,
+				if State.hasPlot()
+					then "Put a player on the field first."
+					else "Claim your plot first."
+			)
 			return
 		end
 		if open then
@@ -721,11 +726,12 @@ function LockerUi.init()
 		ContextActionService:BindAction("LockerClose", onPad, false, Enum.KeyCode.ButtonB)
 	end)
 
-	-- The icon shows once the team plays; a slot that opens after the first look shows the small note.
+	-- The icon opens once the plot is claimed and the team plays; a slot that opens after the first
+	-- look shows the small note.
 	local lastTier = 0
 	local noteToken = 0
 	local function refresh()
-		locked = not State.data.fieldStarted
+		locked = not State.hasPlot() or not State.data.fieldStarted
 		Dock.paint(tile, if locked then "locked" else "open")
 		local tier = State.data.stadiumTier
 		if lastTier > 0 and tier > lastTier and Cosmetics.slotForTier(tier) then

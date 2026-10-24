@@ -35,6 +35,8 @@ local UNLOCK_BLEND = 0.8
 local UNLOCK_FAR, UNLOCK_NEAR = 26, 16
 local UNLOCK_HIGH, UNLOCK_LOW = 14, 8
 local UNLOCK_CALM_SECONDS = 1 -- the screen must be free this long before an unlock plays
+local UNLOCK_SIDES = 16 -- the directions around a pad tried for a clear view of it
+local SEE_THROUGH = 0.5 -- parts at least this transparent (glass) do not block the camera
 local BUSY_GUIS = { "Reveal", "Cases", "StadiumCinematic", "RewardCard" }
 
 type Shot = {
@@ -399,8 +401,62 @@ local function busy(): boolean
 	return false
 end
 
--- The camera comes from the player's side of the pad, lowers and closes in while the title and
--- what the pad does are shown.
+-- Where the unlock camera is `alpha` of the way through its move, on the `away` side of the pad.
+local function unlockPosition(target: Vector3, away: Vector3, alpha: number): Vector3
+	local distance = UNLOCK_FAR + (UNLOCK_NEAR - UNLOCK_FAR) * alpha
+	local height = UNLOCK_HIGH + (UNLOCK_LOW - UNLOCK_HIGH) * alpha
+	return target + away * distance + Vector3.new(0, height, 0)
+end
+
+-- Whether anything solid stands between two points (glass and other see-through parts and the
+-- player's own character do not count).
+local function blocked(from: Vector3, to: Vector3): boolean
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	local ignored: { Instance } = {}
+	if player.Character then
+		table.insert(ignored, player.Character)
+	end
+	for _ = 1, 8 do
+		params.FilterDescendantsInstances = ignored
+		local hit = Workspace:Raycast(from, to - from, params)
+		if hit == nil then
+			return false
+		end
+		if hit.Instance.Transparency < SEE_THROUGH then
+			return true
+		end
+		table.insert(ignored, hit.Instance)
+	end
+	return false
+end
+
+-- The side of the pad the unlock camera comes from: the player's own side when the pad stays in
+-- view the whole way in, otherwise the nearest side around the pad that keeps it in view (the
+-- training pads stand between the gym's walls, which hid them from a player in the building).
+local function unlockSide(target: Vector3, preferred: Vector3, look: Vector3): Vector3
+	for step = 0, UNLOCK_SIDES / 2 do
+		for _, sign in (if step == 0 or step == UNLOCK_SIDES / 2 then { 1 } else { 1, -1 }) do
+			local angle = sign * step * 2 * math.pi / UNLOCK_SIDES
+			local away = CFrame.Angles(0, angle, 0):VectorToWorldSpace(preferred)
+			local clear = true
+			for _, alpha in { 0, 0.5, 1 } do
+				if blocked(look, unlockPosition(target, away, alpha)) then
+					clear = false
+					break
+				end
+			end
+			if clear then
+				return away
+			end
+		end
+	end
+	return preferred
+end
+
+-- The camera comes from the player's side of the pad (or the nearest side with a clear view of it),
+-- lowers and closes in while the title and what the pad does are shown. It glides in from the
+-- player's camera, or cuts straight to the shot when a wall stands in between.
 local function playUnlock(unlock: Unlocks.Unlock, target: Vector3)
 	pcall(function()
 		player:RequestStreamAroundAsync(target, 2) -- the pad may not be streamed in yet
@@ -409,17 +465,16 @@ local function playUnlock(unlock: Unlocks.Unlock, target: Vector3)
 	local camera = Workspace.CurrentCamera
 	local from = if camera then camera.CFrame.Position else target + Vector3.new(0, 0, 30)
 	local flat = Vector3.new(from.X - target.X, 0, from.Z - target.Z)
-	local away = if flat.Magnitude > 0.1 then flat.Unit else Vector3.new(0, 0, 1)
 	local look = target + Vector3.new(0, 2, 0)
+	local away =
+		unlockSide(target, if flat.Magnitude > 0.1 then flat.Unit else Vector3.new(0, 0, 1), look)
+	local blend = if blocked(from, unlockPosition(target, away, 0)) then 0 else UNLOCK_BLEND
 	start(function(elapsed: number): (CFrame, boolean)
 		local alpha = if reduced then 1 else math.clamp(elapsed / UNLOCK_SECONDS, 0, 1)
-		local distance = UNLOCK_FAR + (UNLOCK_NEAR - UNLOCK_FAR) * alpha
-		local height = UNLOCK_HIGH + (UNLOCK_LOW - UNLOCK_HIGH) * alpha
-		local position = target + away * distance + Vector3.new(0, height, 0)
-		return CFrame.lookAt(position, look), elapsed >= UNLOCK_SECONDS
+		return CFrame.lookAt(unlockPosition(target, away, alpha), look), elapsed >= UNLOCK_SECONDS
 	end, {
 		{ at = 0.3, text = unlock.title, detail = unlock.detail, seconds = UNLOCK_SECONDS - 0.3 },
-	}, UNLOCK_SECONDS + 1, UNLOCK_BLEND, true)
+	}, UNLOCK_SECONDS + 1, blend, true)
 end
 
 -- Unlocks that arrive together play one after another, each once the screen is free.

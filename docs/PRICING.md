@@ -60,7 +60,7 @@ TP is valued separately. Juggling earns about 25 TP per minute of play once stam
 | TP packs | 500 / 2,500 / 10,000 for 25 / 99 / 349 | cheap for the main bottleneck | **39 / 149 / 499** |
 | Standard Case | 49 | 5 to 12 min of cash plus about 6 min of TP; about 70% of the cash value is the x2 cash boost slots | 49 (unchanged) |
 | Elite Case | 149 | 6.4 min when it unlocks, 1.1 min late in floor 3; 65% to 97% of pulls were duplicates | **79, only players not owned yet** |
-| Legends | 799 to 3,499 | the cheapest route to a Legend (the Elite Case averaged about 7,450 Robux per Legend) | same prices, **trials still required** |
+| Legends | 799 to 3,499 | the cheapest route to a Legend (the Elite Case averaged about 7,450 Robux per Legend) | **1,499 / 1,999 / 2,999 / 3,999 / 7,499, no trials needed** (2026-10-24, see below) |
 | Robux cosmetics | 79 to 199 | no gameplay value | unchanged |
 
 Why the Elite Case lost so much value: a duplicate adds a star, but stars only count for players on the field. Most duplicates landed on cheap players on the bench, where a star adds nothing.
@@ -117,14 +117,28 @@ These results use the best New Season strategy: start a new season unless the ne
 | Plays nonstop, idle trainer | 617 h | 201 h |
 
 - The first Legend comes on day 15 to 19 for a 30-minute player. That matches the plan's target of about 3 weeks.
-- Training is still the last wall. Pelé's trial takes about 50 h of juggling after Maradona is owned.
+- Training is still the last wall. The last Legend's trial (Maradona since 2026-10-24, Pelé before) takes about 50 h of juggling after the one before it is owned.
 - Idle players are still about 2.3x slower than jugglers.
 - New Seasons help with cash, not training. TP and levels reset each season, so a training goal must be finished within one season.
+
+## Legends without trials (2026-10-24)
+
+The owner decided that a Robux Legend skips the trials as well as the cash price. Skipping both saves far more play, so the prices went up to stay near the same rate. These are estimates from the finish-line totals above; the simulation has no per-Legend breakdown.
+
+| Legend | Before | Now | Play it roughly saves (30 min a day, juggling) |
+|---|---|---|---|
+| Ronaldinho | 799 | 1,499 | about 6 to 8 h from reaching floor 4 (the first Legend comes on day 15 to 19) |
+| Zidane | 1,199 | 1,999 | about 9 to 10 h |
+| Ronaldo Nazário | 1,799 | 2,999 | about 13 to 15 h |
+| Pelé | 2,499 | 3,999 | about 18 to 20 h |
+| Maradona | 3,499 | 7,499 | about 35 to 50 h (his trial alone is about 50 h) |
+
+All five cost 17,995 Robux (11,293 before). Maradona and Pelé are under the 3 to 4 Robux a minute rate on purpose: a strict rate would put Maradona above 10,000 Robux. Re-check after the first real purchases.
 
 ## Ethics check
 
 - **Fixed cash packs failed the Regret test.** A floor-3 player paid 349 Robux for a few seconds of income. Packs sized by income fix this.
-- **Robux Legends skipping the trials** let a payer finish in about 3 hours against about 130 for a free player. That left the payer nothing to aim for, which hurts retention. A Robux Legend now skips only the cash price.
+- **Robux Legends skipping the trials** let a payer finish in about 3 hours against about 130 for a free player, which leaves a payer little to aim for. On 2026-10-22 a Robux Legend skipped only the cash price; on 2026-10-24 the owner chose to skip the trials too, with the higher prices above. Watch whether paying players keep playing after their Legends.
 - **Cases** still show their odds before purchase, have no pity system and no luck boosts, and are hidden for players that `PolicyService` restricts.
 
 ## Status

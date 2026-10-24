@@ -101,6 +101,12 @@ T.test("each tier is a bigger, more real stadium", function()
 	T.eq(count(CourtPlan.parts(6), "LightPole"), 4)
 	T.eq(count(CourtPlan.parts(6), "Firework"), 2)
 	T.truthy(count(CourtPlan.parts(6), "Fan") > 60)
+	-- Its name and crest are only on the front, outside: no entrance arch inside.
+	T.eq(count(CourtPlan.parts(6), "GateSign"), 0)
+	T.eq(count(CourtPlan.parts(6), "GatePillar"), 0)
+	T.eq(count(CourtPlan.parts(6), "NameBoard"), 1)
+	T.eq(count(CourtPlan.parts(6), "Crest"), 1)
+	T.eq(count(CourtPlan.parts(5), "GateSign"), 1)
 	-- The sponsor boards are wedges with a made-up name, every lamp face is a disc or a panel.
 	for tier = 3, #Config.StadiumTiers do
 		for _, part in CourtPlan.parts(tier) do

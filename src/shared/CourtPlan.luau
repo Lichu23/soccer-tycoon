@@ -1062,12 +1062,10 @@ function CourtPlan.parts(tier: number, model: string?): { PartSpec }
 		local l, r, n, f = x0 - o, x1 + o, z0 - o, z1 + o
 		box(list, "Apron", x0 - 3, x1 + 3, 0.5, 0.65, z0 - 3, z1 + 3, surfaceColor)
 		adBoards(list, l, r, n, f)
-		arch(
-			list,
-			n,
-			if index == 6 then "ROOF ARENA" elseif index == 5 then "ARENA" else "STADIUM",
-			11
-		)
+		-- The roof arena has no arch: its name and crest stand on its front, outside (see `dome`).
+		if index < 6 then
+			arch(list, n, if index == 5 then "ARENA" else "STADIUM", 11)
+		end
 		for _, side in { -1, 1 } do
 			local bx0, bx1 = if side < 0 then -24 else 10, if side < 0 then -10 else 24
 			box(list, "BenchSeat", bx0, bx1, FLOOR, FLOOR + 1.1, z0 - 3.5, z0 - 1.5, WOOD, "Wood")

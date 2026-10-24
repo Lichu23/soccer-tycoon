@@ -1,6 +1,6 @@
 --!strict
 -- The Robux shop (docs/PLAN.md, Step 3 and the case rules): the Free, Standard and Elite Case in one
--- Chests box, with the odds before a purchase, and from floor 4 the Legends. The boosts are sold on the
+-- Chests box, with the odds before a purchase, and the Legends. The boosts are sold on the
 -- pads of the building, not here. One icon under the daily icons
 -- opens it. Every purchase takes two taps (open an item, then Buy), shows what it costs and what this
 -- visit has spent, and never pushes: no timers, no popups, and the icon's red "1" only ever means the
@@ -17,11 +17,12 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local DailyInfo = require(ReplicatedStorage.Shared.DailyInfo)
 local Dock = require(script.Parent.Dock)
 local Icons = require(script.Parent.Icons)
-local Legends = require(ReplicatedStorage.Shared.Legends)
 local Net = require(script.Parent.Net)
 local Panel = require(script.Parent.Panel)
+local Roster = require(ReplicatedStorage.Shared.Roster)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
+local Translate = require(script.Parent.Translate)
 
 local player = Players.LocalPlayer
 
@@ -32,6 +33,12 @@ local BOX_PADDING = 12
 local CARDS_PER_ROW = 3
 local CARD_WIDTH = 0.31
 local CARD_GAP = 0.035
+local SECTION_GAP = 14 -- the extra space above every section's chip but the first
+-- A picture that is not a tile already (a Legend's card) is framed like the chest tiles: rounded,
+-- the dark outline, and a darker base under it.
+local TILE_SIZE = 80
+local TILE_BASE = 6
+local TILE_CORNER = 14
 local DISABLED = Color3.fromRGB(196, 194, 214) -- the grey of a button that cannot be pressed yet
 
 -- The short line on a closed card (the full sentences are for the answers of the server).
@@ -39,14 +46,12 @@ local CARD_REASONS: { [string]: string } = {
 	early = "After floor 1",
 	locked = "Locked",
 	owned = "Yours",
-	trials = "Trials first",
 }
 
 local REFUSALS: { [string]: string } = {
 	early = "Chests open once floor 1 is done.",
 	locked = "Not unlocked yet.",
 	owned = "You already have him.",
-	trials = "Finish his trials in the Legends hall first.",
 	restricted = "Chests are not available for you.",
 	off = "Not available right now.",
 	unavailable = "Not available right now.",
@@ -152,76 +157,139 @@ function ShopUi.init()
 		return item
 	end
 
-	-- A block of odds rows, close together so a case's whole detail and its Buy button fit without
-	-- scrolling. `width` is its share of the parent (the boosts sit in two columns).
-	local function oddsBlock(parent: Instance, width: number): Frame
+	-- A box of one kind of prize in a case's odds: its icon, its name and its whole chance on top, and
+	-- under it the parts as small pills ("15 min 15%"). `width` is its share of the parent (the two
+	-- boosts sit side by side). Returns the pill row.
+	local function oddsCard(
+		parent: Instance,
+		width: number,
+		iconName: string,
+		title: string,
+		share: number
+	): Frame
 		order += 1
-		local block = new("Frame", {
-			Name = "OddsBlock",
+		local box = new("Frame", {
+			Name = "OddsCard",
 			LayoutOrder = order,
 			Size = UDim2.fromScale(width, 0),
 			AutomaticSize = Enum.AutomaticSize.Y,
-			BackgroundTransparency = 1,
+			BackgroundColor3 = Color3.fromRGB(250, 247, 255),
 			ZIndex = 7,
 		}, parent)
-		new("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder }, block)
-		return block
-	end
-
-	-- One row of a case's odds in `block`: the name on the left, the chance on the right. A group row
-	-- (`accent`) has a coloured dot and a bigger text; the rows under it are indented.
-	local function oddsRow(block: Frame, text: string, share: number, accent: Color3?)
-		order += 1
-		local size = if accent then 16 else 15
-		local row = new("Frame", {
-			Name = "Odds",
-			LayoutOrder = order,
-			Size = UDim2.new(1, 0, 0, size + 6),
+		rounded(box, 14)
+		new("UIStroke", {
+			Color = Style.ui.dark,
+			Thickness = 3,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		}, box)
+		new("UIPadding", {
+			PaddingTop = UDim.new(0, 10),
+			PaddingBottom = UDim.new(0, 10),
+			PaddingLeft = UDim.new(0, 10),
+			PaddingRight = UDim.new(0, 10),
+		}, box)
+		new(
+			"UIListLayout",
+			{ Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder },
+			box
+		)
+		local head = new("Frame", {
+			Name = "Head",
+			LayoutOrder = 1,
+			Size = UDim2.new(1, 0, 0, 36),
 			BackgroundTransparency = 1,
 			ZIndex = 7,
-		}, block)
-		local indent = 22
-		if accent then
-			local dot = new("Frame", {
-				Name = "Dot",
-				AnchorPoint = Vector2.new(0, 0.5),
-				Position = UDim2.new(0, 2, 0.5, 0),
-				Size = UDim2.fromOffset(12, 12),
-				BackgroundColor3 = accent,
-				ZIndex = 7,
-			}, row)
-			rounded(dot, 6)
-			new("UIStroke", { Color = Style.ui.dark, Thickness = 2 }, dot)
-		else
-			indent = 38
-		end
-		local textProps = {
+		}, box)
+		new("ImageLabel", {
+			Name = "Icon",
+			Size = UDim2.fromOffset(36, 36),
 			BackgroundTransparency = 1,
+			Image = Icons.id(iconName),
+			ZIndex = 7,
+		}, head)
+		new("TextLabel", {
+			Name = "Title",
+			Position = UDim2.fromOffset(44, 0),
+			Size = UDim2.new(1, -44 - 64, 1, 0),
+			BackgroundTransparency = 1,
+			Text = title,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextTruncate = Enum.TextTruncate.AtEnd,
 			Font = Style.font,
-			TextSize = size,
+			TextSize = 18,
 			TextColor3 = Panel.TEXT,
 			ZIndex = 7,
-		}
-		local name = new("TextLabel", textProps, row)
-		name.Name = "Name"
-		name.Position = UDim2.fromOffset(indent, 0)
-		name.Size = UDim2.new(1, -indent - 56, 1, 0)
-		name.Text = text
-		name.TextXAlignment = Enum.TextXAlignment.Left
-		name.TextTruncate = Enum.TextTruncate.AtEnd
-		local chance = new("TextLabel", textProps, row)
-		chance.Name = "Chance"
-		chance.AnchorPoint = Vector2.new(1, 0)
-		chance.Position = UDim2.fromScale(1, 0)
-		chance.Size = UDim2.new(0, 56, 1, 0)
-		chance.Text = percent(share)
-		chance.TextXAlignment = Enum.TextXAlignment.Right
+		}, head)
+		new("TextLabel", {
+			Name = "Chance",
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.fromScale(1, 0),
+			Size = UDim2.new(0, 64, 1, 0),
+			BackgroundTransparency = 1,
+			Text = percent(share),
+			TextXAlignment = Enum.TextXAlignment.Right,
+			Font = Style.font,
+			TextSize = 22,
+			TextColor3 = Panel.TEXT,
+			ZIndex = 7,
+		}, head)
+		local pills = new("Frame", {
+			Name = "Parts",
+			LayoutOrder = 2,
+			Size = UDim2.fromScale(1, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundTransparency = 1,
+			ZIndex = 7,
+		}, box)
+		new("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			Wraps = true,
+			Padding = UDim.new(0, 6),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}, pills)
+		return pills
+	end
+
+	-- One part of a prize in its box: a light pill with the name and, darker, its chance.
+	local function oddsPill(pills: Frame, text: string, share: number)
+		local pill = new("TextLabel", {
+			Name = "Part",
+			LayoutOrder = #pills:GetChildren(),
+			Size = UDim2.fromOffset(0, 26),
+			AutomaticSize = Enum.AutomaticSize.X,
+			BackgroundColor3 = Color3.fromRGB(236, 231, 252),
+			RichText = true,
+			Text = Translate.format(
+				text .. '  <font color="{1}">{2}</font>',
+				"#" .. Panel.TEXT:ToHex(),
+				percent(share)
+			),
+			Font = Style.font,
+			TextSize = 14,
+			TextColor3 = Panel.MUTED,
+			ZIndex = 7,
+		}, pills)
+		rounded(pill, 13)
+		new("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }, pill)
 	end
 
 	-- The views --------------------------------------------------------------------------------
 	local view: string? = nil -- the product key of the open detail, nil = the list
 	local waiting = false
 	local render: () -> ()
+
+	-- Asks the server for the product's Robux prompt (Roblox's own window shows the item, the price
+	-- and the confirm). Taps while the answer is on its way do nothing.
+	local function request(key: string)
+		if waiting then
+			return
+		end
+		waiting = true
+		Net.fire("RequestPurchase", key)
+		task.delay(WAIT_SECONDS, function()
+			waiting = false
+		end)
+	end
 
 	function close()
 		backdrop.Visible = false
@@ -250,11 +318,11 @@ function ShopUi.init()
 			end
 		elseif State.data.players[product.playerId or ""] ~= nil then
 			return false, "owned"
-		elseif product.kind == "legend" then
-			local done, goals = Legends.goalCount(State.data, product.playerId or "")
-			if done < goals then
-				return false, "trials"
-			end
+		elseif
+			product.kind == "legend"
+			and Roster.floorsComplete(State.data) < Config.LegendRobuxFloors
+		then
+			return false, "locked"
 		end
 		return true, nil
 	end
@@ -262,6 +330,15 @@ function ShopUi.init()
 	-- A group of cards: a small red chip with its name, then one white box that holds the cards in rows
 	-- of three. Returns the box; `cardRow` adds the rows to it.
 	local function section(text: string): Frame
+		if order > 0 then
+			order += 1
+			new("Frame", {
+				Name = "Gap",
+				LayoutOrder = order,
+				Size = UDim2.new(1, 0, 0, SECTION_GAP),
+				BackgroundTransparency = 1,
+			}, card)
+		end
 		order += 1
 		local chip = new("TextLabel", {
 			Name = "Chip",
@@ -338,7 +415,8 @@ function ShopUi.init()
 		open: boolean,
 		pillText: string,
 		onTap: (() -> ())?,
-		greyPill: boolean?
+		greyPill: boolean?,
+		tileBase: Color3? -- frame a flat picture as a tile, on a base of this colour
 	)
 		local item = new("TextButton", {
 			Name = "Row_" .. key,
@@ -360,7 +438,36 @@ function ShopUi.init()
 		}, item)
 		new("UITextSizeConstraint", { MaxTextSize = 15 }, title)
 		local picture = if iconName then Icons.id(iconName) else ""
-		if picture ~= "" then
+		local dim = Color3.fromRGB(150, 150, 165)
+		if picture ~= "" and tileBase then
+			local function framed(instance: GuiObject)
+				rounded(instance, TILE_CORNER)
+				new("UIStroke", {
+					Color = Style.ui.dark,
+					Thickness = 3,
+					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+				}, instance)
+			end
+			-- The base peeks out under the picture, like the thick foot of the chest tiles.
+			framed(new("Frame", {
+				Name = "Base",
+				AnchorPoint = Vector2.new(0.5, 0),
+				Position = UDim2.new(0.5, 0, 0, 30 + TILE_BASE),
+				Size = UDim2.fromOffset(TILE_SIZE, TILE_SIZE),
+				BackgroundColor3 = if open then tileBase else tileBase:Lerp(dim, 0.6),
+				ZIndex = 8,
+			}, item))
+			framed(new("ImageLabel", {
+				Name = "Picture",
+				AnchorPoint = Vector2.new(0.5, 0),
+				Position = UDim2.new(0.5, 0, 0, 30),
+				Size = UDim2.fromOffset(TILE_SIZE, TILE_SIZE),
+				BackgroundTransparency = 1,
+				Image = picture,
+				ImageColor3 = if open then Color3.fromRGB(255, 255, 255) else dim,
+				ZIndex = 9,
+			}, item))
+		elseif picture ~= "" then
 			new("ImageLabel", {
 				Name = "Picture",
 				AnchorPoint = Vector2.new(0.5, 0),
@@ -368,9 +475,7 @@ function ShopUi.init()
 				Size = UDim2.fromOffset(88, 88),
 				BackgroundTransparency = 1,
 				Image = picture,
-				ImageColor3 = if open
-					then Color3.fromRGB(255, 255, 255)
-					else Color3.fromRGB(150, 150, 165),
+				ImageColor3 = if open then Color3.fromRGB(255, 255, 255) else dim,
 				ZIndex = 8,
 			}, item)
 		else
@@ -425,16 +530,25 @@ function ShopUi.init()
 		return REFUSALS.early
 	end
 
-	-- A product card. Tapping an open card opens its detail (the two-tap purchase). A case that opens
-	-- later keeps its price on a grey button and, tapped, says what opens it; any other closed card
-	-- only shows the short reason.
+	-- A product card. Tapping an open chest opens its odds first (they are shown before a paid random
+	-- item); any other open card goes straight to Roblox's purchase window, which shows the item and
+	-- the price. A chest or a Legend that opens later keeps its price on a grey button and, tapped,
+	-- says what opens it; any other closed card only shows the short reason.
 	local function productCard(parent: Frame, key: string, name: string, iconName: string?)
 		local ok, reason = offer(key)
 		local product = Config.Products[key]
+		-- A Legend's picture is a flat card image: framed as a tile on a gold base.
+		local tileBase = if product.kind == "legend" then Style.rarityTrim.Legend else nil
 		if not ok and product.kind == "case" and (reason == "early" or reason == "locked") then
 			card_(parent, key, name, iconName, false, `{product.robux} Robux`, function()
 				built.toast(caseHint(product, reason))
 			end, true)
+			return
+		end
+		if not ok and product.kind == "legend" and reason == "locked" then
+			card_(parent, key, name, iconName, false, `{product.robux} Robux`, function()
+				built.toast(`Complete floor {Config.LegendRobuxFloors} to sign Legends with Robux.`)
+			end, true, tileBase)
 			return
 		end
 		card_(
@@ -446,10 +560,16 @@ function ShopUi.init()
 			if ok then `{product.robux} Robux` else CARD_REASONS[reason or "locked"],
 			if ok
 				then function()
-					view = key
-					render()
+					if product.kind == "case" then
+						view = key
+						render()
+					else
+						request(key)
+					end
 				end
-				else nil
+				else nil,
+			nil,
+			tileBase
 		)
 	end
 
@@ -490,7 +610,7 @@ function ShopUi.init()
 			productCard(row, "caseStandard", Config.Cases.standard.name, "case_standard")
 			productCard(row, "caseElite", Config.Cases.elite.name, "case_elite")
 		end
-		if Legends.reached(State.data) then
+		do
 			local box = section("Legends")
 			local legendRow: Frame? = nil
 			local count = 0
@@ -501,10 +621,13 @@ function ShopUi.init()
 						legendRow = cardRow(box)
 					end
 					count += 1
-					productCard(legendRow :: Frame, key, def.name, nil)
+					productCard(legendRow :: Frame, key, def.name, key)
 				end
 			end
-			line("Robux skips a Legend's cash price, not his trials.", { TextColor3 = Panel.MUTED })
+			line(
+				"Robux signs a Legend at once: no cash price and no trials.",
+				{ TextColor3 = Panel.MUTED }
+			)
 		end
 		total()
 	end
@@ -515,8 +638,17 @@ function ShopUi.init()
 			local def = Config.Cases[product.caseId or ""]
 			local entries, odds = Cases.odds(State.data, product.caseId or "")
 			built.setTitle(def.name)
-			-- The real odds, as rolled (Cases.odds): a group per kind of prize, its parts under it. The
-			-- two boosts sit side by side.
+			-- The real odds, as rolled (Cases.odds): a box per kind of prize with its whole chance, and
+			-- its parts as pills. The players first, then the two boosts side by side.
+			local players = oddsCard(card, 1, "slot_kit", "Player", 1 - odds.boost)
+			oddsPill(players, "Floors you've opened", odds.reached)
+			if odds.nextFloor > 0 then
+				oddsPill(players, "Next floor", odds.nextFloor)
+			end
+			if odds.further > 0 then
+				oddsPill(players, "Floors further on", odds.further)
+			end
+			oddsPill(players, "Legend", odds.legend)
 			if odds.boost > 0 then
 				order += 1
 				local boosts = new("Frame", {
@@ -530,7 +662,7 @@ function ShopUi.init()
 				new("UIListLayout", {
 					FillDirection = Enum.FillDirection.Horizontal,
 					HorizontalAlignment = Enum.HorizontalAlignment.Center,
-					Padding = UDim.new(0.06, 0),
+					Padding = UDim.new(0.03, 0),
 					SortOrder = Enum.SortOrder.LayoutOrder,
 				}, boosts)
 				for _, kind in { "cash", "tp" } do
@@ -547,40 +679,24 @@ function ShopUi.init()
 						end
 					end
 					if #rows > 0 then
-						local block = oddsBlock(boosts, 0.47)
-						oddsRow(
-							block,
-							rows[1].boost.label,
-							share,
-							if kind == "cash" then Style.ui.gold else Style.ui.bar
-						)
+						local pills = oddsCard(boosts, 0.485, kind, rows[1].boost.label, share)
 						for _, row in rows do
-							oddsRow(block, (string.gsub(row.boost.detail, "minutes", "min")), row.chance)
+							oddsPill(
+								pills,
+								(string.gsub(row.boost.detail, "minutes", "min")),
+								row.chance
+							)
 						end
 					end
 				end
 			end
-			local players = oddsBlock(card, 1)
-			oddsRow(players, "Player", 1 - odds.boost, Style.ui.good)
-			oddsRow(players, "Floors you've opened", odds.reached)
-			if odds.nextFloor > 0 then
-				oddsRow(players, "Next floor", odds.nextFloor)
-			end
-			if odds.further > 0 then
-				oddsRow(players, "Floors further on", odds.further)
-			end
-			oddsRow(players, "Legend", odds.legend)
 			line(
 				if def.newOnly and odds.duplicate == 0
 					then "Only players you don't have yet."
-					else `Duplicate? +1 star (+{math.floor(Config.Stars.bonusPerStar * 100)}% income, max {Config.Stars.maxStars}), then cash.`,
+					else `A player you have: +1 star (+{math.floor(
+						Config.Stars.bonusPerStar * 100
+					)}% income, max {Config.Stars.maxStars}), then cash.`,
 				{ TextColor3 = Panel.MUTED }
-			)
-		else
-			local def = Config.PlayersById[product.playerId or ""]
-			built.setTitle(if def then def.name else "Legend")
-			line(
-				"Yours at once, with no cash price (his trials are done). Legends stay across seasons."
 			)
 		end
 		total()
@@ -589,11 +705,9 @@ function ShopUi.init()
 			if waiting then
 				return
 			end
-			waiting = true
 			buy.Text = "Waiting..."
-			Net.fire("RequestPurchase", key)
+			request(key)
 			task.delay(WAIT_SECONDS, function()
-				waiting = false
 				if buy.Parent then
 					buy.Text = `Buy for {product.robux} Robux`
 				end

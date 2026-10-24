@@ -20,6 +20,7 @@ local Progress = require(ReplicatedStorage.Shared.Progress)
 local Roster = require(ReplicatedStorage.Shared.Roster)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
+local Translate = require(script.Parent.Translate)
 
 local player = Players.LocalPlayer
 
@@ -201,8 +202,8 @@ function Arrow.init()
 		-- the trail to a ring without a chip).
 		if not State.hasPlot() then
 			chipIcon.Visible = false
-			chipText.Text = string.format(
-				'Welcome back! <font color="%s">Stand on a yellow ring</font> to claim a plot',
+			chipText.Text = Translate.format(
+				'Welcome back! <font color="{1}">Stand on a yellow ring</font> to claim a plot',
 				gold
 			)
 			chip.Visible = Roster.ownedCount(State.data) > 0
@@ -216,22 +217,23 @@ function Arrow.init()
 			return
 		end
 		chipText.Text = if phase == "train"
-			then string.format(
-				'Get %d TP in the Gym to level up %s  <font color="%s">%d/%d</font>',
+			then Translate.format(
+				'Get {1} TP in the Gym to level up {2}  <font color="{3}">{4}/{5}</font>',
 				cost,
 				shortName(def.name),
 				gold,
 				math.min(math.floor(State.data.tp), cost),
 				cost
 			)
-			else string.format(
-				'Level up %s: <font color="%s">stand on his pad</font>',
+			else Translate.format(
+				'Level up {1}: <font color="{2}">stand on his pad</font>',
 				shortName(def.name),
 				gold
 			)
 		chip.Visible = true
 	end
 	State.onChange(refreshObjective)
+	Translate.onReady(refreshObjective)
 	refreshObjective()
 
 	-- The chevrons: flat squares lying on the ground, each with two rounded bars that meet in a point

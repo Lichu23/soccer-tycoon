@@ -36,6 +36,10 @@ local started = false
 
 local Plots = {}
 
+-- Set once at startup: runs when a player claims a plot, before their state is synced (the
+-- offline earnings are paid here, so the welcome-back card and the cash arrive together).
+Plots.onClaimed = (function(_session: any) end) :: (session: Session.Session) -> ()
+
 local PLAQUE_SIZE = Vector3.new(4.2, 1.1, 0.15)
 local PLAQUE_COLOR = Color3.fromRGB(20, 24, 35)
 
@@ -407,7 +411,9 @@ function Plots.refresh(session: Session.Session)
 				capsule,
 				pedestal,
 				if owned
-					then Style.rarityColors[def.rarity] or RING_LOCKED_COLOR
+					then Style.rarityTrim[def.rarity]
+						or Style.rarityColors[def.rarity]
+						or RING_LOCKED_COLOR
 					else RING_LOCKED_COLOR,
 				owned
 			)
@@ -478,6 +484,7 @@ function Plots.assign(session: Session.Session, slotIndex: number?): boolean
 	PadActions.registerPlot(session, plot)
 	Plots.refresh(session)
 	Analytics.milestone(session, "claimed_plot")
+	Plots.onClaimed(session)
 	Sync.all(session)
 	if firstClaim and not DevFlags.skipIntros() then
 		-- The first claim ever: the client plays the 5 second tour of the building, stadium and training.

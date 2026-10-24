@@ -16,12 +16,13 @@ local Season = {}
 -- The last cash floor: completing it opens the Legends hall and the New Season.
 Season.LAST_CASH_FLOOR = Config.LegendFloor - 1
 
--- "hidden" (floor 3 not open yet), "locked" (floor 3 open, not complete: the preview) or "ready".
+-- "hidden" (floor 1 not complete yet), "locked" (floor 1 done, floor 3 not complete: the preview) or
+-- "ready".
 function Season.state(data: ProgressData): string
 	local complete = Roster.floorsComplete(data)
 	if complete >= Season.LAST_CASH_FLOOR then
 		return "ready"
-	elseif complete >= Season.LAST_CASH_FLOOR - 1 then
+	elseif complete >= 1 then
 		return "locked"
 	end
 	return "hidden"

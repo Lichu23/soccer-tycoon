@@ -1,6 +1,6 @@
 --!strict
 -- Who may be offered what in the shop (docs/PLAN.md, Step 3): the case rules (floors), the boost
--- timers, the cash packs, the cosmetic tiers and the direct Legend (its trials done). There is no
+-- timers, the cash packs, the cosmetic tiers and the direct Legend (once floor 2 is complete). There is no
 -- waiting time: everything a player has unlocked can be bought at any moment. Pure on the profile,
 -- so it is unit tested; Purchases uses it before a prompt and Sync publishes whether cases are open.
 
@@ -10,7 +10,6 @@ local Boosts = require(script.Parent.Boosts)
 local Cases = require(ReplicatedStorage.Shared.Cases)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
-local Legends = require(ReplicatedStorage.Shared.Legends)
 local ProfileSchema = require(script.Parent.ProfileSchema)
 local Roster = require(ReplicatedStorage.Shared.Roster)
 
@@ -25,7 +24,7 @@ end
 
 -- Whether a product may be offered now: true, or false and the reason ("unknown", "off", "early"
 -- (a case before floor 1 is done, a cash pack before the first player), "locked", "tier", "full",
--- "owned", "trials" (a Legend whose trial goals are not all done)).
+-- "owned").
 function ShopRules.canOffer(data: Profile, key: string): (boolean, string?)
 	local product = Config.Products[key]
 	if product == nil then
@@ -58,17 +57,14 @@ function ShopRules.canOffer(data: Profile, key: string): (boolean, string?)
 			return false, reason
 		end
 	elseif product.kind == "legend" then
-		if not Legends.reached(data) then
+		if Roster.floorsComplete(data) < Config.LegendRobuxFloors then
 			return false, "locked"
 		end
 		if Roster.owns(data, product.playerId or "") then
 			return false, "owned"
 		end
-		-- Robux skips the cash price, not the trials: the same goals as everyone.
-		local done, total = Legends.goalCount(data, product.playerId or "")
-		if done < total then
-			return false, "trials"
-		end
+		-- Robux skips both the cash price and the trials (owner decision 2026-10-24); the Legend
+		-- prices are set for that (docs/PRICING.md).
 	end
 	return true, nil
 end

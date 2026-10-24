@@ -236,24 +236,30 @@ T.test("the 30-match boost is no longer sold", function()
 	T.eq(select(2, ShopRules.canOffer(profile(0), "matchBoost")), "unknown")
 end)
 
-T.test("a Legend is offered for Robux only once floor 4 is reached, and not when owned", function()
-	local data = profile(2)
+T.test("a Legend is offered for Robux only once floor 2 is complete, and not when owned", function()
+	local data = profile(1)
 	T.eq(select(2, ShopRules.canOffer(data, "legend_ronaldinho")), "locked")
-	local reached = profile(3)
-	reached.trials = { ronaldinho = { own = true, train = true, tier = true } }
+	local reached = profile(2)
 	T.eq(ShopRules.canOffer(reached, "legend_ronaldinho"), true)
 	Roster.add(reached, "ronaldinho")
 	T.eq(select(2, ShopRules.canOffer(reached, "legend_ronaldinho")), "owned")
 end)
 
-T.test("Robux skips a Legend's cash price, not his trials", function()
-	local data = profile(3) -- floors 1 to 3 owned, nobody trained, stadium tier 1
-	T.eq(select(2, ShopRules.canOffer(data, "legend_ronaldinho")), "trials")
-	data.trials = { ronaldinho = { own = true, train = true } } -- the tier goal is still open
-	T.eq(select(2, ShopRules.canOffer(data, "legend_ronaldinho")), "trials")
-	data.stadiumTier = 4
+T.test("Robux skips a Legend's cash price and his trials", function()
+	local data = profile(2) -- floors 1 and 2 owned, nobody trained, stadium tier 1
 	T.eq(ShopRules.canOffer(data, "legend_ronaldinho"), true)
-	T.eq(select(2, ShopRules.canOffer(data, "legend_pele")), "trials")
+	T.eq(ShopRules.canOffer(data, "legend_maradona"), true)
+end)
+
+T.test("the Robux Legends cost more the higher their slot", function()
+	local last = 0
+	for _, def in Config.Players do
+		local product = Config.Products["legend_" .. def.id]
+		if product then
+			T.eq(product.robux > last, true)
+			last = product.robux
+		end
+	end
 end)
 
 -- Granting ------------------------------------------------------------------------------------

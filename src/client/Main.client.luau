@@ -24,15 +24,11 @@ local KeepieUi = require(script.Parent.KeepieUi)
 local RewardCard = require(script.Parent.RewardCard)
 local StadiumCinematic = require(script.Parent.StadiumCinematic)
 local TrainingUi = require(script.Parent.TrainingUi)
+local Translate = require(script.Parent.Translate)
 local TreadmillBelt = require(script.Parent.TreadmillBelt)
 local State = require(script.Parent.State)
 
-local StarterGui = game:GetService("StarterGui")
-
--- The Roblox player list would open over the HUD's top-right column; the HUD shows the player's own
--- numbers and the plaza boards the rankings. Who is in the server stays in the Roblox menu.
-StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
-
+Translate.init()
 State.init()
 Hud.init()
 PadRing.init()

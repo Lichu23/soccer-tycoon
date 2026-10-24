@@ -127,7 +127,8 @@ local function makeTile(
 	parent: Instance,
 	index: number,
 	color: Color3,
-	bandLine: string
+	bandLine: string,
+	trim: Color3?
 ): (Frame, Frame)
 	local tile = new("Frame", {
 		Name = "Tile" .. index,
@@ -137,9 +138,27 @@ local function makeTile(
 	}, parent)
 	rounded(tile, 12)
 	new("UIGradient", {
-		Color = ColorSequence.new(color:Lerp(Color3.new(1, 1, 1), 0.35), color),
+		-- A rarity with lines shades towards them (a Legend goes from white to a light gold).
+		Color = if trim
+			then ColorSequence.new(color, color:Lerp(trim, 0.3))
+			else ColorSequence.new(color:Lerp(Color3.new(1, 1, 1), 0.35), color),
 		Rotation = 90,
 	}, tile)
+	if trim then
+		local line = new("Frame", {
+			Name = "Trim",
+			Position = UDim2.fromOffset(4, 4),
+			Size = UDim2.new(1, -8, 1, -8),
+			BackgroundTransparency = 1,
+			ZIndex = 5,
+		}, tile)
+		rounded(line, 9)
+		new("UIStroke", {
+			Color = trim,
+			Thickness = 2,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		}, line)
+	end
 	new("UIStroke", {
 		Name = "Outline",
 		Color = Style.ui.dark,
@@ -260,7 +279,7 @@ local function paidTile(parent: Instance, index: number, id: string)
 		return
 	end
 	local color = Style.rarityColors[def.rarity] or Style.rarityColors.Common
-	local _, area = makeTile(parent, index, color, def.name)
+	local _, area = makeTile(parent, index, color, def.name, Style.rarityTrim[def.rarity])
 	addFigure(area, def)
 end
 
@@ -507,11 +526,17 @@ function CaseModal.init()
 				tile.AnchorPoint = Vector2.new(0.5, 0.5)
 				tile.Position += UDim2.fromOffset(TILE_W / 2, TILE_H / 2)
 				local zoom = new("UIScale", { Name = "Zoom" }, tile)
-				TweenService:Create(
-					zoom,
-					TweenInfo.new(WIN_ZOOM_SECONDS, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-					{ Scale = WIN_ZOOM }
-				):Play()
+				TweenService
+					:Create(
+						zoom,
+						TweenInfo.new(
+							WIN_ZOOM_SECONDS,
+							Enum.EasingStyle.Back,
+							Enum.EasingDirection.Out
+						),
+						{ Scale = WIN_ZOOM }
+					)
+					:Play()
 			end
 			task.delay(HOLD_SECONDS, function()
 				if token == myToken and gui.Enabled then

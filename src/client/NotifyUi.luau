@@ -107,7 +107,10 @@ function NotifyUi.init()
 	end)
 	icon.Activated:Connect(function()
 		if locked then
-			Dock.reason(tile, "Buy your first player first.")
+			Dock.reason(
+				tile,
+				if State.hasPlot() then "Buy your first player first." else "Claim your plot first."
+			)
 			return
 		end
 		render()
@@ -115,7 +118,8 @@ function NotifyUi.init()
 	end)
 
 	local function refresh()
-		locked = not Notifications.unlocked(State.data)
+		-- Like every Dock button, it opens with the plot.
+		locked = not State.hasPlot() or not Notifications.unlocked(State.data)
 		Dock.paint(tile, if locked then "locked" else "open")
 		if backdrop.Visible then
 			render()
