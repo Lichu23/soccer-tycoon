@@ -37,7 +37,7 @@ local STORE_NAMES: { [string]: string } = {
 
 -- The stations of the Training Gym (the marker's PadId -> its name).
 local TRAINING_NAMES: { [string]: string } = {
-	trainingKeepie = "Keepie-uppies",
+	trainingKeepie = "Juggling",
 	trainingFreekick = "1v1 Breakaway",
 	trainingTreadmill = "Treadmill",
 	trainingBench = "Bench press",

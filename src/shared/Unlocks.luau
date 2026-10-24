@@ -80,7 +80,7 @@ Unlocks.LIST = {
 	skillUnlock(
 		"keepie",
 		"trainingKeepie",
-		"KEEPIE-UPPIES",
+		"JUGGLING",
 		"Tap in time to juggle the ball and earn TP."
 	),
 	skillUnlock(

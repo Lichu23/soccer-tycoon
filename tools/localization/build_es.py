@@ -86,7 +86,7 @@ ES = {
     "FASTER MATCHES": "PARTIDOS MÁS RÁPIDOS",
     "FASTER TRAINING": "ENTRENAMIENTO MÁS RÁPIDO",
     "HAT-TRICK CHANCE": "PROBABILIDAD DE HAT-TRICK",
-    "KEEPIE-UPPIES": "JUEGUITOS",
+    "JUGGLING": "JUEGUITOS",
     "1V1 BREAKAWAY": "MANO A MANO",
     "New players to sign upstairs. Take the stairs or the FLOOR buttons.": "Hay nuevos jugadores para fichar arriba. Sube por la escalera o usa los botones de PISO.",
     "Reach each Legend's goals, then sign them with cash.": "Cumple los objetivos de cada Leyenda y después fíchala con dinero.",
@@ -111,7 +111,7 @@ ES = {
     "BENCH PRESS": "PRESS DE BANCA",
     "TREADMILL": "CINTA DE CORRER",
     "1v1 Breakaway": "Mano a mano",
-    "Keepie-uppies": "Jueguitos",
+    "Juggling": "Jueguitos",
     "Penalty kicks": "Penales",
     "Stand here: 20 TP per minute": "Párate aquí: 20 TP por minuto",
     "Lie here: 20 TP per minute": "Acuéstate aquí: 20 TP por minuto",
@@ -138,7 +138,7 @@ ES = {
     "Tap to skip": "Toca para saltar",
     "Tap when the ring closes.": "Toca cuando el anillo se cierre.",
     "Keep the ball up as long as you can.": "Mantén la pelota en el aire todo lo que puedas.",
-    "It gets faster. Longer streak = more TP.": "Se pone más rápido. Racha más larga = más TP.",
+    "It gets faster. Longer streak = more TP.": "Se pone más rápido. Más toques seguidos = más TP.",
     "STREAK": "RACHA",
     "BEST": "RÉCORD",
     "TP EARNED": "TP GANADOS",
@@ -328,14 +328,31 @@ for n in range(1, 11):
     ES[f"Season {n + 1} begins · Income x1.5"] = f"Empieza la Temporada {n + 1} · Ingresos x1.5"
 
 
-def main():
-    out = Path(__file__).with_name("es.csv")
-    with out.open("w", newline="", encoding="utf-8") as f:
+# The Dashboard upload times out on the whole table at once, so it is also written in small parts.
+PART_SIZE = 60
+
+
+def write(path: Path, rows: list[tuple[str, str]]):
+    with path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["Key", "Source", "Context", "Example", "es"])
-        for source, spanish in ES.items():
+        for source, spanish in rows:
             writer.writerow(["", source, "", "", spanish])
-    print(f"wrote {out} ({len(ES)} entries)")
+
+
+def main():
+    here = Path(__file__).parent
+    rows = list(ES.items())
+    write(here / "es.csv", rows)
+    print(f"wrote es.csv ({len(rows)} entries)")
+    parts = here / "parts"
+    parts.mkdir(exist_ok=True)
+    for old in parts.glob("es_part*.csv"):
+        old.unlink()
+    for i in range(0, len(rows), PART_SIZE):
+        name = f"es_part{i // PART_SIZE + 1}.csv"
+        write(parts / name, rows[i : i + PART_SIZE])
+        print(f"wrote parts/{name} ({len(rows[i : i + PART_SIZE])} entries)")
 
 
 if __name__ == "__main__":
