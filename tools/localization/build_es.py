@@ -2,9 +2,10 @@
 the Creator Dashboard localization table (Localization > Table Management > Upload CSV).
 
 The texts come from a Studio playtest that recorded every text on screen, plus the fixed texts in
-src/ that the playtest did not reach. Player names, sponsor brands, Robux prices and texts built
-from numbers at run time are left out: names stay as they are, and the dynamic texts need
-placeholders in the code to translate cleanly.
+src/ that the playtest did not reach. Player names, sponsor brands and Robux prices are left out.
+Texts built from numbers or names at run time are templates with `{1}` pieces (TEMPLATES): Roblox's
+translator matches a text on screen against them and keeps the pieces as they are, so a piece
+that needs translating ("2 hours", a slot name) gets its own full variant instead.
 
 Spanish: neutral Latin American, "tú", football words used in Latin America (penales, arco,
 cancha, gambetear, fichar, jueguitos).
@@ -326,6 +327,128 @@ for n in range(1, 11):
     ES[f"SEASON {n} COMPLETE"] = f"TEMPORADA {n} COMPLETA"
     ES[f"CLAIM THE TROPHY · START SEASON {n + 1}"] = f"RECLAMA EL TROFEO · EMPIEZA LA TEMPORADA {n + 1}"
     ES[f"Season {n + 1} begins · Income x1.5"] = f"Empieza la Temporada {n + 1} · Ingresos x1.5"
+
+
+# Names the playtest did not record: stadium styles and the player list stats. Sponsor brands on
+# the banners (Kickz, Fizz) stay as they are.
+ES.update({
+    "Shield": "Blasón",
+    "Star": "Estrella",
+    "Ball": "Pelota",
+    "Ruby": "Rubí",
+    "Emerald": "Esmeralda",
+    "Crown": "Corona",
+    "Flame": "Llama",
+    "Sponsors": "Patrocinadores",
+    "Sunny": "Soleado",
+    "Wave": "Ola",
+    "Tower": "Torre",
+    "Halo": "Halo",
+    "Aurora": "Aurora",
+    "Pink": "Rosa",
+    "Classic": "Clásico",
+    "Framed": "Enmarcado",
+    "Retro": "Retro",
+    "Neon": "Neón",
+    "Derby": "Derbi",
+    "Crystal": "Cristal",
+    "Silver": "Plateado",
+    "Sky": "Cielo",
+    "Arena": "Arena",
+    "Money": "Dinero",
+    "Seasons": "Temporadas",
+    "Juggles": "Jueguitos",
+    "1 hour": "1 hora",
+    "a long time": "mucho tiempo",
+})
+
+# Templates of the texts built with numbers or names, `{n}` for each piece (checked in Studio with
+# Translator:Translate, which picks the most specific template that matches).
+TEMPLATES = {
+    "LEVEL UP · {1}": "SUBIR NIVEL · {1}",
+    "LV {1}/{2}": "NV {1}/{2}",
+    "Lv {1}/{2} · on the bench": "Nv {1}/{2} · en el banco",
+    "Lv {1}/{2} · +{3}% income": "Nv {1}/{2} · +{3}% de ingresos",
+    "Lv {1}/{2} · need {3} TP": "Nv {1}/{2} · faltan {3} TP",
+    "Lv {1}/{2}": "Nv {1}/{2}",
+    "Need {1} more": "Te faltan {1}",
+    "Finish floor {1} first": "Primero completa el piso {1}",
+    "Own floor 1  {1}/{2}": "Completa el piso 1  {1}/{2}",
+    "Own floors 1-{1}  {2}/{3}": "Completa los pisos 1-{1}  {2}/{3}",
+    "{1} players at level {2}  {3}/{4}": "{1} jugadores en nivel {2}  {3}/{4}",
+    "Stadium tier {1}  {2}/{3}": "Estadio nivel {1}  {2}/{3}",
+    "Stadium Tier {1} needed": "Necesitas el estadio nivel {1}",
+    "Next: {1} TP a minute": "Siguiente: {1} TP por minuto",
+    "Lie here: {1} TP per minute": "Acuéstate aquí: {1} TP por minuto",
+    "Stand here: {1} TP per minute": "Párate aquí: {1} TP por minuto",
+    "{1}'S CLUB": "CLUB DE {1}",
+    "TIER {1}": "NIVEL {1}",
+    "Your club earned this while you were away ({1})": "Tu club ganó esto mientras no estabas ({1})",
+    'Welcome back! <font color="{1}">Stand on a yellow ring</font> to claim a plot':
+        '¡Bienvenido de nuevo! <font color="{1}">Párate en un anillo amarillo</font> para reclamar un terreno',
+    'Get {1} TP in the Gym to level up {2}  <font color="{3}">{4}/{5}</font>':
+        'Consigue {1} TP en el gimnasio para subir de nivel a {2}  <font color="{3}">{4}/{5}</font>',
+    'Level up {1}: <font color="{2}">stand on his pad</font>':
+        'Sube de nivel a {1}: <font color="{2}">párate en su base</font>',
+    "Cash for {1} min, TP for {2} min of play": "Dinero por {1} min y TP por {2} min de juego",
+    "For the next {1} minutes you play": "Durante los próximos {1} minutos que juegues",
+    "1 hour of your income, added to your cash": "1 hora de tus ingresos, sumada a tu dinero",
+    "{1} hours of your income, added to your cash": "{1} horas de tus ingresos, sumadas a tu dinero",
+    "{1} min of your income, added to your cash": "{1} min de tus ingresos, sumados a tu dinero",
+    "{1} · Lv {2}": "{1} · Nv {2}",
+    "Field {1} to {2}": "Cancha: de {1} a {2} jugadores",
+    "x{1} for {2} minutes": "x{1} durante {2} minutos",
+    "Use {1} to {2} letters.": "Usa de {1} a {2} letras.",
+    "Tier {1}": "Nivel {1}",
+    "Unlocks at stadium tier {1}.": "Se desbloquea con el estadio nivel {1}.",
+    "Stadium name: {1}": "Nombre del estadio: {1}",
+    "Stadium tier {1}": "Estadio nivel {1}",
+    "Rename {1}": "Renombrar {1}",
+    "Need {1}": "Faltan {1}",
+    "Buy for {1}": "Comprar por {1}",
+    "This visit: {1} chest, {2} Robux": "En esta visita: {1} cofre, {2} Robux",
+    "This visit: {1} chests, {2} Robux": "En esta visita: {1} cofres, {2} Robux",
+    "Complete floor {1} to sign Legends with Robux.": "Completa el piso {1} para fichar Leyendas con Robux.",
+    "Complete floor {1} to unlock the Standard Chest.": "Completa el piso {1} para desbloquear el Cofre Estándar.",
+    "Complete floor {1} to unlock the Elite Chest.": "Completa el piso {1} para desbloquear el Cofre Élite.",
+    "Free chest: +{1} training points": "Cofre gratis: +{1} puntos de entrenamiento",
+    "Free chest: x2 income for {1} min": "Cofre gratis: ingresos x2 por {1} min",
+    "Free chest: +{1}": "Cofre gratis: +{1}",
+    "Ready in {1} h {2} min": "Listo en {1} h {2} min",
+    "Ready in {1} h": "Listo en {1} h",
+    "Ready in {1} min": "Listo en {1} min",
+    'Floors you\'ve opened  <font color="{1}">{2}</font>': 'Pisos que ya abriste  <font color="{1}">{2}</font>',
+    'Next floor  <font color="{1}">{2}</font>': 'Siguiente piso  <font color="{1}">{2}</font>',
+    'Floors further on  <font color="{1}">{2}</font>': 'Pisos más adelante  <font color="{1}">{2}</font>',
+    'Legend  <font color="{1}">{2}</font>': 'Leyenda  <font color="{1}">{2}</font>',
+    "CLAIM THE TROPHY · START SEASON {1}": "RECLAMA EL TROFEO · EMPIEZA LA TEMPORADA {1}",
+    "SEASON {1} COMPLETE": "TEMPORADA {1} COMPLETA",
+    "Season {1} begins · Income {2}": "Empieza la Temporada {1} · Ingresos {2}",
+    "Season {1} · {2}": "Temporada {1} · {2}",
+    "Season {1}": "Temporada {1}",
+    "Income {1} forever": "Ingresos {1} para siempre",
+    "Floor 3 again: about {1} min": "El piso 3 otra vez: unos {1} min",
+    "Floor 3 again: about {1} h": "El piso 3 otra vez: unas {1} h",
+    "Floor 3 again: about a long time": "El piso 3 otra vez: mucho tiempo",
+    "Floor 3: {1} players left to buy": "Piso 3: faltan {1} jugadores por comprar",
+    "Streak: {1} goal": "Racha: {1} gol",
+    "Streak: {1} goals": "Racha: {1} goles",
+    "TP earned: +{1}": "TP ganados: +{1}",
+    "Personal best: {1}": "Récord personal: {1}",
+    "Buy {1}": "Compra a {1}",
+    "{1} hours": "{1} horas",
+    "{1} minutes": "{1} minutos",
+}
+ES.update(TEMPLATES)
+
+# Pieces of templates that need translating, spelled out: the stadium tiers in the Locker header
+# ("Tier {tier} · {name}") and the slots that open at a tier.
+TIERS = ["Street cage", "F5 hall", "Stadium", "Big stadium", "Arena", "Roof arena"]
+for n, name in enumerate(TIERS, start=1):
+    ES[f"Tier {n} · {name}"] = f"Nivel {n} · {ES[name]}"
+SLOTS = {"Kit": 1, "Crest": 2, "Banners": 3, "Floodlights": 3, "Light colour": 4, "Scoreboard": 5, "Stadium": 6}
+for name, tier in SLOTS.items():
+    ES[f"{name} opens at stadium tier {tier}."] = f"{ES[name]}: se abre con el estadio nivel {tier}."
 
 
 # The Dashboard upload times out on the whole table at once, so it is also written in small parts.

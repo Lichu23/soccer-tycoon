@@ -1,0 +1,21 @@
+Key,Source,Context,Example,es
+,Own floors 1-{1}  {2}/{3},,,Completa los pisos 1-{1}  {2}/{3}
+,{1} players at level {2}  {3}/{4},,,{1} jugadores en nivel {2}  {3}/{4}
+,Stadium tier {1}  {2}/{3},,,Estadio nivel {1}  {2}/{3}
+,Stadium Tier {1} needed,,,Necesitas el estadio nivel {1}
+,Next: {1} TP a minute,,,Siguiente: {1} TP por minuto
+,Lie here: {1} TP per minute,,,Acuéstate aquí: {1} TP por minuto
+,Stand here: {1} TP per minute,,,Párate aquí: {1} TP por minuto
+,{1}'S CLUB,,,CLUB DE {1}
+,TIER {1},,,NIVEL {1}
+,Your club earned this while you were away ({1}),,,Tu club ganó esto mientras no estabas ({1})
+,"Welcome back! <font color=""{1}"">Stand on a yellow ring</font> to claim a plot",,,"¡Bienvenido de nuevo! <font color=""{1}"">Párate en un anillo amarillo</font> para reclamar un terreno"
+,"Get {1} TP in the Gym to level up {2}  <font color=""{3}"">{4}/{5}</font>",,,"Consigue {1} TP en el gimnasio para subir de nivel a {2}  <font color=""{3}"">{4}/{5}</font>"
+,"Level up {1}: <font color=""{2}"">stand on his pad</font>",,,"Sube de nivel a {1}: <font color=""{2}"">párate en su base</font>"
+,"Cash for {1} min, TP for {2} min of play",,,Dinero por {1} min y TP por {2} min de juego
+,For the next {1} minutes you play,,,Durante los próximos {1} minutos que juegues
+,"1 hour of your income, added to your cash",,,"1 hora de tus ingresos, sumada a tu dinero"
+,"{1} hours of your income, added to your cash",,,"{1} horas de tus ingresos, sumadas a tu dinero"
+,"{1} min of your income, added to your cash",,,"{1} min de tus ingresos, sumados a tu dinero"
+,{1} · Lv {2},,,{1} · Nv {2}
+,Field {1} to {2},,,Cancha: de {1} a {2} jugadores

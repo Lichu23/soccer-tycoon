@@ -22,6 +22,7 @@ local Panel = require(script.Parent.Panel)
 local Roster = require(ReplicatedStorage.Shared.Roster)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
+local Translate = require(script.Parent.Translate)
 
 local player = Players.LocalPlayer
 
@@ -258,7 +259,11 @@ function ShopUi.init()
 			AutomaticSize = Enum.AutomaticSize.X,
 			BackgroundColor3 = Color3.fromRGB(236, 231, 252),
 			RichText = true,
-			Text = `{text}  <font color="#{Panel.TEXT:ToHex()}">{percent(share)}</font>`,
+			Text = Translate.format(
+				text .. '  <font color="{1}">{2}</font>',
+				"#" .. Panel.TEXT:ToHex(),
+				percent(share)
+			),
 			Font = Style.font,
 			TextSize = 14,
 			TextColor3 = Panel.MUTED,

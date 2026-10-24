@@ -1,0 +1,21 @@
+Key,Source,Context,Example,es
+,x{1} for {2} minutes,,,x{1} durante {2} minutos
+,Use {1} to {2} letters.,,,Usa de {1} a {2} letras.
+,Tier {1},,,Nivel {1}
+,Unlocks at stadium tier {1}.,,,Se desbloquea con el estadio nivel {1}.
+,Stadium name: {1},,,Nombre del estadio: {1}
+,Stadium tier {1},,,Estadio nivel {1}
+,Rename {1},,,Renombrar {1}
+,Need {1},,,Faltan {1}
+,Buy for {1},,,Comprar por {1}
+,"This visit: {1} chest, {2} Robux",,,"En esta visita: {1} cofre, {2} Robux"
+,"This visit: {1} chests, {2} Robux",,,"En esta visita: {1} cofres, {2} Robux"
+,Complete floor {1} to sign Legends with Robux.,,,Completa el piso {1} para fichar Leyendas con Robux.
+,Complete floor {1} to unlock the Standard Chest.,,,Completa el piso {1} para desbloquear el Cofre Estándar.
+,Complete floor {1} to unlock the Elite Chest.,,,Completa el piso {1} para desbloquear el Cofre Élite.
+,Free chest: +{1} training points,,,Cofre gratis: +{1} puntos de entrenamiento
+,Free chest: x2 income for {1} min,,,Cofre gratis: ingresos x2 por {1} min
+,Free chest: +{1},,,Cofre gratis: +{1}
+,Ready in {1} h {2} min,,,Listo en {1} h {2} min
+,Ready in {1} h,,,Listo en {1} h
+,Ready in {1} min,,,Listo en {1} min
