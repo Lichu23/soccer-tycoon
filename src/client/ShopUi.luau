@@ -231,6 +231,19 @@ function ShopUi.init()
 	local waiting = false
 	local render: () -> ()
 
+	-- Asks the server for the product's Robux prompt (Roblox's own window shows the item, the price
+	-- and the confirm). Taps while the answer is on its way do nothing.
+	local function request(key: string)
+		if waiting then
+			return
+		end
+		waiting = true
+		Net.fire("RequestPurchase", key)
+		task.delay(WAIT_SECONDS, function()
+			waiting = false
+		end)
+	end
+
 	function close()
 		backdrop.Visible = false
 		view = nil
@@ -470,9 +483,10 @@ function ShopUi.init()
 		return REFUSALS.early
 	end
 
-	-- A product card. Tapping an open card opens its detail (the two-tap purchase). A case that opens
-	-- later keeps its price on a grey button and, tapped, says what opens it; any other closed card
-	-- only shows the short reason.
+	-- A product card. Tapping an open chest opens its odds first (they are shown before a paid random
+	-- item); any other open card goes straight to Roblox's purchase window, which shows the item and
+	-- the price. A chest or a Legend that opens later keeps its price on a grey button and, tapped,
+	-- says what opens it; any other closed card only shows the short reason.
 	local function productCard(parent: Frame, key: string, name: string, iconName: string?)
 		local ok, reason = offer(key)
 		local product = Config.Products[key]
@@ -499,8 +513,12 @@ function ShopUi.init()
 			if ok then `{product.robux} Robux` else CARD_REASONS[reason or "locked"],
 			if ok
 				then function()
-					view = key
-					render()
+					if product.kind == "case" then
+						view = key
+						render()
+					else
+						request(key)
+					end
 				end
 				else nil,
 			nil,
@@ -638,10 +656,6 @@ function ShopUi.init()
 					else `Duplicate? +1 star (+{math.floor(Config.Stars.bonusPerStar * 100)}% income, max {Config.Stars.maxStars}), then cash.`,
 				{ TextColor3 = Panel.MUTED }
 			)
-		else
-			local def = Config.PlayersById[product.playerId or ""]
-			built.setTitle(if def then def.name else "Legend")
-			line("Yours at once, with no cash price and no trials. Legends stay across seasons.")
 		end
 		total()
 		local buy: TextButton
@@ -649,11 +663,9 @@ function ShopUi.init()
 			if waiting then
 				return
 			end
-			waiting = true
 			buy.Text = "Waiting..."
-			Net.fire("RequestPurchase", key)
+			request(key)
 			task.delay(WAIT_SECONDS, function()
-				waiting = false
 				if buy.Parent then
 					buy.Text = `Buy for {product.robux} Robux`
 				end
