@@ -407,7 +407,9 @@ function Plots.refresh(session: Session.Session)
 				capsule,
 				pedestal,
 				if owned
-					then Style.rarityColors[def.rarity] or RING_LOCKED_COLOR
+					then Style.rarityTrim[def.rarity]
+						or Style.rarityColors[def.rarity]
+						or RING_LOCKED_COLOR
 					else RING_LOCKED_COLOR,
 				owned
 			)
