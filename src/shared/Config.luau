@@ -263,7 +263,7 @@ Config.Boost = {
 	matchMultiplier = 2,
 	-- The x2 boosts bought on the Robux pads in the middle of floor 1: cash, TP, or both. Each
 	-- purchase adds its time of online time to its timer, up to paidMaxSeconds. The TP boost lasts
-	-- longer because it only pays while the stamina lasts (about half of the time).
+	-- longer: the treadmill and bench pay it the whole time, the skill games only while the stamina lasts.
 	paidMultiplier = 2,
 	paidCashSeconds = 10 * 60,
 	paidTpSeconds = 20 * 60,

@@ -1,8 +1,8 @@
 --!strict
 -- The player's own Roblox character runs on the treadmill of the Training Gym: in place, with the run
 -- animation of its own avatar, held in the middle of the belt until a jump takes it off. It only
--- starts while the server says the player is training (on the pad with stamina left) and stops the
--- moment the player jumps, leaves the pad or runs out of stamina. During the level-up tutorial the
+-- starts while the server says the player is training (on the machine) and stops the
+-- moment the player jumps or leaves the pad. During the level-up tutorial the
 -- jump is off until the TP of the first level are in, then the runner steps off by itself. The bench
 -- press is client/BenchPress. The TP are the server's: this only moves and animates the character,
 -- nothing here pays.

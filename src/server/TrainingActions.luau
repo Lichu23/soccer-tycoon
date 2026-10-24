@@ -2,7 +2,7 @@
 -- Connects the Training Gym to the world (docs/PLAN.md, Steps 4 and 7). A loop checks who stands on
 -- which station (the pad system already publishes each player's padKey), runs the stamina and the TP
 -- with Training, and publishes what the HUD shows. A conditioning station (treadmill, bench press)
--- pays the idle rate by itself. A skill station pays for the game, an endless streak: at the
+-- pays the idle rate by itself, with no stamina, so it can be farmed AFK. A skill station pays for the game, an endless streak: at the
 -- keepie-uppies the ball beats on the server clock, the client draws it from `juggleStart`, the
 -- server judges each tap on the same clock and pays each clean touch; at the free-kick spot (the 1v1
 -- breakaway) the move, the reticle and the meter run on the server clock, the server judges each input
@@ -30,7 +30,7 @@ local BEST_MAX = 100_000 -- the profile check allows streaks up to this
 local carries: { [Player]: Training.Carry } = {}
 local games: { [Player]: Juggle.State } = {}
 local kicks: { [Player]: Freekick.State } = {} -- the breakaway of a player
-local training: { [Player]: boolean } = {} -- on a station with stamina left, as of the last tick
+local training: { [Player]: boolean } = {} -- training on a station, as of the last tick
 -- Whether the streak running now has beaten the record it started with, for the "new best" line.
 local keepieNewBest: { [Player]: boolean } = {}
 local freekickNewBest: { [Player]: boolean } = {}
@@ -191,7 +191,8 @@ local function step(session: Session.Session, dt: number)
 	local field = if at then at.field else nil
 	local standing = field ~= nil
 	local paid = Training.step(data, carry, dt, standing, field == "conditioning")
-	local active = standing and Training.hasStamina(data)
+	-- The treadmill and the bench need no stamina (AFK farming); the skill games stop without it.
+	local active = standing and (field == "conditioning" or Training.hasStamina(data))
 	training[player] = active
 
 	-- The game exists only at a skill station. Stepping onto it starts a streak (after a short text

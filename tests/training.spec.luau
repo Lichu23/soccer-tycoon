@@ -91,19 +91,21 @@ T.test("a bought x2 TP boost doubles the pad and the skill games", function()
 	T.eq(Training.gamePay(gameData, gameCarry, 1, 0, true), 2)
 end)
 
-T.test("one full stamina session is 100 TP and then it stops", function()
+T.test("the treadmill and bench never tire: AFK farming keeps paying past the stamina bar", function()
 	local data, carry = fresh()
-	T.eq(train(data, carry, MAX, true), 100)
-	T.eq(data.staminaLeft, 0)
-	T.eq(train(data, carry, 120, true), 0) -- tired: nothing paid
-	T.eq(data.tp, 100)
-	T.eq(Training.hasStamina(data), false)
+	T.eq(train(data, carry, MAX * 3, true), 300)
+	T.eq(data.staminaLeft, MAX)
+	data.staminaLeft = 0
+	T.eq(train(data, carry, 60, true), 20) -- no stamina needed
+	T.near(data.staminaLeft, 60, 0.01) -- and it refills there
 end)
 
-T.test("a tired player does not refill while still standing on the pad", function()
+T.test("a tired player does not refill while still on a skill station", function()
 	local data, carry = fresh()
 	data.staminaLeft = 0
-	train(data, carry, 60, true)
+	for _ = 1, 240 do
+		Training.step(data, carry, 0.25, true, false)
+	end
 	T.eq(data.staminaLeft, 0)
 end)
 

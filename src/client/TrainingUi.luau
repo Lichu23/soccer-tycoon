@@ -1,6 +1,6 @@
 --!strict
 -- The screen of a conditioning station of the Training Gym (docs/PLAN.md, Step 4): while the player
--- is on the treadmill or the bench press with stamina left, a line says how to get off, a
+-- is on the treadmill or the bench press, a line says how to get off, a
 -- calm bar fills towards the next whole TP and a short "+N TP" shows each time one arrives. The
 -- keepie-uppies have their own screen (KeepieUi). Display only: the server pays.
 
