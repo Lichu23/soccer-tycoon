@@ -460,9 +460,8 @@ function Hud.init()
 		end)
 	end)
 
-	-- Offline earnings: the server pays them on join and sets the attributes before the profile counts
-	-- as loaded. The card waits until the player has claimed their plot, so it greets them at their
-	-- club instead of hiding behind the loading screen.
+	-- Offline earnings: the server pays them when the plot is claimed and sets the attributes then, so
+	-- the card and the cash arrive together and greet the player at their club.
 	local function showAway()
 		local earned = player:GetAttribute("offlineEarned")
 		local seconds = player:GetAttribute("offlineSeconds")

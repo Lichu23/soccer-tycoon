@@ -91,7 +91,19 @@ function DevTools.start()
 				Remotes.fireClient("Notice", player, { kind = kind })
 			end
 		elseif command == "simulateAway" then
-			-- Pretends the player was away for `amount` hours and pays it the way a join does.
+			-- Pretends the player was away for `amount` hours. Before the plot claim it only moves
+			-- lastSeen, so the claim pays it the way a return does; after it, it pays at once.
+			if session.runtime.awayHeld then
+				session.data.lastSeen = session.joinedAt - math.floor(amount * 3600)
+				print(
+					string.format(
+						"[DevTools] %s: away %sh, paid at the claim",
+						player.Name,
+						tostring(amount)
+					)
+				)
+				return
+			end
 			session.data.lastSeen = os.time() - math.floor(amount * 3600)
 			local earned, secondsAway = Offline.apply(session.data, os.time())
 			if earned > 0 then

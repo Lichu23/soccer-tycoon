@@ -95,16 +95,24 @@ for _, player in Players:GetPlayers() do
 	watchCharacters(player)
 end
 
-Session.onLoaded(function(session)
-	-- Time away becomes cash first, so the first sync already has it. The client shows the message.
-	local now = os.time()
+-- The time away refills the stamina and becomes cash when the plot is claimed (the client shows
+-- the card then), counted up to the join: the wait in the plaza is not paid. Until then lastSeen
+-- stays put (Session.awayHeld).
+Plots.onClaimed = function(session)
+	if not session.runtime.awayHeld then
+		return
+	end
+	session.runtime.awayHeld = false
 	local lastSeen = session.data.lastSeen
-	Training.refillAway(session.data, if lastSeen > 0 then now - lastSeen else 0)
-	local earned, secondsAway = Offline.apply(session.data, now)
+	Training.refillAway(session.data, if lastSeen > 0 then session.joinedAt - lastSeen else 0)
+	local earned, secondsAway = Offline.apply(session.data, session.joinedAt)
 	if earned > 0 then
 		Sync.offline(session.player, earned, secondsAway)
 		Analytics.event(session, "offline_earnings")
 	end
+end
+
+Session.onLoaded(function(session)
 	Legends.record(session.data)
 	Sync.all(session)
 	session.player:SetAttribute("profileLoaded", true)
