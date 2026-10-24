@@ -501,7 +501,7 @@ function ShopUi.init()
 						legendRow = cardRow(box)
 					end
 					count += 1
-					productCard(legendRow :: Frame, key, def.name, nil)
+					productCard(legendRow :: Frame, key, def.name, key)
 				end
 			end
 			line("Robux skips a Legend's cash price, not his trials.", { TextColor3 = Panel.MUTED })
