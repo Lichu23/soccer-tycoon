@@ -1,6 +1,6 @@
 --!strict
 -- The Robux shop (docs/PLAN.md, Step 3 and the case rules): the Free, Standard and Elite Case in one
--- Chests box, with the odds before a purchase, and from floor 4 the Legends. The boosts are sold on the
+-- Chests box, with the odds before a purchase, and the Legends. The boosts are sold on the
 -- pads of the building, not here. One icon under the daily icons
 -- opens it. Every purchase takes two taps (open an item, then Buy), shows what it costs and what this
 -- visit has spent, and never pushes: no timers, no popups, and the icon's red "1" only ever means the
@@ -17,9 +17,9 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local DailyInfo = require(ReplicatedStorage.Shared.DailyInfo)
 local Dock = require(script.Parent.Dock)
 local Icons = require(script.Parent.Icons)
-local Legends = require(ReplicatedStorage.Shared.Legends)
 local Net = require(script.Parent.Net)
 local Panel = require(script.Parent.Panel)
+local Roster = require(ReplicatedStorage.Shared.Roster)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
 
@@ -258,6 +258,11 @@ function ShopUi.init()
 			end
 		elseif State.data.players[product.playerId or ""] ~= nil then
 			return false, "owned"
+		elseif
+			product.kind == "legend"
+			and Roster.floorsComplete(State.data) < Config.LegendRobuxFloors
+		then
+			return false, "locked"
 		end
 		return true, nil
 	end
@@ -479,6 +484,12 @@ function ShopUi.init()
 			end, true)
 			return
 		end
+		if not ok and product.kind == "legend" and reason == "locked" then
+			card_(parent, key, name, iconName, false, `{product.robux} Robux`, function()
+				built.toast(`Complete floor {Config.LegendRobuxFloors} to sign Legends with Robux.`)
+			end, true, tileBase)
+			return
+		end
 		card_(
 			parent,
 			key,
@@ -534,7 +545,7 @@ function ShopUi.init()
 			productCard(row, "caseStandard", Config.Cases.standard.name, "case_standard")
 			productCard(row, "caseElite", Config.Cases.elite.name, "case_elite")
 		end
-		if Legends.reached(State.data) then
+		do
 			local box = section("Legends")
 			local legendRow: Frame? = nil
 			local count = 0

@@ -224,6 +224,9 @@ Config.PlayersById = playersById
 -- Floors 1 to 3 are the cash floors; floor 4 holds the Legends.
 Config.CashFloors = 3
 Config.LegendFloor = 4
+-- Floors completed before a Legend can be bought with Robux (the shop shows them from the start).
+-- Earlier, a Legend's income would skip most of the game (owner decision 2026-10-24).
+Config.LegendRobuxFloors = 2
 
 Config.StartingCash = 15
 -- Attributes and doubles are exact up to about 9e15, so cash is clamped just under that.

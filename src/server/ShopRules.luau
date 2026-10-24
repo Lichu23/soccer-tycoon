@@ -1,6 +1,6 @@
 --!strict
 -- Who may be offered what in the shop (docs/PLAN.md, Step 3): the case rules (floors), the boost
--- timers, the cash packs, the cosmetic tiers and the direct Legend (from floor 4). There is no
+-- timers, the cash packs, the cosmetic tiers and the direct Legend (once floor 2 is complete). There is no
 -- waiting time: everything a player has unlocked can be bought at any moment. Pure on the profile,
 -- so it is unit tested; Purchases uses it before a prompt and Sync publishes whether cases are open.
 
@@ -10,7 +10,6 @@ local Boosts = require(script.Parent.Boosts)
 local Cases = require(ReplicatedStorage.Shared.Cases)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
-local Legends = require(ReplicatedStorage.Shared.Legends)
 local ProfileSchema = require(script.Parent.ProfileSchema)
 local Roster = require(ReplicatedStorage.Shared.Roster)
 
@@ -58,7 +57,7 @@ function ShopRules.canOffer(data: Profile, key: string): (boolean, string?)
 			return false, reason
 		end
 	elseif product.kind == "legend" then
-		if not Legends.reached(data) then
+		if Roster.floorsComplete(data) < Config.LegendRobuxFloors then
 			return false, "locked"
 		end
 		if Roster.owns(data, product.playerId or "") then
