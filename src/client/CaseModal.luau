@@ -297,7 +297,7 @@ function CaseModal.init()
 		Position = UDim2.fromOffset(18, 10),
 		Size = UDim2.fromOffset(300, 36),
 		BackgroundTransparency = 1,
-		Text = "Free Case",
+		Text = "Free Chest",
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Font = Style.font,
 		TextSize = 26,
@@ -464,7 +464,7 @@ function CaseModal.init()
 			local def = Config.Cases[paid.caseId or ""]
 			if boost then
 				RewardCard.show({
-					title = string.upper(if def then def.name else "Case"),
+					title = string.upper(if def then def.name else "Chest"),
 					big = boost.label .. " · " .. boost.detail,
 					detail = if boost.kind == "tp"
 						then "Double TP, added to your boost time"
@@ -628,7 +628,7 @@ function CaseModal.init()
 		stopSpin()
 		fitScale()
 		lastLayout = ""
-		title.Text = "Free Case"
+		title.Text = "Free Chest"
 		panel.Size = UDim2.fromOffset(PANEL_W, PANEL_H)
 		openButton.Visible = true
 		timeLabel.Visible = true

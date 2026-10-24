@@ -116,7 +116,6 @@ end
 local function buildToast(parent: Instance): TextLabel
 	local toast = new("TextLabel", {
 		Name = "Toast",
-		Position = UDim2.fromOffset(8 + Dock.SIZE + 10, 14),
 		Size = UDim2.fromOffset(230, 30),
 		BackgroundColor3 = Style.ui.dark,
 		BackgroundTransparency = 0.2,
@@ -128,6 +127,7 @@ local function buildToast(parent: Instance): TextLabel
 		Active = false,
 	}, parent)
 	rounded(toast, 8)
+	Dock.placeBeside(toast, 1, 6)
 	return toast
 end
 
@@ -160,7 +160,7 @@ function DailyUi.init()
 
 	-- The free case lives in the Shop now; only the kick icon stays here.
 	local kickIcon = buildIcon(gui, "KickIcon", "KICK", 1, Color3.fromRGB(110, 225, 130), "kick")
-	Dock.badge(kickIcon.tile, "kick")
+	Dock.badge(kickIcon.tile)
 	CaseModal.init()
 	local toast = buildToast(gui)
 	local prize = buildPrize(gui)
@@ -209,12 +209,12 @@ function DailyUi.init()
 				return -- the cases screen shows it with its roulette
 			end
 			if won.kind == "cash" and type(won.amount) == "number" then
-				showPrize("Free case: +" .. NumberFormat.money(won.amount))
+				showPrize("Free chest: +" .. NumberFormat.money(won.amount))
 			elseif won.kind == "tp" and type(won.amount) == "number" then
-				showPrize("Free case: +" .. won.amount .. " training points")
+				showPrize("Free chest: +" .. won.amount .. " training points")
 			elseif won.kind == "boost" and type(won.seconds) == "number" then
 				showPrize(
-					string.format("Free case: x2 income for %d min", math.ceil(won.seconds / 60))
+					string.format("Free chest: x2 income for %d min", math.ceil(won.seconds / 60))
 				)
 			end
 		end
@@ -241,6 +241,8 @@ function DailyUi.init()
 	-- Every frame: the icon status follows the server's ready times, the glow fades after a while.
 	RunService.RenderStepped:Connect(function()
 		paintIcon(kickIcon, iconStatus("penaltyReadyAt"))
+		-- The "1" stays while kicks are left today, however often the icon is opened.
+		Dock.setPending(kickIcon.tile, kickIcon.status == "ready")
 		for _, icon in { kickIcon } do
 			if icon.glowUntil > os.clock() then
 				local wave = (math.sin(os.clock() * 6) + 1) / 2

@@ -243,3 +243,19 @@ T.test("stars, training and season constants", function()
 	T.eq(Config.Season.lateBonusPerSeason, 0.1)
 	T.eq(Config.Match.momentumCap, 0.25)
 end)
+
+T.test("every Robux product has an entry in ProductIds, and no two share an id", function()
+	local ProductIds = T.load("shared/ProductIds")
+	local seen = {}
+	for key, product in Config.Products do
+		T.truthy(ProductIds[key] ~= nil, key)
+		T.eq(product.productId, ProductIds[key])
+		if product.productId > 0 then
+			T.eq(seen[product.productId], nil, key)
+			seen[product.productId] = key
+		end
+	end
+	for key in ProductIds do
+		T.truthy(Config.Products[key] ~= nil, key)
+	end
+end)

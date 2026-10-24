@@ -1,7 +1,8 @@
 --!strict
 -- What every pad looks like (docs/PLAN.md, Step 1 and 7). Pads that buy or upgrade something are
 -- small round discs coloured by what the player can do: green = can use it now, red = it is open but
--- costs more than the player has, grey = not open yet (a floor or the goals of a Legend). Above each
+-- costs more than the player has, grey = not open yet (a floor or the goals of a Legend). Player pads
+-- use their own colours (PLAYER_COLORS): blue once owned, glowing green or red while not. Above each
 -- pad sits a label with the name, the price and a short note (the goals, for a Legend), as white and
 -- green text with a thick black outline and no box, like the signs of other tycoons. The
 -- server times the hold; this only draws it from the player's attributes: padKey, padState, padStart
@@ -49,6 +50,14 @@ local COLORS = {
 	ready = Color3.fromRGB(88, 160, 112),
 	cannotAfford = Color3.fromRGB(184, 92, 88),
 	idle = Color3.fromRGB(132, 134, 142),
+}
+-- Player and Legend pads say at a glance whether the player is owned: a blue disc for an owned one
+-- (it levels him up), a glowing green one for a player the owner can buy now, a glowing red one for
+-- a player still too expensive, grey for a floor that is not open yet.
+local PLAYER_COLORS = {
+	owned = Style.ui.bar,
+	buy = Style.ui.good,
+	cannotAfford = Color3.fromRGB(255, 70, 70),
 }
 -- Soft text colours (no neon); the thick black outline keeps them readable on any floor or sky.
 local TITLE_COLOR = Color3.fromRGB(255, 255, 255)
@@ -237,22 +246,25 @@ local function refresh(entry: Entry)
 			}
 		end
 	end
-	-- A player is named as on the back of the shirt ("ALEXANDER-ARNOLD"), not by the full name.
 	local isPlayer = entry.kind == "player" or entry.kind == "legend"
-	-- The name of a player is on the plaque of his capsule, so the pad shows only the price.
-	entry.title.Text = string.upper(info.title)
-	entry.title.Visible = not isPlayer
+	-- The name of a player is on the plaque of his capsule, so his pad shows instead what it does:
+	-- "BUY" over the price, or his level ("LV 2/5") over "LEVEL UP · 40 TP" once he is owned.
+	local badge = if isPlayer then info.badge else nil
+	entry.title.Text = if isPlayer then badge or "" else string.upper(info.title)
+	entry.title.Visible = if isPlayer then badge ~= nil else true
 	local stars = info.stars or 0
 	entry.stars.Text = string.rep("★", stars)
 	entry.stars.Visible = stars > 0
-	entry.price.Text = info.price
+	local levelsUp = isPlayer and info.owned == true and string.sub(info.price, -3) == " TP"
+	entry.price.Text = if levelsUp then "LEVEL UP · " .. info.price else info.price
 	entry.price.Visible = info.price ~= ""
 	entry.price.TextColor3 = if info.state == "cannotAfford" then BAD_COLOR else PRICE_COLOR
 	-- Why a pad cannot be used is said by PadHint when the player steps on it, not under every pad.
+	-- An owned player's level is already on top, so his note would only repeat it.
 	local blocked = entry.kind ~= "penalty"
 		and (info.state == "cannotAfford" or info.state == "locked")
 	entry.note.Text = info.note
-	entry.note.Visible = info.note ~= "" and not blocked
+	entry.note.Visible = info.note ~= "" and not blocked and not (isPlayer and info.owned)
 	entry.note.TextColor3 = NOTE_COLOR
 	for index, line in entry.lines do
 		local goal = if info.lines then info.lines[index] else nil
@@ -269,8 +281,23 @@ local function refresh(entry: Entry)
 		icon.Image = image
 		icon.Visible = image ~= ""
 	end
-	if entry.disc then
-		entry.disc.Color = if entry.kind == "robux" then ROBUX_COLOR else padColor(info.state)
+	local disc = entry.disc
+	if disc then
+		local glowing = false
+		if entry.kind == "robux" then
+			disc.Color = ROBUX_COLOR
+		elseif isPlayer and info.owned then
+			disc.Color = PLAYER_COLORS.owned
+		elseif isPlayer and info.state == "ready" then
+			disc.Color = PLAYER_COLORS.buy
+			glowing = true
+		elseif isPlayer and info.state == "cannotAfford" then
+			disc.Color = PLAYER_COLORS.cannotAfford
+			glowing = true
+		else
+			disc.Color = padColor(info.state)
+		end
+		disc.Material = if glowing then Enum.Material.Neon else Enum.Material.SmoothPlastic
 	end
 	-- The claim rings of free plots only matter to a player who has no plot yet.
 	-- Locked Store pads stay hidden until they unlock, so the middle of the room is not cluttered,
@@ -279,11 +306,7 @@ local function refresh(entry: Entry)
 	-- the stairs are worth climbing to see what is coming.
 	local storeDef = if entry.kind == "store" then (Config.Store :: any)[entry.padId] else nil
 	local hidden = (entry.kind == "claim" and State.hasPlot())
-		or (
-			entry.kind == "store"
-			and info.state == "locked"
-			and not (storeDef and storeDef.showLocked)
-		)
+		or (entry.kind == "store" and info.state == "locked" and not (storeDef and storeDef.showLocked))
 		or (entry.kind == "penalty" and info.price == "")
 	entry.billboard.Enabled = not hidden
 	if entry.disc then
@@ -308,6 +331,13 @@ local function track(part: Instance)
 	-- Only the owner's pads and the public claim rings get a label.
 	if ownerId ~= 0 and ownerId ~= player.UserId then
 		return
+	end
+	-- With streaming, a pad that streamed out and back in can be the same part, still carrying the
+	-- label built the first time. That label is no longer refreshed, so it goes before a new one.
+	for _, child in part:GetChildren() do
+		if child.Name == "PadBillboard" or child.Name == "PadDisc" then
+			child:Destroy()
+		end
 	end
 	local billboard, title, stars, price, note, lines, bar, fill =
 		buildBillboard(part, kind == "robux")
@@ -334,9 +364,19 @@ local function track(part: Instance)
 	refresh(entry)
 end
 
+-- The pad left (its plot went, or it streamed out): its label and disc go with it, so a pad that
+-- streams back in never shows a stale label under the new one.
 local function untrack(part: Instance)
-	if part:IsA("BasePart") then
-		entries[part] = nil
+	if not part:IsA("BasePart") then
+		return
+	end
+	local entry = entries[part]
+	entries[part] = nil
+	if entry then
+		entry.billboard:Destroy()
+		if entry.disc then
+			entry.disc:Destroy()
+		end
 	end
 end
 

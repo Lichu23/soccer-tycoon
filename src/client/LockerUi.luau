@@ -138,10 +138,6 @@ function LockerUi.init()
 	-- The small note that a new slot opened: beside the icon, never blocking, gone after a few seconds.
 	local note = new("TextLabel", {
 		Name = "Note",
-		Position = UDim2.fromOffset(
-			Dock.position(3).X.Offset + Dock.SIZE + 10,
-			Dock.position(3).Y.Offset + 10
-		),
 		Size = UDim2.fromOffset(120, 26),
 		BackgroundColor3 = Style.ui.panel,
 		Text = "New styles",
@@ -157,6 +153,7 @@ function LockerUi.init()
 		Thickness = 2,
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 	}, note)
+	Dock.placeBeside(note, 3, 10)
 
 	local close: () -> ()
 	local built = Panel.build(gui, "Locker room", 0.92, function()

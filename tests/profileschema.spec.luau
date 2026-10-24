@@ -270,6 +270,37 @@ T.test("version 2 drops the removed cash upgrade and gets the bought boost timer
 	T.eq((ProfileSchema.validate(data)), true)
 end)
 
+T.test("version 4 drops the saved button taps and gets the Faster training level", function()
+	local data = ProfileSchema.newProfile()
+	data.version = 4
+	data.flags.tilesSeen = { kick = true, shop = true }
+	data.storeLevels.gymRate = nil
+	T.eq((ProfileSchema.migrate(data)), true)
+	ProfileSchema.reconcile(data, ProfileSchema.newProfile())
+	T.eq(data.version, ProfileSchema.CURRENT_VERSION)
+	T.eq(data.flags.tilesSeen, nil)
+	T.eq(data.storeLevels.gymRate, 0)
+	T.eq((ProfileSchema.validate(data)), true)
+end)
+
+T.test("version 5 counts what was already open as shown, and nothing more", function()
+	local data = ProfileSchema.newProfile()
+	data.version = 5
+	data.flags.unlocksShown = nil
+	for _, def in Config.Players do
+		if def.floor == 1 then
+			data.players[def.id] = { level = 1, stars = 0 }
+		end
+	end
+	T.eq((ProfileSchema.migrate(data)), true)
+	ProfileSchema.reconcile(data, ProfileSchema.newProfile())
+	T.eq(data.flags.unlocksShown.floor2, true) -- floor 1 is complete
+	T.eq(data.flags.unlocksShown.store_hatTrick, true)
+	T.eq(data.flags.unlocksShown.floor3, nil) -- not open yet: it will get its cinematic
+	T.eq(data.flags.unlocksShown.store_matchSpeed, nil) -- needs stadium tier 2
+	T.eq((ProfileSchema.validate(data)), true)
+end)
+
 T.test("newer or invalid versions are refused", function()
 	local ok, reason = ProfileSchema.migrate({ version = ProfileSchema.CURRENT_VERSION + 1 })
 	T.eq(ok, false)
@@ -436,7 +467,7 @@ T.test("version 3 drops the offline upgrade and keeps at most the top hat-trick 
 	data.storeLevels.offline = 4
 	data.storeLevels.hatTrick = 5
 	T.eq((ProfileSchema.migrate(data)), true)
-	T.eq(data.version, 4)
+	T.eq(data.version, ProfileSchema.CURRENT_VERSION)
 	T.eq(data.storeLevels.offline, nil)
 	T.eq(data.storeLevels.hatTrick, 3)
 	T.eq((ProfileSchema.validate(data)), true)

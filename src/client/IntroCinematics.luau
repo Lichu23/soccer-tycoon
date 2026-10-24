@@ -4,6 +4,8 @@
 --     and the training area (three short shots, each with a one-word caption).
 --   * "firstMatch": when the first player is bought, the camera shows the pitch until the first match
 --     ends (the result and the payout are held for a moment), with a hard time limit.
+--   * "unlock": a pad opened (shared/Unlocks): 4 seconds over the pad with its name and what it does.
+--     They queue and wait until no reveal, card or other cinematic is on screen.
 -- Both can be skipped with a tap or the Skip button, lock the controls while they play, end when the
 -- character respawns and always give the camera back. Reduced motion: still shots, no drift.
 
@@ -20,12 +22,20 @@ local CourtPlan = require(ReplicatedStorage.Shared.CourtPlan)
 local Net = require(script.Parent.Net)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
+local Unlocks = require(ReplicatedStorage.Shared.Unlocks)
 
 local player = Players.LocalPlayer
 
 local SKIP_AFTER = 0.8 -- a tap right after the start is ignored (a leftover tap)
 local BLEND_SECONDS = 1.2 -- the camera glides from where it was to the first match shot
 local PLOT_WAIT_SECONDS = 4 -- how long the plot may take to appear on this client
+-- The unlock cinematic: the camera glides in, then closes from far/high to near/low over the pad.
+local UNLOCK_SECONDS = 4
+local UNLOCK_BLEND = 0.8
+local UNLOCK_FAR, UNLOCK_NEAR = 26, 16
+local UNLOCK_HIGH, UNLOCK_LOW = 14, 8
+local UNLOCK_CALM_SECONDS = 1 -- the screen must be free this long before an unlock plays
+local BUSY_GUIS = { "Reveal", "Cases", "StadiumCinematic", "RewardCard" }
 
 type Shot = {
 	caption: string,
@@ -104,7 +114,7 @@ local function setControls(enabled: boolean)
 	end)
 end
 
-local function makeGui(onSkip: () -> ()): (ScreenGui, TextLabel)
+local function makeGui(onSkip: () -> (), low: boolean): (ScreenGui, TextLabel, TextLabel)
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "IntroCinematic"
 	gui.ResetOnSpawn = false
@@ -112,9 +122,11 @@ local function makeGui(onSkip: () -> ()): (ScreenGui, TextLabel)
 	gui.IgnoreGuiInset = true
 	gui.Parent = player:WaitForChild("PlayerGui")
 
+	-- Low captions sit just above Skip, so the pad in the middle of the shot and its label stay clear.
+	local titleY = if low then UDim2.new(0.5, 0, 1, -150) else UDim2.fromScale(0.5, 0.2)
 	local title = Instance.new("TextLabel")
 	title.AnchorPoint = Vector2.new(0.5, 0.5)
-	title.Position = UDim2.fromScale(0.5, 0.2)
+	title.Position = titleY
 	title.Size = UDim2.fromOffset(560, 64)
 	title.BackgroundTransparency = 1
 	title.Font = Style.font
@@ -128,6 +140,26 @@ local function makeGui(onSkip: () -> ()): (ScreenGui, TextLabel)
 	stroke.Color = Style.ui.dark
 	stroke.Transparency = 1
 	stroke.Parent = title
+
+	-- One line under the title on what the thing shown does (the unlock cinematics).
+	local detail = Instance.new("TextLabel")
+	detail.Name = "Detail"
+	detail.AnchorPoint = Vector2.new(0.5, 0)
+	detail.Position = titleY + UDim2.fromOffset(0, 36)
+	detail.Size = UDim2.new(0.9, 0, 0, 32)
+	detail.BackgroundTransparency = 1
+	detail.Font = Style.font
+	detail.TextSize = 24
+	detail.TextWrapped = true
+	detail.TextColor3 = Style.ui.text
+	detail.Text = ""
+	detail.TextTransparency = 1
+	detail.Parent = gui
+	local detailStroke = Instance.new("UIStroke")
+	detailStroke.Thickness = 2
+	detailStroke.Color = Style.ui.dark
+	detailStroke.Transparency = 1
+	detailStroke.Parent = detail
 
 	local skip = Instance.new("TextButton")
 	skip.Name = "Skip"
@@ -145,41 +177,50 @@ local function makeGui(onSkip: () -> ()): (ScreenGui, TextLabel)
 	corner.CornerRadius = UDim.new(0, 10)
 	corner.Parent = skip
 	skip.Activated:Connect(onSkip)
-	return gui, title
+	return gui, title, detail
 end
 
-local function showCaption(title: TextLabel, text: string, seconds: number, myToken: number)
-	if token ~= myToken or not title:IsDescendantOf(game) then
+-- Fades a label (and its outline) in, then out again after `seconds`.
+local function fadeLabel(label: TextLabel, text: string, seconds: number, myToken: number)
+	if token ~= myToken or not label:IsDescendantOf(game) then
 		return
 	end
-	title.Text = text
-	local stroke = title:FindFirstChildOfClass("UIStroke")
+	label.Text = text
+	local stroke = label:FindFirstChildOfClass("UIStroke")
 	local fade = TweenInfo.new(0.25)
-	TweenService:Create(title, fade, { TextTransparency = 0 }):Play()
+	TweenService:Create(label, fade, { TextTransparency = 0 }):Play()
 	if stroke then
 		TweenService:Create(stroke, fade, { Transparency = 0 }):Play()
 	end
 	task.delay(math.max(seconds - 0.25, 0.1), function()
-		if token ~= myToken or not title:IsDescendantOf(game) then
+		if token ~= myToken or not label:IsDescendantOf(game) then
 			return
 		end
-		TweenService:Create(title, fade, { TextTransparency = 1 }):Play()
+		TweenService:Create(label, fade, { TextTransparency = 1 }):Play()
 		if stroke then
 			TweenService:Create(stroke, fade, { Transparency = 1 }):Play()
 		end
 	end)
 end
 
-type Caption = { at: number, text: string, seconds: number }
+type Caption = { at: number, text: string, seconds: number, detail: string? }
+
+local function showCaption(title: TextLabel, detail: TextLabel, caption: Caption, myToken: number)
+	fadeLabel(title, caption.text, caption.seconds, myToken)
+	if caption.detail then
+		fadeLabel(detail, caption.detail, caption.seconds, myToken)
+	end
+end
 
 -- Runs one cinematic. `update(elapsed)` gives the camera for that moment and whether it is over;
 -- `captions` are shown at their time; `maxSeconds` is the hard limit; `blend` glides in from the
--- camera the player had.
+-- camera the player had; `lowCaptions` puts the captions near the bottom instead of the top.
 local function start(
 	update: (number) -> (CFrame, boolean),
 	captions: { Caption },
 	maxSeconds: number,
-	blend: number
+	blend: number,
+	lowCaptions: boolean?
 )
 	local camera = Workspace.CurrentCamera
 	if camera == nil then
@@ -218,13 +259,13 @@ local function start(
 	end
 	cleanup = finish
 
-	local built, title = makeGui(finish)
+	local built, title, detail = makeGui(finish, lowCaptions == true)
 	gui = built
 	setControls(false)
 	camera.CameraType = Enum.CameraType.Scriptable
 
 	for _, caption in captions do
-		task.delay(caption.at, showCaption, title, caption.text, caption.seconds, myToken)
+		task.delay(caption.at, showCaption, title, detail, caption, myToken)
 	end
 
 	connection = RunService.RenderStepped:Connect(function()
@@ -329,6 +370,91 @@ local function playFirstMatch()
 	}, Config.Intro.firstMatchMaxSeconds, BLEND_SECONDS)
 end
 
+-- Unlocks ---------------------------------------------------------------------------------------
+
+-- Something else holds the screen: another cinematic or a camera takeover (the skill games and the
+-- penalties use a scriptable camera), a reveal, the cases screen or a reward card being read.
+local function busy(): boolean
+	if cleanup ~= nil or not State.hasPlot() then
+		return true
+	end
+	local camera = Workspace.CurrentCamera
+	if camera == nil or camera.CameraType ~= Enum.CameraType.Custom then
+		return true
+	end
+	local playerGui = player:FindFirstChild("PlayerGui")
+	if playerGui == nil then
+		return true
+	end
+	for _, name in BUSY_GUIS do
+		local gui = playerGui:FindFirstChild(name)
+		if gui and gui:IsA("ScreenGui") and gui.Enabled then
+			for _, child in gui:GetChildren() do
+				if child:IsA("GuiObject") and child.Visible then
+					return true
+				end
+			end
+		end
+	end
+	return false
+end
+
+-- The camera comes from the player's side of the pad, lowers and closes in while the title and
+-- what the pad does are shown.
+local function playUnlock(unlock: Unlocks.Unlock, target: Vector3)
+	pcall(function()
+		player:RequestStreamAroundAsync(target, 2) -- the pad may not be streamed in yet
+	end)
+	local reduced = GuiService.ReducedMotionEnabled
+	local camera = Workspace.CurrentCamera
+	local from = if camera then camera.CFrame.Position else target + Vector3.new(0, 0, 30)
+	local flat = Vector3.new(from.X - target.X, 0, from.Z - target.Z)
+	local away = if flat.Magnitude > 0.1 then flat.Unit else Vector3.new(0, 0, 1)
+	local look = target + Vector3.new(0, 2, 0)
+	start(function(elapsed: number): (CFrame, boolean)
+		local alpha = if reduced then 1 else math.clamp(elapsed / UNLOCK_SECONDS, 0, 1)
+		local distance = UNLOCK_FAR + (UNLOCK_NEAR - UNLOCK_FAR) * alpha
+		local height = UNLOCK_HIGH + (UNLOCK_LOW - UNLOCK_HIGH) * alpha
+		local position = target + away * distance + Vector3.new(0, height, 0)
+		return CFrame.lookAt(position, look), elapsed >= UNLOCK_SECONDS
+	end, {
+		{ at = 0.3, text = unlock.title, detail = unlock.detail, seconds = UNLOCK_SECONDS - 0.3 },
+	}, UNLOCK_SECONDS + 1, UNLOCK_BLEND, true)
+end
+
+-- Unlocks that arrive together play one after another, each once the screen is free.
+local unlockQueue: { { unlock: Unlocks.Unlock, position: Vector3 } } = {}
+local unlockRunning = false
+
+local function runUnlockQueue()
+	if unlockRunning then
+		return
+	end
+	unlockRunning = true
+	while #unlockQueue > 0 do
+		-- Free for a moment first, so a cinematic never starts on the frame a reveal closes.
+		local freeSince: number? = nil
+		while true do
+			if busy() then
+				freeSince = nil
+			elseif freeSince == nil then
+				freeSince = os.clock()
+			elseif os.clock() - freeSince >= UNLOCK_CALM_SECONDS then
+				break
+			end
+			task.wait(0.25)
+		end
+		local nextUp = table.remove(unlockQueue, 1)
+		if nextUp then
+			playUnlock(nextUp.unlock, nextUp.position)
+			while cleanup ~= nil do
+				task.wait(0.1)
+			end
+		end
+	end
+	unlockRunning = false
+end
+
 function IntroCinematics.init()
 	Net.on("Notice", function(info: any)
 		if type(info) ~= "table" then
@@ -338,6 +464,12 @@ function IntroCinematics.init()
 			task.spawn(playTour)
 		elseif info.kind == "firstMatch" then
 			task.spawn(playFirstMatch)
+		elseif info.kind == "unlock" then
+			local unlock = if type(info.id) == "string" then Unlocks.byId[info.id] else nil
+			if unlock and typeof(info.position) == "Vector3" then
+				table.insert(unlockQueue, { unlock = unlock, position = info.position })
+				task.spawn(runUnlockQueue)
+			end
 		end
 	end)
 	Net.on("MatchResult", function(_plot: any, info: any)

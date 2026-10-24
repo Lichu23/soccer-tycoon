@@ -15,6 +15,7 @@ local Workspace = game:GetService("Workspace")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Icons = require(script.Parent.Icons)
 local Net = require(script.Parent.Net)
+local RewardCard = require(script.Parent.RewardCard)
 local Sounds = require(script.Parent.Sounds)
 local NumberFormat = require(ReplicatedStorage.Shared.NumberFormat)
 local State = require(script.Parent.State)
@@ -33,7 +34,6 @@ local STADIUM_GAP = 8
 local STADIUM_TIER_HEIGHT = 16 -- "TIER N" under the tile, as tall as "MATCH TIME" over the timer
 local BADGE_SIZE = 30
 local TP_GAIN_HOLD_SECONDS = 1.2 -- how long "+N TP" stays after the last gain
-local AWAY_HOLD_SECONDS = 5 -- how long "+$N while you were away" stays
 local RESULT_HOLD_SECONDS = 0.65 -- the result texts are fully visible for this long...
 local RESULT_FADE_SECONDS = 0.35 -- ...then fade out: 1 second in total, then they are hidden
 
@@ -355,22 +355,6 @@ function Hud.build(parent: Instance): any
 	}, banner)
 	stroke(payout, Style.ui.dark, 2)
 
-	-- "+$N while you were away", shown once after joining.
-	local away = new("TextLabel", {
-		Name = "Away",
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 72),
-		Size = UDim2.fromOffset(420, 32),
-		BackgroundTransparency = 1,
-		Text = "",
-		Font = Style.font,
-		TextSize = 24,
-		TextColor3 = Style.ui.gold,
-		Visible = false,
-		Active = false,
-	}, gui)
-	stroke(away, Style.ui.dark, 2)
-
 	return gui
 end
 
@@ -476,32 +460,33 @@ function Hud.init()
 		end)
 	end)
 
-	-- Offline earnings: the server sets the attributes before the profile counts as loaded.
-	local awayLabel = gui.Away
+	-- Offline earnings: the server pays them on join and sets the attributes before the profile counts
+	-- as loaded. The card waits until the player has claimed their plot, so it greets them at their
+	-- club instead of hiding behind the loading screen.
 	local function showAway()
 		local earned = player:GetAttribute("offlineEarned")
 		local seconds = player:GetAttribute("offlineSeconds")
 		if type(earned) ~= "number" or type(seconds) ~= "number" or earned <= 0 then
 			return
 		end
+		if not State.hasPlot() then
+			return
+		end
 		player:SetAttribute("offlineEarned", nil) -- shown once
 		local hours, minutes = seconds // 3600, (seconds % 3600) // 60
-		local span = if hours > 0 then string.format("%dh %dm", hours, minutes) else minutes .. "m"
-		awayLabel.Text = "+"
-			.. NumberFormat.money(earned)
-			.. " while you were away ("
-			.. span
-			.. ")"
-		fadeIn(awayLabel)
-		task.delay(AWAY_HOLD_SECONDS, function()
-			fadeOut(awayLabel)
-			task.delay(RESULT_FADE_SECONDS + 0.05, function()
-				awayLabel.Visible = false
-			end)
-		end)
+		local span = if hours > 0
+			then string.format("%dh %dm", hours, minutes)
+			else minutes .. " min"
+		RewardCard.show({
+			title = "WELCOME BACK",
+			big = "+" .. NumberFormat.money(earned),
+			detail = "Your club earned this while you were away (" .. span .. ")",
+			icon = "cash",
+		})
 	end
 	showAway()
 	player:GetAttributeChangedSignal("offlineEarned"):Connect(showAway)
+	player:GetAttributeChangedSignal("plotSlot"):Connect(showAway)
 
 	-- Every frame: the money counter, the match timer and the boost badge ----------------
 	RunService.RenderStepped:Connect(function(dt: number)

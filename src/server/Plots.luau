@@ -79,6 +79,38 @@ local function buildPlaque(pedestal: BasePart, facing: Vector3, name: string): P
 	return plaque
 end
 
+local OWNER_SIGN_HEIGHT = 11
+local OWNER_SIGN_MAX_DISTANCE = 160
+local OWNER_SIGN_TEXT_SIZE = 30
+
+-- The owner's name floating over the gate, for everyone on the road to read, in the look of the pad
+-- labels (client/PadRing): no plate, white text with a thick black outline. A display name is already
+-- filtered by Roblox, so it is shown as it is.
+local function buildOwnerSign(gate: BasePart, player: Player): BillboardGui
+	local sign = Instance.new("BillboardGui")
+	sign.Name = "OwnerSign"
+	sign.Size = UDim2.fromOffset(420, 50)
+	sign.StudsOffset = Vector3.new(0, OWNER_SIGN_HEIGHT, 0)
+	sign.MaxDistance = OWNER_SIGN_MAX_DISTANCE
+	sign.LightInfluence = 0
+	sign.Adornee = gate
+	local text = Instance.new("TextLabel")
+	text.BackgroundTransparency = 1
+	text.Size = UDim2.fromScale(1, 1)
+	text.Text = string.upper(player.DisplayName .. "'s club")
+	text.TextColor3 = Color3.fromRGB(255, 255, 255)
+	text.Font = Style.font
+	text.TextSize = OWNER_SIGN_TEXT_SIZE
+	text.Parent = sign
+	local outline = Instance.new("UIStroke")
+	outline.Thickness = math.max(2, OWNER_SIGN_TEXT_SIZE / 7)
+	outline.Color = Color3.fromRGB(0, 0, 0)
+	outline.LineJoinMode = Enum.LineJoinMode.Round
+	outline.Parent = text
+	sign.Parent = gate
+	return sign
+end
+
 local function slotAnchor(index: number): BasePart
 	local map = Workspace:FindFirstChild("Map")
 	local slots = map and map:FindFirstChild("PlotSlots")
@@ -423,6 +455,10 @@ function Plots.assign(session: Session.Session, slotIndex: number?): boolean
 		claimMarker:Destroy()
 	end
 	PlotLights.build(plot, templatePivot)
+	local gate = plot:FindFirstChild("Gate")
+	if gate and gate:IsA("BasePart") then
+		buildOwnerSign(gate, player)
+	end
 	plot.Parent = plotsFolder
 
 	slotOwner[index] = player

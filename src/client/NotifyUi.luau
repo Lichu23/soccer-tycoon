@@ -65,7 +65,7 @@ function NotifyUi.init()
 		}, card)
 	end
 	label(1, 17, Panel.TEXT).Text =
-		"Tell me when my offline earnings are full or the free case is ready. At most one a day."
+		"Tell me when my offline earnings are full or the free chest is ready. At most one a day."
 	local status = label(2, 17, Panel.MUTED)
 
 	local toggle = new("TextButton", {

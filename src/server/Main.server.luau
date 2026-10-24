@@ -10,7 +10,6 @@ local BenchSeats = require(script.Parent.BenchSeats)
 local DailyActions = require(script.Parent.DailyActions)
 local DevTools = require(script.Parent.DevTools)
 local LeaderboardService = require(script.Parent.LeaderboardService)
-local Leaderstats = require(script.Parent.Leaderstats)
 local Match = require(script.Parent.Match)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Legends = require(ReplicatedStorage.Shared.Legends)
@@ -24,15 +23,14 @@ local RevealActions = require(script.Parent.RevealActions)
 local Session = require(script.Parent.Session)
 local Stadium = require(script.Parent.Stadium)
 local StadiumName = require(script.Parent.StadiumName)
-local TileBadges = require(ReplicatedStorage.Shared.TileBadges)
 local Training = require(script.Parent.Training)
 local TrainingActions = require(script.Parent.TrainingActions)
+local UnlockNotices = require(script.Parent.UnlockNotices)
 local Sync = require(script.Parent.Sync)
 
 Remotes.init()
 DevTools.start()
 Session.init()
-Leaderstats.start()
 LeaderboardService.start()
 Pads.start()
 Plots.init()
@@ -75,6 +73,8 @@ Actions.onChange = function(session, what, id)
 	elseif what == "store" then
 		Analytics.milestone(session, "first_upgrade")
 	end
+	-- A pad that opened with this change gets its cinematic (the client waits for any reveal).
+	UnlockNotices.check(session)
 end
 
 -- Everyone walks faster than the Roblox default (the plots are large).
@@ -109,10 +109,8 @@ Session.onLoaded(function(session)
 	Sync.all(session)
 	session.player:SetAttribute("profileLoaded", true)
 	Analytics.event(session, "joined")
-	-- A returning player gets a plot at once, without the claim ring.
-	if session.data.flags.hasClaimedPlot then
-		Plots.assign(session, nil)
-	end
+	-- Every player, returning ones too, picks a free plot by standing on its claim ring; their
+	-- progress is rebuilt there. Only the first claim ever plays the tour.
 end)
 
 -- The client asks for its state once its listeners are ready (never sent before they exist).
@@ -206,14 +204,6 @@ Remotes.on("SetNotifications", function(player: Player, ...: any)
 	local session = Session.get(player)
 	if session and type(on) == "boolean" then
 		Actions.setNotifications(session, on)
-	end
-end)
-
-Remotes.on("SeenTile", function(player: Player, ...: any)
-	local id = select(1, ...)
-	local session = Session.get(player)
-	if session and type(id) == "string" and TileBadges.markSeen(session.data, id) then
-		Sync.scalars(session)
 	end
 end)
 
