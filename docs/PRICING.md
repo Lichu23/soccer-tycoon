@@ -117,7 +117,7 @@ These results use the best New Season strategy: start a new season unless the ne
 | Plays nonstop, idle trainer | 617 h | 201 h |
 
 - The first Legend comes on day 15 to 19 for a 30-minute player. That matches the plan's target of about 3 weeks.
-- Training is still the last wall. Pelé's trial takes about 50 h of juggling after Maradona is owned.
+- Training is still the last wall. The last Legend's trial (Maradona since 2026-10-24, Pelé before) takes about 50 h of juggling after the one before it is owned.
 - Idle players are still about 2.3x slower than jugglers.
 - New Seasons help with cash, not training. TP and levels reset each season, so a training goal must be finished within one season.
 

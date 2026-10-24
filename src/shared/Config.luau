@@ -187,6 +187,7 @@ local players: { PlayerDef } = {
 		2_500_000_000_000,
 		2_600_000
 	),
+	player("pele", "Pelé", "Brazil", 10, "Legend", 4, 34, 6_000_000_000_000, 4_100_000),
 	player(
 		"maradona",
 		"Diego Maradona",
@@ -194,11 +195,10 @@ local players: { PlayerDef } = {
 		10,
 		"Legend",
 		4,
-		34,
-		6_000_000_000_000,
-		4_100_000
+		35,
+		15_000_000_000_000,
+		6_600_000
 	),
-	player("pele", "Pelé", "Brazil", 10, "Legend", 4, 35, 15_000_000_000_000, 6_600_000),
 }
 
 local playersById: { [string]: PlayerDef } = {}
@@ -580,14 +580,14 @@ Config.Products = {
 	legend_maradona = {
 		key = "legend_maradona",
 		kind = "legend",
-		robux = 2499,
+		robux = 3499,
 		productId = 0,
 		playerId = "maradona",
 	},
 	legend_pele = {
 		key = "legend_pele",
 		kind = "legend",
-		robux = 3499,
+		robux = 2499,
 		productId = 0,
 		playerId = "pele",
 	},
@@ -884,14 +884,14 @@ Config.LegendTrials = {
 		{ id = "train", kind = "trained", target = 5, level = 10 },
 		{ id = "tier", kind = "tier", target = 5 },
 	},
-	maradona = {
+	pele = {
 		{ id = "own", kind = "ownFloors", target = 3 },
 		{ id = "train", kind = "trained", target = 8, level = 10 },
 		{ id = "tier", kind = "tier", target = 5 },
 	},
-	-- Pelé asks for about 75K TP of training (it was 10 players at level 15, about 144K TP, which was
-	-- three quarters of the whole game in the finish simulation).
-	pele = {
+	-- Maradona, the last Legend, asks for about 75K TP of training (it was 10 players at level 15,
+	-- about 144K TP, which was three quarters of the whole game in the finish simulation).
+	maradona = {
 		{ id = "own", kind = "ownFloors", target = 3 },
 		{ id = "train", kind = "trained", target = 8, level = 12 },
 		{ id = "tier", kind = "tier", target = 5 },

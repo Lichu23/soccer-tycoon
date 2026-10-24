@@ -141,11 +141,13 @@ local function request(player: Player, key: string)
 		refuse(player, "restricted")
 		return
 	end
-	if product.productId > 0 then
-		MarketplaceService:PromptProductPurchase(player, product.productId)
-	elseif RunService:IsStudio() then
-		-- The product does not exist on the dashboard yet: run the same grant and save path.
+	-- Studio simulates when the product has no id yet, or when the place file is not linked to the
+	-- experience (GameId 0), where a real prompt fails: both run the same grant and save path.
+	local simulate = RunService:IsStudio() and (product.productId <= 0 or game.GameId == 0)
+	if simulate then
 		grantAndStore(session, product, "studio-" .. HttpService:GenerateGUID(false))
+	elseif product.productId > 0 then
+		MarketplaceService:PromptProductPurchase(player, product.productId)
 	else
 		refuse(player, "unavailable")
 	end

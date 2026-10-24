@@ -131,7 +131,7 @@ There is no separate expensive cash route: everyone pays the cash price and comp
 | 2 | Very Rare (6) | Lewandowski, Benzema, Modrić, Kane, De Bruyne, Rodri |
 | 3 | Very Rare (4) | Foden, Vinícius Jr, Bellingham, Lamine Yamal |
 | 3 | Epic (6) | Salah, Neymar, Haaland, Mbappé, Cristiano Ronaldo, Lionel Messi |
-| 4 | Legend (5) | Ronaldinho, Zidane, Ronaldo Nazário, Maradona, Pelé |
+| 4 | Legend (5) | Ronaldinho, Zidane, Ronaldo Nazário, Pelé, Maradona |
 
   Total: 4 Common, 10 Rare, 10 Very Rare, 6 Epic, 5 Legend. Pelé and Maradona have died: using a deceased person's name in a paid game can involve their estate, with rules that differ by country, so add them to the rights check.
 
@@ -221,7 +221,7 @@ Income is cash per match for a player on the field. Prices rise faster than inco
 Method: the real economy code in Lune. A free player who always buys the cheapest next thing climbs to floor 3 complete; each product is given at five stages and the climb is run again ("minutes of play saved"). A second simulation adds New Seasons, training, the Legend Trials, the daily boosts and offline income, and measures the time to own all five Legends.
 - **One rate:** about 3 to 4 Robux per minute of play saved, set by the 10-minute x2 Cash pad (39 Robux saves 10 to 15 minutes).
 - **Prices:** x2 Cash 10 min 39, x2 TP 20 min 39, both 69; cash packs 15 min / 1 h / 4 h of income 39 / 129 / 399; TP packs 39 / 149 / 499; Standard Case 49 (its x2 boosts are most of its value); Elite Case 79, and it rolls only players not owned yet (at 149 with duplicates it saved 1 to 6 minutes); Legends 799 to 3,499 for the cash price only; Robux cosmetics unchanged.
-- **Cash prices:** income per minute depends on the stage, not the speed: tier 1 $30-325, tier 2 $0.7K-28K, tier 3 $55K-640K, tier 4 $0.9M-12M, tier 5 $12.6M-83M, tier 6 $99M-302M. Cosmetics are set from this; the stadium name is $1.5B; tier 5 multiplies x7.3 (at x6.7 it added only 3%). Pelé's trial is 8 players at level 12 (about 75K TP; 10 at level 15 was about 144K TP and three quarters of the game).
+- **Cash prices:** income per minute depends on the stage, not the speed: tier 1 $30-325, tier 2 $0.7K-28K, tier 3 $55K-640K, tier 4 $0.9M-12M, tier 5 $12.6M-83M, tier 6 $99M-302M. Cosmetics are set from this; the stadium name is $1.5B; tier 5 multiplies x7.3 (at x6.7 it added only 3%). Maradona's trial (the last Legend; Pelé's until 2026-10-24) is 8 players at level 12 (about 75K TP; 10 at level 15 was about 144K TP and three quarters of the game).
 - **Finish line after the changes** (best reset rule: a New Season unless the next Legend is within about 4 hours of income): a 30-minute-a-day juggler owns all five Legends on day 164 (was 253), a 2-hour-a-day juggler on day 45 (was 67), a 30-minute-a-day idle trainer on day 384 (was 1,172). The first Legend still comes on day 15 to 19 for a 30-minute player. Training stays the last wall.
 
 ### Still to test in playtests
