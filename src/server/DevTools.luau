@@ -15,6 +15,7 @@ local Remotes = require(script.Parent.Remotes)
 local Reveals = require(script.Parent.Reveals)
 local Session = require(script.Parent.Session)
 local Sync = require(script.Parent.Sync)
+local Unlocks = require(ReplicatedStorage.Shared.Unlocks)
 
 local DevTools = {}
 
@@ -63,8 +64,10 @@ function DevTools.start()
 			end
 		elseif command == "quickStart" then
 			-- Skips the opening: claims a plot (no tour), floor 1, the level-up tutorial done, the
-			-- first match without its camera.
+			-- first match without its camera, and no unlock cinematics for the pads that this opens
+			-- (the skill games, the stadium, the store, floor 2). Later unlocks still play theirs.
 			DevCommands.apply(session.data, "quickStart", 0)
+			Unlocks.seed(session.data, session.data.flags.unlocksShown)
 			session.runtime.firstMatchShown = true
 			session.runtime.nextMatchAt = 0
 			Plots.assign(session, nil)
