@@ -26,6 +26,7 @@ local player = Players.LocalPlayer
 local CAMERA_SPEED = 5 -- how fast the camera eases to a new shot (higher is faster)
 local COPY_LIFT = 1500 -- the copy of the stadium stands this high over the real one
 local COPY_GROUND = 2048 -- the grass under the copy, so no edge shows in a wide shot
+local BIG_CREST = 10 -- studs: a crest bigger than this is the roof arena's, on its front (CourtPlan)
 
 local LockerView = {}
 
@@ -140,9 +141,11 @@ local function shotFor(gate: BasePart, slotId: string): Shot
 		-- Both have their face on the part's front, so the camera stands in front of it.
 		local part = firstPart(gate, if slotId == "crest" then "Crest" else "Scoreboard")
 		if part then
-			local distance = math.max(part.Size.X, part.Size.Y)
-				-- The crest camera stays in front of the pillars of the near roofs.
-				* if slotId == "crest" then 2.8 else 1.4
+			local size = math.max(part.Size.X, part.Size.Y)
+			-- The crest camera stays in front of the pillars of the near roofs. The roof arena's big
+			-- crest stands over its long name board, so that shot steps back to take in the board too.
+			local distance = size
+				* if slotId ~= "crest" then 1.4 elseif size > BIG_CREST then 4.5 else 2.8
 			local front = part.CFrame.LookVector
 			return {
 				eye = part.Position + front * distance + Vector3.new(0, distance * 0.15, 0),

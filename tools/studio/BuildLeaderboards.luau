@@ -1,6 +1,7 @@
--- Builds the four plaza leaderboards around the spawn (shared/Leaderboards): one board on each
--- diagonal, facing the spawn, so the walks out to the plots stay open. Each is a white board on two
--- legs with a cap in its accent colour and a navy Screen part that client/Scoreboards draws on.
+-- Builds the four plaza leaderboards around the spawn (shared/Leaderboards), all facing the spawn:
+-- the first board (TOP JUGGLES) straight ahead of a player who joins, the others on the left, the
+-- right and behind. Each is a white board on two legs with a cap in its accent colour and a navy
+-- Screen part that client/Scoreboards draws on.
 -- Run through the Studio MCP (execute_luau, Edit mode). Safe to run again: it rebuilds the folder.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -11,7 +12,7 @@ local Style = require(ReplicatedStorage.Shared.Style)
 
 local Def = {
 	GroundTop = 0.5, -- top of the plaza (BuildMap)
-	Offset = 24, -- studs from the spawn centre along X and along Z
+	Offset = 28, -- studs from the spawn centre
 	Plinth = Vector3.new(15, 1, 3.4),
 	Leg = Vector3.new(1.6, 2.5, 1.6),
 	LegX = 5.5,
@@ -22,12 +23,12 @@ local Def = {
 
 local WHITE = Color3.fromRGB(240, 240, 240)
 
--- One corner per board, in the order of Boards.boards.
-local CORNERS = {
-	Vector3.new(-1, 0, -1),
-	Vector3.new(1, 0, -1),
-	Vector3.new(1, 0, 1),
-	Vector3.new(-1, 0, 1),
+-- One spot per board, in the order of Boards.boards. The spawn faces -Z, so the first is in front.
+local SPOTS = {
+	Vector3.new(0, 0, -1),
+	Vector3.new(-1, 0, 0),
+	Vector3.new(1, 0, 0),
+	Vector3.new(0, 0, 1),
 }
 
 local plaza = Workspace:WaitForChild("Map"):WaitForChild("Plaza")
@@ -88,8 +89,7 @@ for index, board in Boards.boards do
 	addPart(model, "Cap", Def.Cap, CFrame.new(0, y + Def.Cap.Y / 2, 0), Style.ui[board.accent])
 
 	model.WorldPivot = CFrame.new()
-	local corner = CORNERS[index]
-	local at = centre + corner * Def.Offset
+	local at = centre + SPOTS[index] * Def.Offset
 	model:PivotTo(CFrame.lookAt(at, Vector3.new(centre.X, at.Y, centre.Z)))
 	model.Parent = folder
 end
