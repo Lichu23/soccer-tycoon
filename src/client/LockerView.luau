@@ -248,17 +248,15 @@ function LockerView.enter(keepGui: ScreenGui, panel: GuiObject)
 		return
 	end
 	copy = makeCopy()
-	local mine = CinemaScreen.takeover()
+	local mine = CinemaScreen.takeover(keepGui)
 	takeover = mine
 	mine.take()
-	keepGui.Enabled = true
 	local camera = Workspace.CurrentCamera
 	local reduced = GuiService.ReducedMotionEnabled
 	local first = true
 	follow = RunService.RenderStepped:Connect(function(dt: number)
 		-- Screens that show themselves again (the floor buttons) go back off; this one stays.
 		mine.keep()
-		keepGui.Enabled = true
 		local target = shot
 		if target == nil then
 			return

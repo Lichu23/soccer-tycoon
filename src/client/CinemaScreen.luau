@@ -99,7 +99,10 @@ export type Takeover = {
 	give: () -> (), -- everything back as it was
 }
 
-function CinemaScreen.takeover(): Takeover
+-- `keep` is a screen of the list that stays on (the Locker room's own). It is skipped, never turned
+-- off and on again every frame: that drops a touch in the middle of a tap, so on a phone none of its
+-- buttons worked.
+function CinemaScreen.takeover(keep: ScreenGui?): Takeover
 	local playerGui = player:WaitForChild("PlayerGui")
 	local savedCamera: { [string]: any } = {}
 	local hiddenGuis: { [ScreenGui]: boolean } = {}
@@ -122,7 +125,7 @@ function CinemaScreen.takeover(): Takeover
 	local function hideOthers()
 		for _, name in HIDDEN_GUIS do
 			local other = playerGui:FindFirstChild(name)
-			if other and other:IsA("ScreenGui") then
+			if other and other:IsA("ScreenGui") and other ~= keep then
 				if hiddenGuis[other] == nil then
 					hiddenGuis[other] = other.Enabled
 				end
