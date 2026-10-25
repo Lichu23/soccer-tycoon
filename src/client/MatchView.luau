@@ -21,6 +21,7 @@ local Mannequin = require(ReplicatedStorage.Shared.Mannequin)
 local MatchScript = require(ReplicatedStorage.Shared.MatchScript)
 local Net = require(script.Parent.Net)
 local Roster = require(ReplicatedStorage.Shared.Roster)
+local Sounds = require(script.Parent.Sounds)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
 
@@ -833,9 +834,16 @@ function MatchView.init()
 	folder.Name = "ClientMatch"
 	folder.Parent = Workspace
 
+	-- The kick-off whistle plays once a visit, at the first match on the own pitch: a match comes
+	-- every few seconds, and each one already ends with the cash sound.
+	local whistled = false
 	Net.on("MatchStarted", function(plot: any, info: any)
 		if typeof(plot) ~= "Instance" or not plot:IsA("Model") or type(info) ~= "table" then
 			return
+		end
+		if not whistled and info.ownerUserId == Players.LocalPlayer.UserId then
+			whistled = true
+			Sounds.play("whistle")
 		end
 		if
 			type(info.fieldIds) ~= "table"

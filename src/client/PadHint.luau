@@ -10,6 +10,7 @@ local TweenService = game:GetService("TweenService")
 
 local Net = require(script.Parent.Net)
 local PadInfo = require(ReplicatedStorage.Shared.PadInfo)
+local Sounds = require(script.Parent.Sounds)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
 
@@ -100,8 +101,17 @@ function PadHint.init()
 		if (info.state == "cannotAfford" or info.state == "locked") and info.note ~= "" then
 			show(info.note)
 		end
+		if info.state == "cannotAfford" then
+			Sounds.play("cantAfford")
+		end
 	end
 	player:GetAttributeChangedSignal("padKey"):Connect(onPad)
+	-- The plot becomes the player's: the claim sting (the server sets plotSlot only on a claim).
+	player:GetAttributeChangedSignal("plotSlot"):Connect(function()
+		if player:GetAttribute("plotSlot") ~= nil then
+			Sounds.play("claim")
+		end
+	end)
 
 	Net.on("Notice", function(info: any)
 		if type(info) == "table" and info.kind == "purchaseRefused" then
