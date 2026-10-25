@@ -126,10 +126,8 @@ local baseTop = GROUND + 1.6
 local front = CASE_X - CASE_DEPTH / 2
 box("CaseBase", Vector3.new(CASE_DEPTH, 1.6, width), Vector3.new(CASE_X, GROUND + 0.8, CASE_Z), COLORS.dark)
 local glass = box("CaseGlass", Vector3.new(GLASS_DEPTH, GLASS_HEIGHT, width), Vector3.new(CASE_X, baseTop + GLASS_HEIGHT / 2, CASE_Z), COLORS.glass, Enum.Material.Glass)
-glass.Transparency = 0.75
-glass.CanCollide = false
-local back = box("CaseBack", Vector3.new(0.2, GLASS_HEIGHT, width - 0.4), Vector3.new(CASE_X + GLASS_DEPTH / 2 - 0.15, baseTop + GLASS_HEIGHT / 2, CASE_Z), COLORS.plaque)
-back.CanCollide = false
+glass.Transparency = 0.75 -- solid: nobody walks into the case
+box("CaseBack", Vector3.new(0.2, GLASS_HEIGHT, width - 0.4), Vector3.new(CASE_X + GLASS_DEPTH / 2 - 0.15, baseTop + GLASS_HEIGHT / 2, CASE_Z), COLORS.plaque)
 box("CaseTop", Vector3.new(CASE_DEPTH, 0.6, width), Vector3.new(CASE_X, baseTop + GLASS_HEIGHT + 0.3, CASE_Z), COLORS.dark)
 local title = box("CaseTitle", Vector3.new(0.4, 2.4, width - 2), Vector3.new(front - 0.1, baseTop + GLASS_HEIGHT + 1.8, CASE_Z), COLORS.plaque)
 sign(title, "TROPHIES", COLORS.gold, 40)

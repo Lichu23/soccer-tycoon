@@ -6,6 +6,7 @@
 -- also wears the owner's Locker room styles (shared/StadiumLook), painted after every build, the
 -- floodlight model they chose and, at the roof arena, the name they gave it (filtered first).
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -21,6 +22,9 @@ local StadiumLook = require(ReplicatedStorage.Shared.StadiumLook)
 local StadiumName = require(script.Parent.StadiumName)
 
 local FIREWORK_SECONDS = 4
+-- Someone inside a new solid part (or this close to it) is moved out to the path in front of the pad.
+local INSIDE_MARGIN = Vector3.new(1, 3, 1)
+local SAFE_Z = CourtPlan.FRONT_Z - 8 -- in front of the stadium pad, never on it
 
 local Stadium = {}
 
@@ -28,6 +32,36 @@ local Stadium = {}
 local function lampModel(data: ProfileSchema.Profile): string
 	local def = if Cosmetics.slotOpen(data, "lamps") then Cosmetics.chosen(data, "lamps") else nil
 	return def and def.model or "led"
+end
+
+-- Moves every character standing inside a solid part of `court` to the path in front of the pad, so
+-- a stand or wall of a new tier never traps anyone.
+local function moveOutOfWalls(court: Instance, gate: BasePart)
+	local solids: { BasePart } = {}
+	for _, part in court:GetDescendants() do
+		if part:IsA("BasePart") and part.CanCollide then
+			table.insert(solids, part)
+		end
+	end
+	for _, player in Players:GetPlayers() do
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if character == nil or root == nil or not root:IsA("BasePart") then
+			continue
+		end
+		for _, part in solids do
+			local offset = part.CFrame:PointToObjectSpace(root.Position)
+			local half = part.Size / 2 + INSIDE_MARGIN
+			if
+				math.abs(offset.X) <= half.X
+				and math.abs(offset.Y) <= half.Y
+				and math.abs(offset.Z) <= half.Z
+			then
+				character:PivotTo(gate.CFrame * CFrame.new(0, 3, SAFE_Z))
+				break
+			end
+		end
+	end
 end
 
 -- Replaces the pitch of `plot` with the one of `tier`, with floodlights in `model`.
@@ -50,6 +84,7 @@ function Stadium.build(plot: Model, tier: number, model: string)
 		CourtParts.build(gate, spec, folder, index)
 	end
 	folder.Parent = plot
+	moveOutOfWalls(folder, gate)
 end
 
 -- Paints the styles of every open slot on the pitch (the kit is drawn by the match) and writes `name`

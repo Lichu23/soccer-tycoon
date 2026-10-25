@@ -242,8 +242,27 @@ bench(-56, 130)
 
 -- The outdoor yard: a fence (a mesh and a rail on top of the old low wall), floodlights, a small goal.
 local function fence(name: string, x0: number, x1: number, z0: number, z1: number)
-	soft(box(name .. "Mesh", x0, x1, 3.7, 9, z0, z1, Color3.fromRGB(150, 156, 168), Enum.Material.Metal, 0.7))
+	box(name .. "Mesh", x0, x1, 3.7, 9, z0, z1, Color3.fromRGB(150, 156, 168), Enum.Material.Metal, 0.7)
 	box(name .. "Rail", x0, x1, 8.9, 9.1, z0, z1, COLORS.steel, Enum.Material.Metal)
+	-- The mesh is too thin to stop a fast jumping character (it slips in and is flung over), so an
+	-- invisible blocker 2 studs thick and as high as the hall walls stands in the fence line.
+	local thinX = x1 - x0 < z1 - z0
+	local cx, cz = (x0 + x1) / 2, (z0 + z1) / 2
+	local blocker = box(
+		name .. "Blocker",
+		if thinX then cx - 1 else x0,
+		if thinX then cx + 1 else x1,
+		TOP,
+		H_TOP,
+		if thinX then z0 else cz - 1,
+		if thinX then z1 else cz + 1,
+		COLORS.steel,
+		nil,
+		1
+	)
+	blocker.CanQuery = false
+	blocker.CanTouch = false
+	blocker.CastShadow = false
 end
 fence("FenceBack", -130, -129.8, 60, 140)
 fence("FenceNorth", -130, -90, 60, 60.2)

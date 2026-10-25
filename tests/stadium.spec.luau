@@ -138,6 +138,42 @@ T.test("the way in stays open: nothing blocks the gate or the aisle at the near 
 	end
 end)
 
+T.test("the walls, fences, stands and roof pillars are solid, the pitch is not", function()
+	local solidNames = { StandRow = true, StandSeats = true, RoofPillar = true, FencePost = true }
+	local softNames =
+		{ Surface = true, GoalNet = true, GoalPostA = true, AdBoard = true, Fan = true, Roof = true }
+	for tier = 1, #Config.StadiumTiers do
+		local solids = 0
+		for _, part in CourtPlan.parts(tier) do
+			if solidNames[part.name] then
+				T.eq(part.solid, true, "tier " .. tier .. " " .. part.name)
+			end
+			if softNames[part.name] or part.lamp then
+				T.eq(part.solid == true, false, "tier " .. tier .. " " .. part.name)
+			end
+			if part.solid then
+				solids += 1
+			end
+		end
+		T.eq(solids > 0, true, "tier " .. tier .. " has a solid shell")
+	end
+end)
+
+T.test("no solid part stands on the walk from the pad through the gate to the centre spot", function()
+	for tier = 1, #Config.StadiumTiers do
+		for _, part in CourtPlan.parts(tier) do
+			local onPath = part.x0 < 1.5
+				and part.x1 > -1.5
+				and part.z1 > CourtPlan.FRONT_Z
+				and part.z0 < CourtPlan.CENTER_Z
+				and part.y0 < CourtPlan.FLOOR + 5
+			if part.solid and onPath then
+				T.eq(part.name, "a clear walk", "tier " .. tier .. " blocks the way in")
+			end
+		end
+	end
+end)
+
 T.test("a sign names the face its text is on", function()
 	for tier = 1, #Config.StadiumTiers do
 		for _, part in CourtPlan.parts(tier) do

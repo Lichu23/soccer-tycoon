@@ -73,6 +73,7 @@ local function makeCopy(): Model?
 	for _, part in courtCopy:GetDescendants() do
 		if part:IsA("BasePart") then
 			part.CFrame = lift * part.CFrame
+			part.CanCollide = false -- only a picture; the walls are solid on the plot itself
 		end
 	end
 	courtCopy.Parent = model
