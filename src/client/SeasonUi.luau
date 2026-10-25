@@ -626,8 +626,8 @@ function SeasonUi.init()
 		}, card)
 
 		-- The trophy rises in with a little overshoot and the card follows it up.
+		Sounds.play("season")
 		if not reduced then
-			Sounds.play("goal")
 			local sceneScale = new("UIScale", { Scale = 0.6 }, sceneBox)
 			TweenService:Create(
 				sceneScale,

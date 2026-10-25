@@ -680,6 +680,7 @@ function FreekickUi.init()
 		end
 		takeover.take()
 		scene = BreakawayScene.new()
+		Sounds.play("whistle")
 		world.Enabled = true
 		gui.Enabled = true
 	end
@@ -823,6 +824,7 @@ function FreekickUi.init()
 			bestLine.TextColor3 = if info.newBest == true then Style.ui.gold else Style.ui.idle
 			resultCard.Visible = true
 			pulse(resultScale, 0.6)
+			Sounds.play(if info.newBest == true then "record" else "result")
 		end
 	end)
 
@@ -835,6 +837,7 @@ function FreekickUi.init()
 		end
 		if state.outcome == "tackled" then
 			if crossed(BreakawayScene.TACKLE_AT) then
+				Sounds.play("fail")
 				popFeedback(OUTCOME_TEXT.tackled, BAD, "")
 			end
 			return

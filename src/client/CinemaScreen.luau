@@ -26,6 +26,7 @@ local HIDDEN_GUIS = {
 	"Shop",
 	"Locker",
 	"Reminders",
+	"Music",
 	"Daily",
 	"Season",
 	"FloorSwitcher",

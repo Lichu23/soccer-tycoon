@@ -24,6 +24,7 @@ local NumberFormat = require(ReplicatedStorage.Shared.NumberFormat)
 local Panel = require(script.Parent.Panel)
 local Reveal = require(script.Parent.Reveal)
 local RewardCard = require(script.Parent.RewardCard)
+local Sounds = require(script.Parent.Sounds)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
 
@@ -38,6 +39,7 @@ local TILE_COUNT = 40 -- fewer than before: a player tile is a ViewportFrame
 local WIN_INDEX = 32
 local IDLE_CENTER_INDEX = 3 -- the tile under the marker before a spin
 local SPIN_SECONDS = 6
+local TICK_GAP = 0.05 -- the shortest time between two roulette ticks (the fast start passes many cards)
 local HOLD_SECONDS = 0.9 -- the landed tile stays in view this long before the screen closes
 local WIN_ZOOM, WIN_ZOOM_SECONDS = 1.08, 0.25 -- the landed tile grows to this (it still fits the window)
 local REPLY_TIMEOUT = 4
@@ -515,6 +517,7 @@ function CaseModal.init()
 		local function finish()
 			strip.Position = UDim2.fromOffset(landed, 0)
 			mode = "idle"
+			Sounds.play("land")
 			if GuiService.ReducedMotionEnabled then
 				close_()
 				return
@@ -556,7 +559,23 @@ function CaseModal.init()
 			{ Position = UDim2.fromOffset(landed, 0) }
 		)
 		activeTween = tween
+		-- A tick each time a card passes the marker in the middle of the window.
+		local lastCard, lastTickAt = 0, 0
+		local ticking: RBXScriptConnection
+		ticking = RunService.RenderStepped:Connect(function()
+			if token ~= myToken then
+				ticking:Disconnect()
+				return
+			end
+			local card = math.floor((WINDOW_W / 2 - strip.Position.X.Offset) / step)
+			local now = os.clock()
+			if card ~= lastCard and now - lastTickAt >= TICK_GAP then
+				lastCard, lastTickAt = card, now
+				Sounds.play("tick")
+			end
+		end)
 		tween.Completed:Connect(function(state)
+			ticking:Disconnect()
 			if token == myToken and state == Enum.PlaybackState.Completed then
 				activeTween = nil
 				finish()

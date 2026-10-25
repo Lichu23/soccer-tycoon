@@ -35,6 +35,7 @@ local FEEDBACK_HOLD_SECONDS = 0.55
 local FEEDBACK_FADE_SECONDS = 0.3
 local GO_SECONDS = 0.7 -- how long "GO!" shows after a streak starts
 local LEAVE_STEP = 5 -- the X walks the character this far past the edge of the mat
+local COMBO_EVERY = 10 -- a chime instead of the kick on every 10th touch of a streak
 
 local MEDAL_NAMES = { [0] = "No medal", [1] = "BRONZE", [2] = "SILVER", [3] = "GOLD" }
 local MEDAL_COLORS = {
@@ -418,8 +419,10 @@ function KeepieUi.init()
 	-- The TP the current streak has earned: the sum of what the server paid for its touches (display
 	-- only), cleared when a new streak starts.
 	local earned = 0
+	local touches = 0 -- the clean touches of this streak, for the chime every COMBO_EVERY
 	player:GetAttributeChangedSignal("juggleStart"):Connect(function()
 		earned = 0
+		touches = 0
 	end)
 	for _, name in
 		{
@@ -498,7 +501,8 @@ function KeepieUi.init()
 			local paid = if type(info.paid) == "number" then info.paid else 0
 			if info.outcome == "hit" then
 				earned += paid
-				Sounds.play("kick")
+				touches += 1
+				Sounds.play(if touches % COMBO_EVERY == 0 then "combo" else "kick")
 				popFeedback(string.format("+%.2f TP", paid), Style.ui.good)
 			elseif info.outcome == "miss" then
 				popFeedback("TOO EARLY", BAD)
@@ -507,6 +511,7 @@ function KeepieUi.init()
 			local medal = if type(info.medal) == "number" then info.medal else 0
 			local streak = if type(info.streak) == "number" then info.streak else 0
 			if streak <= 0 then
+				Sounds.play("fail")
 				popFeedback("DROPPED", BAD) -- no card for a streak that never started
 				return
 			end
@@ -525,6 +530,7 @@ function KeepieUi.init()
 			bestLine.TextColor3 = if info.newBest == true then Style.ui.gold else Style.ui.idle
 			resultCard.Visible = true
 			pulse(resultScale, 0.6)
+			Sounds.play(if info.newBest == true then "record" else "result")
 		end
 	end)
 

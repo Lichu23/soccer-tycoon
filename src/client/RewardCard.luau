@@ -346,9 +346,7 @@ function RewardCard.init()
 			else nil
 		if content then
 			RewardCard.show(content)
-			if info.kind == "levelUp" then
-				Sounds.play("levelUp")
-			end
+			Sounds.play(if info.kind == "levelUp" then "levelUp" else "purchase")
 		end
 	end)
 end

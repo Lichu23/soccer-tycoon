@@ -22,6 +22,7 @@ local LockerView = require(script.Parent.LockerView)
 local Net = require(script.Parent.Net)
 local NumberFormat = require(ReplicatedStorage.Shared.NumberFormat)
 local Panel = require(script.Parent.Panel)
+local Sounds = require(script.Parent.Sounds)
 local State = require(script.Parent.State)
 local StadiumLook = require(ReplicatedStorage.Shared.StadiumLook)
 local Style = require(ReplicatedStorage.Shared.Style)
@@ -583,6 +584,7 @@ function LockerUi.init()
 			local useId = def.id
 			run = function()
 				Net.fire("SetCosmetic", slotId, useId)
+				Sounds.play("style")
 			end
 		elseif def.cash then
 			local short = def.cash - State.data.cash
@@ -607,6 +609,7 @@ function LockerUi.init()
 		action.Text = text
 		action.BackgroundColor3 = if enabled then Style.ui.good else DISABLED
 		action.AutoButtonColor = enabled
+		action:SetAttribute("OwnSound", text == "Use") -- "Use" makes the style sound (ClickSounds)
 		onAction = run
 	end
 
@@ -749,6 +752,10 @@ function LockerUi.init()
 			-- A style just bought or put on is the one in use now.
 			local chosen = Cosmetics.chosen(State.data, slotView)
 			if waitingFor and Cosmetics.owns(State.data, waitingFor) then
+				local bought = Config.CosmeticsById[waitingFor]
+				if bought and bought.cash then
+					Sounds.play("buy") -- a Robux one has the purchase card and its sound
+				end
 				waitingFor = nil
 			end
 			if selected and chosen and chosen.id == selected then
@@ -763,6 +770,7 @@ function LockerUi.init()
 		local name = player:GetAttribute("stadiumName")
 		if renaming then
 			renaming, draft = false, ""
+			Sounds.play("style")
 		end
 		if open then
 			LockerView.showName(if type(name) == "string" then name else "")

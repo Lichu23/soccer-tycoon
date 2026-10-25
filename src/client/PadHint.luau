@@ -106,6 +106,31 @@ function PadHint.init()
 		end
 	end
 	player:GetAttributeChangedSignal("padKey"):Connect(onPad)
+	-- Cash spent: a new player while standing on a pad (a case win is never on a pad) or a Store
+	-- upgrade level. Counted from the server's snapshots, so only real purchases make the sound.
+	local ownedCount, storeTotal = -1, -1
+	State.onChange(function()
+		if not State.loaded then
+			return
+		end
+		local count = 0
+		for _ in State.data.players do
+			count += 1
+		end
+		local total = 0
+		for _, level in State.data.storeLevels :: { [string]: number } do
+			total += level
+		end
+		local bought = ownedCount >= 0
+			and (
+				(count > ownedCount and player:GetAttribute("padKey") ~= nil)
+				or total > storeTotal
+			)
+		ownedCount, storeTotal = count, total
+		if bought then
+			Sounds.play("buy")
+		end
+	end)
 	-- The plot becomes the player's: the claim sting (the server sets plotSlot only on a claim).
 	player:GetAttributeChangedSignal("plotSlot"):Connect(function()
 		if player:GetAttribute("plotSlot") ~= nil then

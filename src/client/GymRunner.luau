@@ -13,6 +13,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Progress = require(ReplicatedStorage.Shared.Progress)
+local Sounds = require(script.Parent.Sounds)
 local State = require(script.Parent.State)
 
 local player = Players.LocalPlayer
@@ -197,6 +198,15 @@ function GymRunner.init()
 		end)
 	end
 
+	-- A whistle when a session on the treadmill or the bench starts (not every rep: it runs AFK).
+	local lastStation: any = player:GetAttribute("trainingStation")
+	player:GetAttributeChangedSignal("trainingStation"):Connect(function()
+		local station = player:GetAttribute("trainingStation")
+		if station ~= lastStation and (station == "treadmill" or station == "bench") then
+			Sounds.play("whistle")
+		end
+		lastStation = station
+	end)
 	player:GetAttributeChangedSignal("trainingStation"):Connect(refresh)
 	player:GetAttributeChangedSignal("training"):Connect(refresh)
 	player.CharacterRemoving:Connect(stopCurrent)

@@ -21,6 +21,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Juggle = require(ReplicatedStorage.Shared.Juggle)
 local KeepieScene = require(script.Parent.KeepieScene)
 local Net = require(script.Parent.Net)
+local Sounds = require(script.Parent.Sounds)
 local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
@@ -357,6 +358,7 @@ local function buildFull(
 	})
 
 	local burst, burstStep = buildBurst(root, color, tag, rarityName, reduced, trim)
+	Sounds.play(if def.rarity == "Epic" or def.rarity == "Legend" then "revealBig" else "reveal")
 	local scene = KeepieScene.new(def)
 	local takeover = CinemaScreen.takeover()
 	local inScene = false
