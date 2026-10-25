@@ -52,7 +52,9 @@ function CourtParts.build(gate: BasePart, spec: CourtPlan.PartSpec, parent: Inst
 		part:SetAttribute("Lamp", true)
 	end
 	part.Anchored = true
-	part.CanCollide = false -- the pitch is for looking at; nobody gets stuck in a wall
+	-- Only the shell is solid (walls, fences, stands, roof pillars): the pitch, goals and boards are
+	-- for looking at. Stadium.build moves anyone a new solid part lands on.
+	part.CanCollide = spec.solid == true
 	part.CanQuery = false
 	part.CanTouch = false
 	part.CastShadow = not spec.emitter

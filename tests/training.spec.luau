@@ -91,19 +91,21 @@ T.test("a bought x2 TP boost doubles the pad and the skill games", function()
 	T.eq(Training.gamePay(gameData, gameCarry, 1, 0, true), 2)
 end)
 
-T.test("one full stamina session is 100 TP and then it stops", function()
+T.test("the treadmill and bench never tire: AFK farming keeps paying past the stamina bar", function()
 	local data, carry = fresh()
-	T.eq(train(data, carry, MAX, true), 100)
-	T.eq(data.staminaLeft, 0)
-	T.eq(train(data, carry, 120, true), 0) -- tired: nothing paid
-	T.eq(data.tp, 100)
-	T.eq(Training.hasStamina(data), false)
+	T.eq(train(data, carry, MAX * 3, true), 300)
+	T.eq(data.staminaLeft, MAX)
+	data.staminaLeft = 0
+	T.eq(train(data, carry, 60, true), 20) -- no stamina needed
+	T.near(data.staminaLeft, 60, 0.01) -- and it refills there
 end)
 
-T.test("a tired player does not refill while still standing on the pad", function()
+T.test("a tired player does not refill while still on a skill station", function()
 	local data, carry = fresh()
 	data.staminaLeft = 0
-	train(data, carry, 60, true)
+	for _ = 1, 240 do
+		Training.step(data, carry, 0.25, true, false)
+	end
 	T.eq(data.staminaLeft, 0)
 end)
 
@@ -203,7 +205,8 @@ T.test(
 		local state = streak()
 		Juggle.press(state, Juggle.beatTime(state, 1))
 		local dropAt = Juggle.beatTime(state, 2) + WINDOW
-		local events = Juggle.normalize(state, dropAt + 0.01)
+		T.eq(#Juggle.normalize(state, dropAt + 0.01), 0) -- a late tap may still be on its way
+		local events = Juggle.normalize(state, dropAt + Config.Training.juggleGraceSeconds + 0.01)
 		T.eq(#events, 1)
 		T.eq(events[1].kind, "over")
 		T.eq(events[1].streak, 1)
@@ -219,6 +222,21 @@ T.test(
 		T.eq(Juggle.press(state, Juggle.beatTime(state, 1)), "hit") -- the beats count from the new start
 	end
 )
+
+T.test("a tap stamped on the beat counts when it reaches the server late", function()
+	local grace = Config.Training.juggleGraceSeconds
+	local state = streak()
+	local beat = Juggle.beatTime(state, 1)
+	T.eq(Juggle.press(state, beat + WINDOW + grace * 0.9, beat), "hit")
+	T.eq(state.combo, 1)
+	-- A stamp older than the grace counts as sent `grace` ago, one in the future as sent now.
+	local old = streak()
+	local first = Juggle.beatTime(old, 1)
+	T.eq(Juggle.press(old, first + grace, first - 5), "hit")
+	local future = streak()
+	T.eq(Juggle.press(future, Juggle.beatTime(future, 1) + WINDOW + 0.05, 1e9), "ignored")
+	T.eq(future.combo, 0)
+end)
 
 T.test("the beat gets quicker with every touch, down to the floor", function()
 	local training = Config.Training

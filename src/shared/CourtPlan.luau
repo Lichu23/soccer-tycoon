@@ -32,6 +32,7 @@ export type PartSpec = {
 	image: string?, -- an image on `face` instead of text (the crest), set by the Locker room style
 	slide: { number }?, -- a retractable roof panel: how far it moves (x, y, z) from open to closed
 	lamp: boolean?, -- part of a floodlight on a mast (the Locker room swaps the model)
+	solid: boolean?, -- players cannot walk through it: the walls, fences, stands and roof pillars
 }
 
 local CourtPlan = {}
@@ -124,6 +125,13 @@ local function box(
 		textColor = nil,
 		emitter = false,
 	})
+end
+
+-- Marks every part added since `first` as solid (players bump into it).
+local function solidFrom(list: { PartSpec }, first: number)
+	for i = first, #list do
+		list[i].solid = true
+	end
 end
 
 -- A dark board with a line of text on one face.
@@ -432,6 +440,7 @@ local function perimeter(
 	transparency: number?,
 	gateHalf: number
 )
+	local first = #list + 1
 	local h = thick / 2
 	if gateHalf > 0 then
 		box(
@@ -466,6 +475,13 @@ local function perimeter(
 	box(list, name .. "Far", l - h, r + h, y0, y1, f - h, f + h, color, material, transparency)
 	box(list, name .. "Left", l - h, l + h, y0, y1, n - h, f + h, color, material, transparency)
 	box(list, name .. "Right", r - h, r + h, y0, y1, n - h, f + h, color, material, transparency)
+	solidFrom(list, first)
+end
+
+-- Invisible walls 2 studs thick along a thin fence or net (the same four sides, the gate open): a
+-- fast jumping character slips into a thin part and is flung over it, a thick one stops it.
+local function blockers(list: { PartSpec }, l: number, r: number, n: number, f: number)
+	perimeter(list, "Blocker", l, r, n, f, FLOOR, FLOOR + 14, 2, STEEL, nil, 1, GATE_HALF)
 end
 
 -- Thin posts along the same four sides, about `step` apart, none inside the gate.
@@ -482,6 +498,7 @@ local function posts(
 )
 	local function post(x: number, z: number)
 		box(list, name, x - 0.25, x + 0.25, FLOOR, y1, z - 0.25, z + 0.25, STEEL, "Metal")
+		list[#list].solid = true
 	end
 	local across = math.max(1, math.ceil((r - l) / step))
 	for i = 0, across do
@@ -592,6 +609,7 @@ local function stand(
 		local seat0, seat1 = inner + dir * 0.3, inner + dir * 2.5
 		local seatLo, seatHi = math.min(seat0, seat1), math.max(seat0, seat1)
 		local seatColor = if row % 2 == 0 then SEAT_A else SEAT_B
+		local first = #list + 1
 		if axis == "z" then
 			box(list, "StandRow", a0, a1, FLOOR, top, lo, hi, CONCRETE, "Concrete")
 			box(list, "StandSeats", a0, a1, top, top + 0.25, seatLo, seatHi, seatColor)
@@ -599,6 +617,7 @@ local function stand(
 			box(list, "StandRow", lo, hi, FLOOR, top, a0, a1, CONCRETE, "Concrete")
 			box(list, "StandSeats", seatLo, seatHi, top, top + 0.25, a0, a1, seatColor)
 		end
+		solidFrom(list, first)
 		if fanEvery > 0 and (row + fanOffset) % fanEvery == 0 then
 			local across = inner + dir * 1.4
 			local along = a0 + 1.6
@@ -701,6 +720,7 @@ local function canopy(
 				STEEL,
 				"Metal"
 			)
+			list[#list].solid = true
 		end
 	else
 		box(list, "Roof", lo, hi, FLOOR + y, FLOOR + y + 0.8, a0 - 1, a1 + 1, ROOF)
@@ -718,6 +738,7 @@ local function canopy(
 				STEEL,
 				"Metal"
 			)
+			list[#list].solid = true
 		end
 	end
 end
@@ -973,6 +994,7 @@ function CourtPlan.parts(tier: number, model: string?): { PartSpec }
 			GATE_HALF
 		)
 		posts(list, "FencePost", l, r, n, f, FLOOR + 8.4, 5, GATE_HALF)
+		blockers(list, l, r, n, f)
 		sign(
 			list,
 			"GateSign",
@@ -1040,6 +1062,7 @@ function CourtPlan.parts(tier: number, model: string?): { PartSpec }
 			GATE_HALF
 		)
 		posts(list, "NetPost", l, r, n, f, FLOOR + 11, 7, GATE_HALF)
+		blockers(list, l, r, n, f)
 		arch(list, n, "F5 ARENA", 12)
 		box(list, "BenchSeat", -26, -14, FLOOR, FLOOR + 1.1, n + 1.2, n + 3.2, WOOD, "Wood")
 		box(list, "BenchBack", -26, -14, FLOOR + 1.1, FLOOR + 2.6, n + 1.2, n + 1.6, WOOD, "Wood")

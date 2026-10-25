@@ -142,7 +142,9 @@ local function finish(state: State, at: number): Event
 end
 
 -- Applies what time alone changes: a beat that passed without a tap drops the ball and ends the
--- streak, and after the result a new streak starts. Returns the events, in order.
+-- streak, and after the result a new streak starts. Returns the events, in order. The drop waits
+-- `juggleGraceSeconds` past the window, so a tap stamped in time on a slow connection still counts;
+-- the streak still ends at the end of the window.
 function Juggle.normalize(state: State, now: number): { Event }
 	local events: { Event } = {}
 	local training = Config.Training
@@ -158,7 +160,7 @@ function Juggle.normalize(state: State, now: number): { Event }
 			end
 		else
 			local dropAt = Juggle.beatTime(state, state.lastIndex + 1) + training.juggleWindow
-			if now <= dropAt then
+			if now <= dropAt + training.juggleGraceSeconds then
 				break
 			end
 			table.insert(events, finish(state, dropAt))
@@ -167,25 +169,30 @@ function Juggle.normalize(state: State, now: number): { Event }
 	return events
 end
 
--- A tap at `now`. Returns what happened and, when the streak ended, its event:
+-- A tap that reached the server at `now`, stamped `stamp` (the server time the player's screen
+-- showed; `now` when nil). The stamp is never trusted in the future or more than
+-- `juggleGraceSeconds` in the past. Returns what happened and, when the streak ended, its event:
 --   "hit"     the ball was at the foot: it goes up again and the streak grows
 --   "miss"    a tap while the ball was in the air: the streak ends
 --   "ignored" before the first ball, after the streak, or a second tap on a beat already hit
-function Juggle.press(state: State, now: number): (string, Event?)
+function Juggle.press(state: State, now: number, stamp: number?): (string, Event?)
 	Juggle.normalize(state, now)
 	if state.phase ~= "running" then
 		return "ignored", nil
 	end
-	local window = Config.Training.juggleWindow
+	local training = Config.Training
+	local at = if stamp == nil or stamp ~= stamp then now else stamp -- NaN counts as no stamp
+	at = math.clamp(at, now - training.juggleGraceSeconds, now)
+	local window = training.juggleWindow
 	local index = state.lastIndex + 1
 	local beat = Juggle.beatTime(state, index)
-	if math.abs(now - beat) <= window then
+	if math.abs(at - beat) <= window then
 		state.lastIndex = index
 		state.combo += 1
 		return "hit", nil
 	end
-	if now < beat - window and now >= Juggle.beatTime(state, index - 1) + window then
-		return "miss", finish(state, now)
+	if at < beat - window and at >= Juggle.beatTime(state, index - 1) + window then
+		return "miss", finish(state, at)
 	end
 	return "ignored", nil -- the get-ready time, or a second tap right after a hit
 end

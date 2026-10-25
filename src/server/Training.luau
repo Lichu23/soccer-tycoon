@@ -1,7 +1,7 @@
 --!strict
 -- The training ground rules (docs/PLAN.md, Steps 1, 3 and 4). Standing on the training pad earns
--- Progress.idleTpPerMinute TP a minute (the Faster training upgrade) while the stamina lasts; the stamina refills while the
--- player is away from the pad (and while offline). The keepie-uppies game pays extra TP (up to the per-minute cap) for as long
+-- Progress.idleTpPerMinute TP a minute (the Faster training upgrade) for as long as the player stays. The
+-- stamina only limits the skill games; it refills off them (and while offline). The keepie-uppies game pays extra TP (up to the per-minute cap) for as long
 -- as the player keeps the ball up. TP are whole numbers in the profile, so the fraction that has not
 -- reached a whole point yet is carried in memory (lost on leaving, less than 1 TP). Pure and unit
 -- tested; TrainingActions wires it to the pad and the remote.
@@ -46,10 +46,11 @@ local function payWhole(data: Profile, carry: Carry): number
 end
 
 -- Moves the training forward by `dt` seconds. `training` is true while the player stands on the
--- pad with the training open. Standing still drains the stamina and pays the idle rate; with no
--- stamina left nothing is paid and nothing refills until the player steps away. On the active
--- station (`paysIdle` false) the stamina drains the same but nothing is paid here: only the game
--- pays. Returns the whole TP paid in this step.
+-- pad with the training open. A conditioning station (treadmill, bench) pays the idle rate for as
+-- long as the player stays, with no stamina: it can be farmed AFK, and the stamina refills there as
+-- anywhere off a skill station. On a skill station (`paysIdle` false) the stamina drains and
+-- nothing is paid here: only the game pays; with no stamina left nothing refills until the player
+-- steps away. Returns the whole TP paid in this step.
 function Training.step(
 	data: Profile,
 	carry: Carry,
@@ -60,26 +61,22 @@ function Training.step(
 	if dt <= 0 then
 		return 0
 	end
+	if training and paysIdle == false then
+		data.staminaLeft -= math.min(dt, data.staminaLeft)
+		return 0
+	end
+	data.staminaLeft = math.min(
+		Config.Training.staminaSeconds,
+		data.staminaLeft + dt * Training.refillPerSecond()
+	)
 	if not training then
-		data.staminaLeft = math.min(
-			Config.Training.staminaSeconds,
-			data.staminaLeft + dt * Training.refillPerSecond()
-		)
-		return 0
-	end
-	local used = math.min(dt, data.staminaLeft)
-	if used <= 0 then
-		return 0
-	end
-	data.staminaLeft -= used
-	if paysIdle == false then
 		return 0
 	end
 	-- The first TP of the level-up tutorial come faster, so it is over in a few seconds.
 	local perMinute = if Progress.tutorialTraining(data :: any)
 		then Config.Training.tutorialTpPerMinute
 		else Progress.idleTpPerMinute(data :: any)
-	carry.fraction += perMinute / 60 * used * Boosts.tpMultiplier(data)
+	carry.fraction += perMinute / 60 * dt * Boosts.tpMultiplier(data)
 	return payWhole(data, carry)
 end
 

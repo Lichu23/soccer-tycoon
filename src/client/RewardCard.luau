@@ -16,6 +16,7 @@ local Icons = require(script.Parent.Icons)
 local Net = require(script.Parent.Net)
 local NumberFormat = require(ReplicatedStorage.Shared.NumberFormat)
 local Panel = require(script.Parent.Panel)
+local Sounds = require(script.Parent.Sounds)
 local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
@@ -345,6 +346,9 @@ function RewardCard.init()
 			else nil
 		if content then
 			RewardCard.show(content)
+			if info.kind == "purchaseDone" then
+				Sounds.play("purchase")
+			end
 		end
 	end)
 end

@@ -111,11 +111,12 @@ RemoteSpec.remotes = {
 		ratePerSecond = 0.5,
 		burst = 1,
 	},
-	-- A tap at a skill station of the Training Gym (the keepie-uppies). The server judges it on its own
-	-- clock; no argument.
+	-- A tap at a skill station of the Training Gym (the keepie-uppies). It carries the server time the
+	-- player's screen showed when it was made (the server never trusts it more than a fraction of a
+	-- second into the past, see Juggle.press).
 	TrainingTap = {
 		direction = "toServer",
-		args = {},
+		args = { { kind = "number", min = 0, max = 4_000_000_000 } },
 		ratePerSecond = 6,
 		burst = 6,
 	},
