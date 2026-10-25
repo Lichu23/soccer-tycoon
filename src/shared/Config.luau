@@ -400,6 +400,9 @@ Config.Training = {
 	juggleBounceStep = 0.006,
 	juggleBounceMin = 0.5,
 	juggleWindow = 0.14,
+	-- A tap carries the server time the player's screen showed; the server trusts it at most this far
+	-- into the past (a slow connection), and waits this long past a beat before it drops the ball.
+	juggleGraceSeconds = 0.25,
 	juggleLeadSeconds = 2, -- "get ready": the first ball of a streak leaves the foot this long after it starts
 	juggleIntroSeconds = 4, -- extra time before the first streak after stepping on the mat, to read how to play
 	juggleOverSeconds = 2.5, -- the result of a streak shows this long before the next one starts

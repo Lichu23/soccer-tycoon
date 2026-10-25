@@ -464,13 +464,21 @@ function KeepieUi.init()
 		CinemaScreen.walkOff("TrainingKeepie", LEAVE_STEP)
 	end)
 
-	-- A tap. The legs follow the server's beats in the scene, so a touch shows once it is judged.
+	-- A tap, stamped with the time on screen. A clean touch shows at once (the same Juggle rules the
+	-- server judges with): waiting a round trip for the server would let the ball pass the window here
+	-- and drop for a moment on a slow connection. The server's attributes then confirm or correct it.
 	local function press()
 		if scene == nil then
 			return
 		end
 		pulse(buttonScale, 0.88)
-		Net.fire("TrainingTap")
+		local stamp = Workspace:GetServerTimeNow()
+		Net.fire("TrainingTap", stamp)
+		local guess = table.clone(round)
+		if Juggle.press(guess, stamp, stamp) == "hit" then
+			round.lastIndex = guess.lastIndex
+			round.combo = guess.combo
+		end
 	end
 	tapArea.InputBegan:Connect(function(input)
 		if

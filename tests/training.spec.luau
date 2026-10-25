@@ -205,7 +205,8 @@ T.test(
 		local state = streak()
 		Juggle.press(state, Juggle.beatTime(state, 1))
 		local dropAt = Juggle.beatTime(state, 2) + WINDOW
-		local events = Juggle.normalize(state, dropAt + 0.01)
+		T.eq(#Juggle.normalize(state, dropAt + 0.01), 0) -- a late tap may still be on its way
+		local events = Juggle.normalize(state, dropAt + Config.Training.juggleGraceSeconds + 0.01)
 		T.eq(#events, 1)
 		T.eq(events[1].kind, "over")
 		T.eq(events[1].streak, 1)
@@ -221,6 +222,21 @@ T.test(
 		T.eq(Juggle.press(state, Juggle.beatTime(state, 1)), "hit") -- the beats count from the new start
 	end
 )
+
+T.test("a tap stamped on the beat counts when it reaches the server late", function()
+	local grace = Config.Training.juggleGraceSeconds
+	local state = streak()
+	local beat = Juggle.beatTime(state, 1)
+	T.eq(Juggle.press(state, beat + WINDOW + grace * 0.9, beat), "hit")
+	T.eq(state.combo, 1)
+	-- A stamp older than the grace counts as sent `grace` ago, one in the future as sent now.
+	local old = streak()
+	local first = Juggle.beatTime(old, 1)
+	T.eq(Juggle.press(old, first + grace, first - 5), "hit")
+	local future = streak()
+	T.eq(Juggle.press(future, Juggle.beatTime(future, 1) + WINDOW + 0.05, 1e9), "ignored")
+	T.eq(future.combo, 0)
+end)
 
 T.test("the beat gets quicker with every touch, down to the floor", function()
 	local training = Config.Training

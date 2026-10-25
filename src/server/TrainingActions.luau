@@ -237,8 +237,10 @@ local function step(session: Session.Session, dt: number)
 	end
 end
 
--- A tap at the keepie-uppies, judged on the server clock (see Juggle for the rules).
-local function tap(player: Player)
+-- A tap at the keepie-uppies, judged on the server clock at the time it was stamped (Juggle.press
+-- clamps the stamp to a fraction of a second in the past).
+local function tap(player: Player, ...: any)
+	local stamp = select(1, ...)
 	local session = Session.get(player)
 	local round = games[player]
 	if session == nil or round == nil or not training[player] then
@@ -251,7 +253,7 @@ local function tap(player: Player)
 		publishGame(player, round)
 		return
 	end
-	local outcome, event = Juggle.press(round, now)
+	local outcome, event = Juggle.press(round, now, if type(stamp) == "number" then stamp else nil)
 	if outcome == "ignored" then
 		publishGame(player, round)
 		return
