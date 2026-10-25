@@ -20,25 +20,10 @@ Sounds.ids = {
 	save = "rbxassetid://9114010169", -- the keeper saves it
 	ambience = "rbxassetid://9119562311", -- the stadium around the penalty screen, looped
 	cash = "rbxassetid://79392333090964", -- the match is over: VICTORY and its cash
-	whistle = "rbxassetid://9118113825", -- the first match of the visit kicks off on the own pitch
-	claim = "rbxassetid://1841800152", -- the plot becomes the player's (a short brass sting)
 	cantAfford = "rbxassetid://91501650514390", -- standing on a pad without enough cash
-	levelUp = "rbxassetid://1841391669", -- a player is trained a level up (the level-up card)
-	stadium = "rbxassetid://9040142241", -- the new pitch rises in the stadium upgrade cinematic
-	unlock = "rbxassetid://1844277991", -- the camera shows a pad that just opened
 	buy = "rbxassetid://130378474223829", -- cash spent on a pad: a player or a Store upgrade
-	reveal = "rbxassetid://9045808549", -- the rarity screen of a reveal opens (brass sting)
-	revealBig = "rbxassetid://9045752363", -- the same for an Epic or a Legend (orchestral sting)
 	tick = "rbxassetid://9125478514", -- a card of the case roulette passes the marker
-	land = "rbxassetid://1844295283", -- the roulette stops on the prize
 	purchase = "rbxassetid://9039637427", -- a Robux purchase is done (its card shows)
-	style = "rbxassetid://9126045894", -- a Locker room style is put on, or the arena renamed
-	fail = "rbxassetid://96795857757261", -- tackled in the 1v1, the ball dropped in keepie-uppies
-	combo = "rbxassetid://130378474223829", -- every 10 touches of a keepie-uppy streak
-	result = "rbxassetid://1844257717", -- the streak card of the 1v1 or the keepie-uppies
-	record = "rbxassetid://9045752363", -- the same card with a new personal best
-	season = "rbxassetid://1846902622", -- the New Season celebration with the trophy won
-	click = "rbxassetid://106984966606682", -- any button of the screens is tapped
 } :: { [string]: string }
 
 -- The background music: the tracks play one after another, round and round (APM Music, free to use
@@ -57,27 +42,12 @@ Sounds.volumes = {
 	save = 7, -- the file is very quiet (about 15 on the loudness scale, the others 100 to 340), so it is boosted
 	ambience = 0.35,
 	cash = 0.7,
-	whistle = 0.5,
-	claim = 0.6,
 	cantAfford = 0.4,
-	levelUp = 0.6,
-	stadium = 0.6,
-	unlock = 0.5,
 	buy = 0.6,
-	reveal = 0.6,
-	revealBig = 0.6,
 	tick = 0.35,
-	land = 0.6,
 	purchase = 0.6,
-	style = 0.4,
-	fail = 0.5,
-	combo = 0.6,
-	result = 0.6,
-	record = 0.6,
-	season = 0.6,
-	click = 0.3,
 } :: { [string]: number }
-local MUSIC_VOLUME = 0.25
+local MUSIC_VOLUME = 0.15
 local MUSIC_FADE = 1.5
 local DUCK_VOLUME = 0.3 -- the share of the music volume left while a sting or the penalty crowd plays
 
@@ -85,51 +55,14 @@ local DUCK_VOLUME = 0.3 -- the share of the music volume left while a sting or t
 Sounds.maxSeconds = {
 	goal = 2,
 	save = 2,
-	claim = 3,
-	levelUp = 2.5,
-	unlock = 3,
-	reveal = 3,
-	land = 2,
 	purchase = 3,
-	result = 3,
-	style = 0.8,
 } :: { [string]: number }
 -- The stings that lower the music while they play, so they are heard over it.
-local DUCKS = {
-	claim = true,
-	levelUp = true,
-	stadium = true,
-	unlock = true,
-	reveal = true,
-	revealBig = true,
-	land = true,
-	purchase = true,
-	result = true,
-	record = true,
-	season = true,
-}
--- Sounds that never pile up: a new one quickly fades out the copy still playing (holding the pad
--- levels a player up about once a second).
-local SINGLE = {
-	claim = true,
-	cantAfford = true,
-	levelUp = true,
-	stadium = true,
-	unlock = true,
-	buy = true,
-	reveal = true,
-	revealBig = true,
-	land = true,
-	purchase = true,
-	style = true,
-	fail = true,
-	result = true,
-	record = true,
-	season = true,
-}
+local DUCKS = { purchase = true }
+-- Sounds that never pile up: a new one quickly fades out the copy still playing (standing on pads
+-- one after another).
+local SINGLE = { cantAfford = true, buy = true, purchase = true }
 local CUT_SECONDS = 0.15
--- A sting that takes over from a sound of the same moment: a reveal right after the buy coin.
-local REPLACES = { reveal = "buy", revealBig = "buy" }
 -- Where in the file a sound starts, in seconds (the save sound has a quiet first second).
 Sounds.startAt = {
 	save = 1,
@@ -232,14 +165,6 @@ function Sounds.play(name: string)
 	local sound = make(name)
 	if sound == nil then
 		return
-	end
-	local replaced = REPLACES[name]
-	local other = if replaced then latest[replaced] else nil
-	if other and other.Parent ~= nil then
-		active[other] = nil
-		fade(other, CUT_SECONDS, 0, function()
-			other:Destroy()
-		end)
 	end
 	if SINGLE[name] then
 		local previous = latest[name]

@@ -1,11 +1,12 @@
 --!strict
 -- The background music and its MUSIC button, the last of the row at the left edge (client/Dock). The
--- music starts with the game; a tap turns it off or on again. Turned off, the button is dimmed. The
--- choice lasts for this visit only.
+-- music starts with the game; a tap turns it off or on again. Turned off, the tile shows its muted
+-- picture (the notes with a red slash). The choice lasts for this visit only.
 
 local Players = game:GetService("Players")
 
 local Dock = require(script.Parent.Dock)
+local Icons = require(script.Parent.Icons)
 local Sounds = require(script.Parent.Sounds)
 
 local player = Players.LocalPlayer
@@ -25,8 +26,13 @@ function MusicUi.init()
 	local tile = Dock.build(gui, "MusicIcon", 5, "MUSIC", ACCENT, "music")
 	local function render()
 		local on = Sounds.musicOn()
-		tile.label.Text = if on then "MUSIC" else "MUTED"
-		Dock.paint(tile, if on then "open" else "waiting")
+		local picture = tile.picture
+		if picture then
+			picture.Image = Icons.id(if on then "music" else "music_off")
+		else
+			tile.label.Text = if on then "MUSIC" else "MUTED"
+		end
+		Dock.paint(tile, "open")
 	end
 	tile.button.Activated:Connect(function()
 		Sounds.setMusicOn(not Sounds.musicOn())

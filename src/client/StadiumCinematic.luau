@@ -18,7 +18,6 @@ local Workspace = game:GetService("Workspace")
 local CourtPlan = require(ReplicatedStorage.Shared.CourtPlan)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(script.Parent.Net)
-local Sounds = require(script.Parent.Sounds)
 local Style = require(ReplicatedStorage.Shared.Style)
 
 local player = Players.LocalPlayer
@@ -188,12 +187,6 @@ local function play(info: any)
 	local myToken = token
 	local startedAt = os.clock()
 	local reduced = GuiService.ReducedMotionEnabled
-	-- The fanfare starts as the camera arrives and the new pitch rises.
-	task.delay(TRAVEL_SECONDS, function()
-		if token == myToken then
-			Sounds.play("stadium")
-		end
-	end)
 
 	local tierDef = Config.StadiumTiers[info.tier] or Config.StadiumTiers[1]
 	local length, width = tierDef.courtLength, tierDef.courtWidth

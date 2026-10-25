@@ -131,12 +131,6 @@ function PadHint.init()
 			Sounds.play("buy")
 		end
 	end)
-	-- The plot becomes the player's: the claim sting (the server sets plotSlot only on a claim).
-	player:GetAttributeChangedSignal("plotSlot"):Connect(function()
-		if player:GetAttribute("plotSlot") ~= nil then
-			Sounds.play("claim")
-		end
-	end)
 
 	Net.on("Notice", function(info: any)
 		if type(info) == "table" and info.kind == "purchaseRefused" then

@@ -20,7 +20,6 @@ local Workspace = game:GetService("Workspace")
 local Config = require(ReplicatedStorage.Shared.Config)
 local CourtPlan = require(ReplicatedStorage.Shared.CourtPlan)
 local Net = require(script.Parent.Net)
-local Sounds = require(script.Parent.Sounds)
 local State = require(script.Parent.State)
 local Style = require(ReplicatedStorage.Shared.Style)
 local Unlocks = require(ReplicatedStorage.Shared.Unlocks)
@@ -470,7 +469,6 @@ local function playUnlock(unlock: Unlocks.Unlock, target: Vector3)
 	local away =
 		unlockSide(target, if flat.Magnitude > 0.1 then flat.Unit else Vector3.new(0, 0, 1), look)
 	local blend = if blocked(from, unlockPosition(target, away, 0)) then 0 else UNLOCK_BLEND
-	Sounds.play("unlock")
 	start(function(elapsed: number): (CFrame, boolean)
 		local alpha = if reduced then 1 else math.clamp(elapsed / UNLOCK_SECONDS, 0, 1)
 		return CFrame.lookAt(unlockPosition(target, away, alpha), look), elapsed >= UNLOCK_SECONDS

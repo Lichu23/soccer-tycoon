@@ -517,7 +517,6 @@ function CaseModal.init()
 		local function finish()
 			strip.Position = UDim2.fromOffset(landed, 0)
 			mode = "idle"
-			Sounds.play("land")
 			if GuiService.ReducedMotionEnabled then
 				close_()
 				return
