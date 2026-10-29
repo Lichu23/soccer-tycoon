@@ -1,15 +1,17 @@
 --!strict
 -- How far the safe area (CoreUISafeInsets) sits in from the left and right sides of the screen. On
 -- phones it leaves a wide empty strip at each side (about 60 to 70 px), so the side columns (the
--- Dock buttons at the left, the HUD column at the right) move out over part of it. They keep
--- CLEARANCE px clear of the real edge: in landscape the iPhone Dynamic Island takes the first ~48 px
--- of one side, and either side can be the island side. Their ScreenGuis need ClipToDeviceSafeArea
--- off, or the moved part would be cut.
+-- Dock buttons at the left, the HUD column at the right) move out over part of it. The left one
+-- keeps CLEARANCE px clear of the real edge: in landscape the iPhone Dynamic Island takes the first
+-- ~48 px of a side. The right column goes closer (RIGHT_CLEARANCE): the island is usually on the left,
+-- and with the phone turned the other way it only covers the right end of the money and TP boxes.
+-- Their ScreenGuis need ClipToDeviceSafeArea off, or the moved part would be cut.
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 
 local CLEARANCE = 44
+local RIGHT_CLEARANCE = 20
 -- The HUD column shrinks on short screens (phones), down to MIN_SCALE; full size from this height up.
 local SCALE_REFERENCE_HEIGHT = 500
 local MIN_SCALE = 0.75
@@ -62,7 +64,7 @@ end
 -- less the clearance kept for the camera cutout.
 function Edges.pull(): (number, number)
 	local left, right = Edges.insets()
-	return math.max(left - CLEARANCE, 0), math.max(right - CLEARANCE, 0)
+	return math.max(left - CLEARANCE, 0), math.max(right - RIGHT_CLEARANCE, 0)
 end
 
 -- The size of the HUD column on this screen: smaller on a phone, 1 on a tablet or desktop.
