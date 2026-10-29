@@ -70,6 +70,14 @@ local function payoutNow(data: ProfileSchema.Profile, state: State, hatTrick: bo
 	})
 end
 
+-- What an ordinary match (no hat-trick) pays now. Changes nothing.
+function MatchLogic.matchPayout(data: ProfileSchema.Profile, state: State): number
+	if #Roster.field(data) == 0 then
+		return 0
+	end
+	return payoutNow(data, state, false)
+end
+
 -- Rolls the coming match at kick-off, so every client can draw it while it is played: whether it is a
 -- hat-trick, and the score, from the payout as it stands now (the payout itself is worked out at the
 -- end, so a purchase during the match still counts). `rng` returns a number from 0 to 1. Changes

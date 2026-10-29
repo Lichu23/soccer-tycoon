@@ -13,6 +13,9 @@
 -- The daily penalty kicks use the same set in penalty mode (`new({ penalty = true })`): no defender,
 -- the ball on the penalty spot, and the dribble cut makes way for a short run-up from the side, so
 -- the film is `PENALTY_SKIP` seconds shorter (the screen moves its moments back by that much).
+-- Big Chance (client/BigChanceUi) uses penalty mode with the ball on another spot in front of the
+-- goal (`spotX`, `spotZ`) and the keeper shading to the near post (`keeperX`): the taker, his run-up
+-- and the cameras turn to face the goal from that spot.
 -- Display only: nothing here decides an outcome.
 
 local GuiService = game:GetService("GuiService")
@@ -44,8 +47,8 @@ local CUT_STRIKE = Config.Training.freekickDribbleSeconds -- the dribble cut end
 local CUT_RESULT = 3.6 -- the strike cut ends, the result cut starts
 local STRIKE_SECONDS = CUT_RESULT - CUT_STRIKE
 local CONTACT_SHARE = 0.56 -- how far into the strike the foot meets the ball
-local SLOW_FLIGHT = 0.12 -- how much of the flight the ball covers per second in the slow strike cut
-local FLIGHT_SECONDS = 1 -- the rest of the flight, in the result cut
+local SLOW_FLIGHT = 0.35 -- how much of the flight the ball covers per second in the slow strike cut
+local FLIGHT_SECONDS = 0.6 -- the rest of the flight, in the result cut: a hard, fast shot
 local TACKLE_AT = 1.05
 local MOVE_AT = 0.85 -- the skill move starts
 local RUN_UP = 1.2 -- the penalty's run-up cut, which takes the end of the dribble cut's place
@@ -87,7 +90,13 @@ export type View = {
 	reticleY: number,
 }
 
-export type Options = { penalty: boolean? }
+export type Options = {
+	penalty: boolean?, -- no defender, a run-up to a still ball
+	spotX: number?, -- where the ball waits in penalty mode, in studs across from the goal's middle
+	spotZ: number?, -- and out from the goal line (the penalty spot when left out)
+	keeperX: number?, -- where the keeper stands in penalty mode, in goal units (the middle when left out)
+	filmSeconds: number?, -- how long the kick's film plays in penalty mode (the penalty's when left out)
+}
 
 export type Scene = {
 	frame: (view: View) -> (),
@@ -294,10 +303,23 @@ end
 
 function BreakawayScene.new(options: Options?): Scene
 	local penalty = options ~= nil and options.penalty == true
+	local spotX = options and options.spotX or 0
+	local spotZ = options and options.spotZ or SHOT_Z
+	local onSpot = spotX == 0 and spotZ == SHOT_Z -- the real penalty spot, with its white mark
+	local filmSeconds = options and options.filmSeconds or Config.Daily.penaltyFilmSeconds
+	-- The kick's own axes in penalty mode: -Z points from the ball to the goal's middle. Straight down
+	-- the pitch on the penalty spot and in the breakaway.
+	local kickBasis = if penalty
+		then CFrame.lookAt(Vector3.zero, Vector3.new(-spotX, 0, -spotZ))
+		else CFrame.identity
+	local function kickward(offset: Vector3): Vector3
+		return kickBasis:VectorToWorldSpace(offset)
+	end
+	local towardGoal = kickward(Vector3.new(0, 0, -1))
 	local folder = new("Folder", { Name = if penalty then "PenaltySpot" else "Breakaway" })
 	local netBack = buildPitch(folder)
 	local netRest = netBack.CFrame
-	if penalty then
+	if penalty and onSpot then
 		local spot = block(folder, Vector3.new(0.12, 1.4, 1.4), Vector3.zero, LINE)
 		spot.Shape = Enum.PartType.Cylinder
 		spot.CFrame = CFrame.new(ORIGIN + Vector3.new(0, 0.06, SHOT_Z))
@@ -367,7 +389,7 @@ function BreakawayScene.new(options: Options?): Scene
 	-- Where the keeper stands for this attack or kick, in studs across the goal.
 	local function keeperRestX(state: Freekick.State): number
 		local x = if penalty
-			then Penalty.KEEPER_X
+			then (options and options.keeperX or Penalty.KEEPER_X)
 			else Freekick.setup(state.seed, state.kick).keeperX
 		return x * GOAL_HALF_WIDTH
 	end
@@ -395,24 +417,29 @@ function BreakawayScene.new(options: Options?): Scene
 	-- Where the shot ends (the reticle's point, its height lifted by the power) and how it flies.
 	local function shotStart(move: number): Vector3
 		if penalty then
-			return at(0, BALL_R, SHOT_Z) -- the ball on the spot, the taker's feet just left of it
+			return at(spotX, BALL_R, spotZ) -- the ball on the spot, the taker's feet just left of it
 		end
 		local x = if move == Freekick.LEFT then -CUT_X else CUT_X
 		return at(x + 0.8, BALL_R, SHOT_Z)
 	end
+	-- Where the taker stands to strike the ball at `start`: just behind it and to its left.
+	local function strikeFeet(start: Vector3): Vector3
+		return start + kickward(Vector3.new(-0.8, 0, STRIKE_BACK)) - Vector3.new(0, BALL_R, 0)
+	end
 	local function shotEnd(state: Freekick.State): Vector3
-		local height = Freekick.height(state.aimY, state.power)
-		-- The free kick's green zone narrows with the streak; the penalty's stays the same.
+		-- The free kick's green zone narrows with the streak; the penalty's stays the same. On the
+		-- green the ball goes where the reticle aimed (Freekick.judgeShot).
 		local low, high
 		if penalty then
 			low, high = Freekick.penaltyZone()
 		else
 			low, high = Freekick.goodZone(state.kick)
 		end
+		local height = state.aimY
 		if state.power < low then
 			height = 0 -- it rolls
-		elseif state.power > high and state.outcome == "over" then
-			height = math.max(height, 1.2) -- struck too hard: it clears the bar
+		elseif state.power > high then
+			height = math.max(Freekick.height(state.aimY, state.power), 1.2) -- too hard: over the bar
 		end
 		return at(state.aimX * GOAL_HALF_WIDTH, height * GOAL_HEIGHT + BALL_R, 0)
 	end
@@ -505,13 +532,17 @@ function BreakawayScene.new(options: Options?): Scene
 		blur.Size = 0
 		grade.Saturation = 0
 		local start = shotStart(state.move)
-		local feet = start + Vector3.new(-0.8, -BALL_R, STRIKE_BACK)
+		local feet = strikeFeet(start)
 		if penalty then
 			-- The taker waits at the start of the run-up, eyes on the ball; the camera looks over his
 			-- shoulder at the goal.
-			local waitAt = feet + Vector3.new(-RUN_UP_SIDE, 0, RUN_UP_BACK)
+			local waitAt = feet + kickward(Vector3.new(-RUN_UP_SIDE, 0, RUN_UP_BACK))
 			attacker.place(facing(waitAt, feet - waitAt))
-			look(at(-1, 6.2, SHOT_Z + 17), at(0, GOAL_HEIGHT * 0.45, 0), 42)
+			look(
+				start + kickward(Vector3.new(-1, 6.2 - BALL_R, 17)),
+				at(0, GOAL_HEIGHT * 0.45, 0),
+				42
+			)
 		else
 			attacker.place(facing(feet, Vector3.new(0, 0, -1)))
 			look(
@@ -584,8 +615,8 @@ function BreakawayScene.new(options: Options?): Scene
 	local function filmRunUp(state: Freekick.State, t: number)
 		local u = math.clamp((t - (CUT_STRIKE - RUN_UP)) / RUN_UP, 0, 1)
 		local start = shotStart(state.move)
-		local feet = start + Vector3.new(-0.8, -BALL_R, STRIKE_BACK)
-		local from = feet + Vector3.new(-RUN_UP_SIDE, 0, RUN_UP_BACK)
+		local feet = strikeFeet(start)
+		local from = feet + kickward(Vector3.new(-RUN_UP_SIDE, 0, RUN_UP_BACK))
 		-- A steady run that the cut to the strike interrupts before he reaches the ball, so the camera
 		-- never waits behind him at the ball.
 		local position = from:Lerp(feet, RUN_UP_REACH * u)
@@ -596,8 +627,8 @@ function BreakawayScene.new(options: Options?): Scene
 		grade.Saturation = -0.35 * smooth((u - 0.5) / 0.5) -- the bullet time of the strike comes in
 		setBall(start, 0)
 		keeperAt(at(keeperRestX(state), KEEPER_REST_Y, KEEPER_Z), 0, lerp(0.5, 0.9, u))
-		local camera0 = at(7, 5.5, SHOT_Z + 15)
-		local camera1 = at(5.5, 4.8, SHOT_Z + 13)
+		local camera0 = start + kickward(Vector3.new(7, 5.5 - BALL_R, 15))
+		local camera1 = start + kickward(Vector3.new(5.5, 4.8 - BALL_R, 13))
 		look(camera0:Lerp(camera1, smooth(u)), at(0, GOAL_HEIGHT * 0.4, 0), 44)
 	end
 
@@ -605,16 +636,16 @@ function BreakawayScene.new(options: Options?): Scene
 	local function filmStrike(state: Freekick.State, t: number)
 		local g = (t - CUT_STRIKE) / STRIKE_SECONDS
 		local start = shotStart(state.move)
-		local feet = start + Vector3.new(-0.8, -BALL_R, STRIKE_BACK)
-		attacker.place(facing(feet, Vector3.new(0, 0, -1)))
+		local feet = strikeFeet(start)
+		attacker.place(facing(feet, towardGoal))
 		attacker.run(0)
 		attacker.pose(strikeJoints(g))
 		blur.Size = 0
 		grade.Saturation = if penalty then -0.35 * (1 - smooth((g - 0.7) / 0.3)) else 0
 		local p = flightShare(t)
 		setBall(if p > 0 then flightPoint(state, p) else start, p * 40)
-		local camera0 = feet + Vector3.new(4, 3, -11)
-		local target = feet + Vector3.new(0.4, 2.6, -0.4)
+		local camera0 = feet + kickward(Vector3.new(4, 3, -11))
+		local target = feet + kickward(Vector3.new(0.4, 2.6, -0.4))
 		look(camera0:Lerp(target, 0.15 * g), target, 45)
 		keeperAt(at(keeperRestX(state), KEEPER_REST_Y, KEEPER_Z), 0, 0.5)
 	end
@@ -624,8 +655,8 @@ function BreakawayScene.new(options: Options?): Scene
 		local outcome = state.outcome
 		local start = shotStart(state.move)
 		local finish = shotEnd(state)
-		local feet = start + Vector3.new(-0.8, -BALL_R, STRIKE_BACK)
-		attacker.place(facing(feet, Vector3.new(0, 0, -1)))
+		local feet = strikeFeet(start)
+		attacker.place(facing(feet, towardGoal))
 		attacker.run(0)
 		attacker.pose(strikeJoints(1))
 		blur.Size = 0
@@ -712,9 +743,8 @@ function BreakawayScene.new(options: Options?): Scene
 			-- The film, or its last frame while the result shows. A penalty's film starts at the run-up,
 			-- PENALTY_SKIP into the breakaway's.
 			local t = if penalty
-				then (if phase == "shot"
-					then now - state.stageAt
-					else Config.Daily.penaltyFilmSeconds) + BreakawayScene.PENALTY_SKIP
+				then (if phase == "shot" then now - state.stageAt else filmSeconds)
+					+ BreakawayScene.PENALTY_SKIP
 				else Freekick.filmTime(state, now) or 0
 			if penalty and t < CUT_STRIKE then
 				filmRunUp(state, t)

@@ -25,9 +25,10 @@ function Training.newCarry(): Carry
 	return { fraction = 0, payLog = {} }
 end
 
--- Stamina seconds restored per second spent away from the pad.
-function Training.refillPerSecond(): number
-	return Config.Training.staminaSeconds / Config.Training.staminaRefillSeconds
+-- Stamina seconds restored per second spent away from the pad: a longer bar (Gym upgrade) refills
+-- faster, so it is full again in the same time.
+function Training.refillPerSecond(data: Profile): number
+	return Progress.staminaSeconds(data :: any) / Config.Training.staminaRefillSeconds
 end
 
 -- Whether the player could earn TP right now if they stood on the pad.
@@ -66,8 +67,8 @@ function Training.step(
 		return 0
 	end
 	data.staminaLeft = math.min(
-		Config.Training.staminaSeconds,
-		data.staminaLeft + dt * Training.refillPerSecond()
+		Progress.staminaSeconds(data :: any),
+		data.staminaLeft + dt * Training.refillPerSecond(data)
 	)
 	if not training then
 		return 0
@@ -86,8 +87,8 @@ function Training.refillAway(data: Profile, secondsAway: number)
 		return
 	end
 	data.staminaLeft = math.min(
-		Config.Training.staminaSeconds,
-		data.staminaLeft + secondsAway * Training.refillPerSecond()
+		Progress.staminaSeconds(data :: any),
+		data.staminaLeft + secondsAway * Training.refillPerSecond(data)
 	)
 end
 

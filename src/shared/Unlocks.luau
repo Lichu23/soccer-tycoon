@@ -110,8 +110,8 @@ Unlocks.LIST = {
 	),
 	storeUnlock(
 		"gymRate",
-		"FASTER TRAINING",
-		"More TP a minute on the treadmill and the bench press."
+		"GYM UPGRADE",
+		"Upgrade your gym: new equipment, more TP a minute and a longer stamina bar."
 	),
 	floorUnlock(
 		2,

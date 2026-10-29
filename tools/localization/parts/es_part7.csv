@@ -1,4 +1,11 @@
 Key,Source,Context,Example,es
+,Juggles,,,Jueguitos
+,1 hour,,,1 hora
+,a long time,,,mucho tiempo
+,LEVEL UP · {1},,,SUBIR NIVEL · {1}
+,LV {1}/{2},,,NV {1}/{2}
+,Lv {1}/{2} · on the bench,,,Nv {1}/{2} · en el banco
+,Lv {1}/{2} · +{3}% income,,,Nv {1}/{2} · +{3}% de ingresos
 ,Lv {1}/{2} · need {3} TP,,,Nv {1}/{2} · faltan {3} TP
 ,Lv {1}/{2},,,Nv {1}/{2}
 ,Need {1} more,,,Te faltan {1}
@@ -52,10 +59,3 @@ Key,Source,Context,Example,es
 ,SEASON {1} COMPLETE,,,TEMPORADA {1} COMPLETA
 ,Season {1} begins · Income {2},,,Empieza la Temporada {1} · Ingresos {2}
 ,Season {1} · {2},,,Temporada {1} · {2}
-,Season {1},,,Temporada {1}
-,Income {1} forever,,,Ingresos {1} para siempre
-,Floor 3 again: about {1} min,,,El piso 3 otra vez: unos {1} min
-,Floor 3 again: about {1} h,,,El piso 3 otra vez: unas {1} h
-,Floor 3 again: about a long time,,,El piso 3 otra vez: mucho tiempo
-,Floor 3: {1} players left to buy,,,Piso 3: faltan {1} jugadores por comprar
-,Streak: {1} goal,,,Racha: {1} gol

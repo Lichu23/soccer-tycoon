@@ -469,7 +469,9 @@ Config.Training = {
 	freekickGoodLowMax = 0.61,
 	freekickGoodHighStep = 0.003,
 	freekickGoodHighMin = 0.77,
-	freekickGraceSeconds = 0.2,
+	-- A tap is judged where the player saw it (its stamp), trusted up to this far in the past: enough
+	-- for a phone on a slow connection, where the meter would otherwise move on before the tap arrives.
+	freekickGraceSeconds = 0.5,
 	freekickDribbleSeconds = 2,
 	freekickFilmSeconds = 4,
 	freekickTackleSeconds = 3,
@@ -919,10 +921,11 @@ Config.Store = {
 		values = { 0.10, 0.20, 0.25 },
 		floorsComplete = 1,
 	},
-	-- Faster training: the TP a minute of the treadmill and the bench press (the pad stands between
-	-- them in the gym hall). It stays under the ~50 a minute of a juggler, so the skill games stay
-	-- worth playing. Prices are a few minutes of income at the tier each level is meant for (2, 3, 5
-	-- and 6); a New Season resets it like the other upgrades.
+	-- The Gym upgrade (gym tiers 2 to 5; the pad stands between the treadmill and the bench in the gym
+	-- hall). Each level raises the TP a minute of the treadmill and the bench press, lengthens the
+	-- stamina bar (Config.GymStamina) and puts new equipment in the gym (server/GymTiers). The rate stays under the ~50 a
+	-- minute of a juggler, so the skill games stay worth playing. Prices are a few minutes of income at
+	-- the tier each level is meant for (2, 3, 5 and 6); a New Season resets it like the other upgrades.
 	gymRate = {
 		id = "gymRate",
 		baseValue = Config.Training.idleTpPerMinute,
@@ -932,6 +935,49 @@ Config.Store = {
 		showLocked = true, -- it stands alone in the gym, so a Tier 1 player sees what is coming
 	},
 } :: { [StoreUpgradeId]: StoreUpgradeDef }
+
+-- The stamina bar (seconds of the skill games) at each level of the Gym upgrade: [0] is the base
+-- (Config.Training.staminaSeconds), then a minute more for each of the first three levels and two
+-- for the last. The refill from empty takes as long at every level.
+Config.GymStamina = {
+	[0] = Config.Training.staminaSeconds,
+	[1] = 360,
+	[2] = 420,
+	[3] = 480,
+	[4] = 600,
+} :: { [number]: number }
+
+-- Big Chance (docs/PLAN.md, Step 4, Active play during the waits): every few matches the match on
+-- the player's pitch makes a chance. A "BIG CHANCE!" button shows for `offerSeconds`; tapping it
+-- turns the whole screen into the breakaway's stadium, like the daily penalty kicks, with the ball on
+-- one of the `spots` in front of the goal (studs across from the goal's middle and out from the goal
+-- line, in client/BreakawayScene; the keeper stands at `keeperX`, goal units, shading to the near
+-- post of an angled spot, and reaches `keeperReach`). The shot is the penalty's: the reticle glides
+-- from `leadSeconds` after the screen opens and a tap locks it, then the power meter (the penalty's
+-- green zone) and a second tap shoots. The aim and the power have `shotSeconds` together, or the
+-- keeper smothers the ball. The film plays for `filmSeconds` and a goal pays `rewardMatches` matches
+-- of cash. A miss or a chance left alone costs nothing (the pacing is tuned on the idle income). Opens
+-- at stadium tier `minTier`; the first comes `firstMatches` matches after that, then one every
+-- `minMatches` to `maxMatches` matches. The server judges every tap on its own clock (a stamp up to
+-- `graceSeconds` in the past is trusted).
+Config.BigChance = {
+	minTier = 2,
+	firstMatches = 3,
+	minMatches = 5,
+	maxMatches = 8,
+	offerSeconds = 5,
+	spots = {
+		{ x = -11, z = 19, keeperX = -0.2 }, -- the left of the box
+		{ x = 0, z = 24, keeperX = 0 }, -- the middle, a little behind the penalty spot
+		{ x = 11, z = 19, keeperX = 0.2 }, -- the right of the box
+	} :: { { x: number, z: number, keeperX: number } },
+	keeperReach = 0.45,
+	leadSeconds = 1.2,
+	shotSeconds = 10,
+	graceSeconds = 0.5, -- like Config.Training.freekickGraceSeconds: enough for a phone
+	filmSeconds = 5.2, -- the run-up, the strike and the result, like a penalty's film
+	rewardMatches = 3,
+}
 
 -- The upgrade cinematic (docs/PLAN.md, Step 7). The server builds the new pitch after
 -- buildDelaySeconds, when the camera has arrived. The client unlocks by itself after maxSeconds.

@@ -56,7 +56,7 @@ T.test("Faster training raises the pad to 25, 30, 35 and 40 TP per minute", func
 end)
 
 T.test(
-	"Faster training is a cash upgrade from stadium tier 2, its pad says what comes next",
+	"the Gym upgrade is a cash upgrade from stadium tier 2, its pad says what the next gym tier gives",
 	function()
 		local session = { data = ProfileSchema.newProfile() }
 		local data = session.data
@@ -64,10 +64,17 @@ T.test(
 		T.eq(Progress.storeStatus(data, "gymRate"), "locked")
 		T.eq(PadInfo.describe("store", "gymRate", data).note, "Stadium Tier 2 needed")
 		data.stadiumTier = 2
-		T.eq(PadInfo.describe("store", "gymRate", data).note, "Next: 25 TP a minute")
+		T.eq(
+			PadInfo.describe("store", "gymRate", data).note,
+			"Gym tier 2: 25 TP a minute, 6 min stamina"
+		)
+		data.staminaLeft = 10
 		T.eq(Actions.buyStore(session, "gymRate", 0), true)
 		T.eq(data.cash, 10_000_000 - 5_000)
 		T.eq(Progress.idleTpPerMinute(data), 25)
+		-- The new tier's longer stamina bar starts full.
+		T.eq(Progress.staminaSeconds(data), Config.GymStamina[1])
+		T.eq(data.staminaLeft, Config.GymStamina[1])
 		data.flags.milestones.first_match = 1 -- the gym opens after the first match
 		T.eq(
 			PadInfo.describe("training", "trainingTreadmill", data).note,
@@ -91,14 +98,17 @@ T.test("a bought x2 TP boost doubles the pad and the skill games", function()
 	T.eq(Training.gamePay(gameData, gameCarry, 1, 0, true), 2)
 end)
 
-T.test("the treadmill and bench never tire: AFK farming keeps paying past the stamina bar", function()
-	local data, carry = fresh()
-	T.eq(train(data, carry, MAX * 3, true), 300)
-	T.eq(data.staminaLeft, MAX)
-	data.staminaLeft = 0
-	T.eq(train(data, carry, 60, true), 20) -- no stamina needed
-	T.near(data.staminaLeft, 60, 0.01) -- and it refills there
-end)
+T.test(
+	"the treadmill and bench never tire: AFK farming keeps paying past the stamina bar",
+	function()
+		local data, carry = fresh()
+		T.eq(train(data, carry, MAX * 3, true), 300)
+		T.eq(data.staminaLeft, MAX)
+		data.staminaLeft = 0
+		T.eq(train(data, carry, 60, true), 20) -- no stamina needed
+		T.near(data.staminaLeft, 60, 0.01) -- and it refills there
+	end
+)
 
 T.test("a tired player does not refill while still on a skill station", function()
 	local data, carry = fresh()
@@ -876,3 +886,23 @@ T.test("the practice attack waits for its move and ignores a wrong key, until a 
 	)
 	T.eq(normal.outcome, "tackled")
 end)
+
+T.test(
+	"on the meter's green the power never changes the shot; off it the shot always misses",
+	function()
+		local low, high = Freekick.penaltyZone()
+		-- A shot far from the keeper, at mid height, is a goal for every power on the green.
+		for step = 0, 10 do
+			local power = math.min(low + (high - low) * step / 10, high)
+			T.eq(Freekick.judgeShot(0, 1, 0.7, 0.5, power, low, high, 0.5), "goal")
+		end
+		-- A high aim that a hard shot used to lift over the bar stays under it on the green.
+		T.eq(Freekick.judgeShot(0, 1, 0.7, 0.85, high, low, high, 0.5), "goal")
+		-- At the keeper it is saved, whatever the power on the green.
+		T.eq(Freekick.judgeShot(0, 1, 0.1, 0.4, low, low, high, 0.5), "saved")
+		T.eq(Freekick.judgeShot(0, 1, 0.1, 0.4, high, low, high, 0.5), "saved")
+		-- Off the green: too soft rolls to the keeper, too hard flies over, even when well aimed.
+		T.eq(Freekick.judgeShot(0, 1, 0.7, 0.5, low - 0.01, low, high, 0.5), "saved")
+		T.eq(Freekick.judgeShot(0, 1, 0.7, 0.5, high + 0.01, low, high, 0.5), "over")
+	end
+)

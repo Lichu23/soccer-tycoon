@@ -14,6 +14,7 @@ local BackPrint = require(ReplicatedStorage.Shared.BackPrint)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local DevFlags = require(script.Parent.DevFlags)
+local GymTiers = require(script.Parent.GymTiers)
 local Mannequin = require(ReplicatedStorage.Shared.Mannequin)
 local PadActions = require(script.Parent.PadActions)
 local Remotes = require(script.Parent.Remotes)
@@ -315,6 +316,7 @@ function Plots.refresh(session: Session.Session)
 		else nil
 	plot:SetAttribute("KitId", if kit then kit.id else "")
 	TrophyCase.update(plot, session.data.season.number)
+	GymTiers.update(plot, session.data.storeLevels.gymRate)
 
 	-- The stairs are always walkable (the owner wants to see every floor). The gate marker at the
 	-- bottom of each flight only carries the label; Open says whether buying there is unlocked.

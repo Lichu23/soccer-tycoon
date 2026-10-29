@@ -31,7 +31,7 @@ export type Info = {
 local STORE_NAMES: { [string]: string } = {
 	matchSpeed = "Faster matches",
 	hatTrick = "Hat-trick chance",
-	gymRate = "Faster training",
+	gymRate = "Gym upgrade",
 	offline = "Offline earnings",
 }
 
@@ -217,10 +217,14 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 				state = status,
 			}
 		end
-		-- Faster training says what the next level gives (the others are told by their name).
-		local note = if id == "gymRate"
-			then `Next: {Formulas.storeValue(id, data.storeLevels.gymRate + 1)} TP a minute`
-			else ""
+		-- The Gym upgrade says what the next gym tier gives (the others are told by their name).
+		local note = ""
+		if id == "gymRate" then
+			local nextLevel = data.storeLevels.gymRate + 1
+			local stamina = math.floor((Config.GymStamina[nextLevel] or 0) / 60)
+			note =
+				`Gym tier {nextLevel + 1}: {Formulas.storeValue(id, nextLevel)} TP a minute, {stamina} min stamina`
+		end
 		return { title = title, price = NumberFormat.money(price), note = note, state = status }
 	elseif kind == "robux" then
 		-- A cash or TP pack bought with Robux: the amount in the ring, the price under it. Whether it

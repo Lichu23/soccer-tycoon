@@ -76,6 +76,18 @@ RemoteSpec.remotes = {
 		ratePerSecond = 6,
 		burst = 6,
 	},
+	-- Big Chance (shared/BigChance): "take" opens the offered chance, "shoot" is the one tap, stamped
+	-- with the server time the player's screen showed (never trusted more than a fraction of a second
+	-- into the past). The server decides when a chance is offered and pays a goal itself.
+	BigChanceTap = {
+		direction = "toServer",
+		args = {
+			{ kind = "enum", values = { "take", "shoot" } },
+			{ kind = "number", min = 0, max = 4_000_000_000 },
+		},
+		ratePerSecond = 2,
+		burst = 3,
+	},
 	SetCosmetic = {
 		direction = "toServer",
 		-- The slot (kit, crest, ...) and an option id from Config.

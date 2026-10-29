@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Analytics = require(script.Parent.Analytics)
+local BigChanceActions = require(script.Parent.BigChanceActions)
 local Boosts = require(script.Parent.Boosts)
 local DevFlags = require(script.Parent.DevFlags)
 local Economy = require(script.Parent.Economy)
@@ -63,6 +64,7 @@ local function schedule(session: Session.Session)
 			fieldIds = Roster.field(session.data),
 			stadiumTier = session.data.stadiumTier,
 		})
+		BigChanceActions.kickoff(session) -- every few matches the match makes a Big Chance
 	end
 end
 

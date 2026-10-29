@@ -18,6 +18,12 @@ local MISS = Color3.fromRGB(232, 142, 138) -- the screens' red for a miss
 local POWER_WIDTH = 30
 local MARKER_HEIGHT = 8 -- the power meter's moving indicator, wider than the meter
 local MARKER_OVERHANG = 18
+-- On a phone (a short screen) the meter is taller and wider, so its green zone is easy to read.
+local PHONE_HEIGHT = 500 -- screens shorter than this are phones
+local PHONE_POWER_WIDTH = 46
+local PHONE_POWER_SHARE = 0.62 -- the share of the screen height the meter takes (0.42 elsewhere)
+local PHONE_MARKER_HEIGHT = 12
+local PHONE_MARKER_OVERHANG = 24
 
 -- The other screens hidden while the stadium shows: the HUD and its dock, the menu buttons down the
 -- left, the floor buttons, the guide and the pad hint.
@@ -32,6 +38,7 @@ local HIDDEN_GUIS = {
 	"FloorSwitcher",
 	"Objective",
 	"PadHint",
+	"BigChance",
 }
 
 local CinemaScreen = {}
@@ -273,6 +280,21 @@ function CinemaScreen.powerMeter(parent: Instance, low: number, high: number): P
 	}, box)
 	rounded(marker, MARKER_HEIGHT // 2)
 	new("UIStroke", { Color = Style.ui.panel, Thickness = 2 }, marker)
+	local markerCorner = marker:FindFirstChildOfClass("UICorner") :: UICorner
+	-- The size for the screen: bigger on a phone, and again when the screen turns or resizes.
+	local camera = Workspace.CurrentCamera
+	local function fit()
+		local phone = camera.ViewportSize.Y < PHONE_HEIGHT
+		box.Size = if phone
+			then UDim2.new(0, PHONE_POWER_WIDTH, PHONE_POWER_SHARE, 0)
+			else UDim2.new(0, POWER_WIDTH, 0.42, 0)
+		local height = if phone then PHONE_MARKER_HEIGHT else MARKER_HEIGHT
+		marker.Size =
+			UDim2.new(1, if phone then PHONE_MARKER_OVERHANG else MARKER_OVERHANG, 0, height)
+		markerCorner.CornerRadius = UDim.new(0, height // 2)
+	end
+	fit()
+	camera:GetPropertyChangedSignal("ViewportSize"):Connect(fit)
 	local label = new("TextLabel", {
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 0, -4),

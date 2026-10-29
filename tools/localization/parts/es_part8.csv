@@ -1,10 +1,20 @@
 Key,Source,Context,Example,es
+,Season {1},,,Temporada {1}
+,Income {1} forever,,,Ingresos {1} para siempre
+,Floor 3 again: about {1} min,,,El piso 3 otra vez: unos {1} min
+,Floor 3 again: about {1} h,,,El piso 3 otra vez: unas {1} h
+,Floor 3 again: about a long time,,,El piso 3 otra vez: mucho tiempo
+,Floor 3: {1} players left to buy,,,Piso 3: faltan {1} jugadores por comprar
+,Streak: {1} goal,,,Racha: {1} gol
 ,Streak: {1} goals,,,Racha: {1} goles
 ,TP earned: +{1},,,TP ganados: +{1}
 ,Personal best: {1},,,Récord personal: {1}
 ,Buy {1},,,Compra a {1}
 ,{1} hours,,,{1} horas
 ,{1} minutes,,,{1} minutos
+,Tap to shoot for {1}x match cash,,,Toca para patear por {1}x el dinero de un partido
+,A goal pays {1},,,Un gol paga {1}
+,"Gym tier {1}: {2} TP a minute, {3} min stamina",,,"Gimnasio nivel {1}: {2} TP por minuto, {3} min de energía"
 ,Tier 2 · F5 hall,,,Nivel 2 · Salón F5
 ,Tier 3 · Stadium,,,Nivel 3 · Estadio
 ,Tier 4 · Big stadium,,,Nivel 4 · Gran estadio

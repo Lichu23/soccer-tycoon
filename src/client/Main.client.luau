@@ -4,6 +4,7 @@
 
 local Arrow = require(script.Parent.Arrow)
 local BenchPress = require(script.Parent.BenchPress)
+local BigChanceUi = require(script.Parent.BigChanceUi)
 local DailyUi = require(script.Parent.DailyUi)
 local DevPanel = require(script.Parent.DevPanel)
 local FloorSwitcher = require(script.Parent.FloorSwitcher)
@@ -54,6 +55,7 @@ DailyUi.init()
 TrainingUi.init()
 KeepieUi.init()
 FreekickUi.init()
+BigChanceUi.init()
 DevPanel.init()
 
 print("soccer-tycoon client started")

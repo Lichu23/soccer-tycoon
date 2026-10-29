@@ -1,4 +1,11 @@
 Key,Source,Context,Example,es
+,SEASON 2 COMPLETE,,,TEMPORADA 2 COMPLETA
+,CLAIM THE TROPHY · START SEASON 3,,,RECLAMA EL TROFEO · EMPIEZA LA TEMPORADA 3
+,Season 3 begins · Income x1.5,,,Empieza la Temporada 3 · Ingresos x1.5
+,Season 3,,,Temporada 3
+,SEASON 3 COMPLETE,,,TEMPORADA 3 COMPLETA
+,CLAIM THE TROPHY · START SEASON 4,,,RECLAMA EL TROFEO · EMPIEZA LA TEMPORADA 4
+,Season 4 begins · Income x1.5,,,Empieza la Temporada 4 · Ingresos x1.5
 ,Season 4,,,Temporada 4
 ,SEASON 4 COMPLETE,,,TEMPORADA 4 COMPLETA
 ,CLAIM THE TROPHY · START SEASON 5,,,RECLAMA EL TROFEO · EMPIEZA LA TEMPORADA 5
@@ -52,10 +59,3 @@ Key,Source,Context,Example,es
 ,Arena,,,Arena
 ,Money,,,Dinero
 ,Seasons,,,Temporadas
-,Juggles,,,Jueguitos
-,1 hour,,,1 hora
-,a long time,,,mucho tiempo
-,LEVEL UP · {1},,,SUBIR NIVEL · {1}
-,LV {1}/{2},,,NV {1}/{2}
-,Lv {1}/{2} · on the bench,,,Nv {1}/{2} · en el banco
-,Lv {1}/{2} · +{3}% income,,,Nv {1}/{2} · +{3}% de ingresos

@@ -167,6 +167,10 @@ function Actions.buyStore(
 		return false, "cannotAfford"
 	end
 	data.storeLevels[id] += 1
+	if id == "gymRate" then
+		-- A new gym tier starts with its longer stamina bar full.
+		data.staminaLeft = Progress.staminaSeconds(data :: any)
+	end
 	Actions.onChange(session, "store", id)
 	return true, nil
 end

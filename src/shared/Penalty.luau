@@ -116,12 +116,15 @@ function Penalty.strike(state: State, now: number, stamp: number): boolean
 		return false
 	end
 	state.power = Freekick.powerAt(state, inputTime(now, stamp, state.holdAt))
-	state.outcome = Freekick.judge(
+	local low, high = Freekick.penaltyZone()
+	state.outcome = Freekick.judgeShot(
 		Penalty.KEEPER_X,
 		1,
 		state.aimX,
 		state.aimY,
 		state.power,
+		low,
+		high,
 		Config.Daily.penaltyKeeperReach
 	)
 	state.phase = "shot"

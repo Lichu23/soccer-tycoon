@@ -275,6 +275,35 @@ function Freekick.judge(
 	return "goal"
 end
 
+-- A shot judged on the meter's green zone from `low` to `high`: stopped under it the ball rolls to
+-- the keeper ("saved"), over it the ball flies over the bar; on the green the power is right, so the
+-- ball goes where the reticle aimed and only the aim decides (the keeper, a post, wide). The green is
+-- the same for every power on it, so what the player sees on the meter is what happens.
+function Freekick.judgeShot(
+	keeperX: number,
+	kick: number,
+	aimX: number,
+	aimY: number,
+	power: number,
+	low: number,
+	high: number,
+	keeperReach: number?
+): Outcome
+	if power < low then
+		return "saved" -- too soft: it rolls to the keeper
+	elseif power > high then
+		return "over" -- too hard: over the bar
+	end
+	return Freekick.judge(
+		keeperX,
+		kick,
+		aimX,
+		aimY,
+		Config.Training.freekickPowerSweet,
+		keeperReach
+	)
+end
+
 -- The film starts: the outcome is known.
 local function shoot(state: State, outcome: Outcome, at: number)
 	state.outcome = outcome
@@ -410,10 +439,15 @@ function Freekick.strike(state: State, now: number, stamp: number): boolean
 	state.power = Freekick.powerAt(state, at, state.kick)
 	local setup = Freekick.setup(state.seed, state.kick)
 	local low, high = Freekick.goodZone(state.kick)
-	local outcome: Outcome = if state.power < low
-		then "saved" -- too soft: it rolls to the keeper
-		elseif state.power > high then "over" -- too hard: over the bar
-		else Freekick.judge(setup.keeperX, state.kick, state.aimX, state.aimY, state.power)
+	local outcome = Freekick.judgeShot(
+		setup.keeperX,
+		state.kick,
+		state.aimX,
+		state.aimY,
+		state.power,
+		low,
+		high
+	)
 	shoot(state, outcome, now)
 	return true
 end
