@@ -8,12 +8,13 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local Edges = require(script.Parent.Edges)
 local Icons = require(script.Parent.Icons)
 local Style = require(ReplicatedStorage.Shared.Style)
 
 local SIZE = 46 -- on the smallest landscape phone; bigger screens scale the buttons up
 local GAP = 10
-local LEFT = 8
+local LEFT = 10 -- from the real screen edge, not the safe area (client/Edges)
 local TOP = 20 -- clear of the Roblox menu, chat and voice buttons above the safe area
 local REASON_SECONDS = 2.5
 -- The buttons grow with the screen height: 1x up to a phone (about 500 px tall), up to MAX_SCALE on
@@ -27,6 +28,7 @@ local Dock = {}
 Dock.SIZE = SIZE
 
 local scale = 1
+local edgeLeft = 0 -- the strip left of the safe area; the buttons move out over it
 local placedTiles: { { button: GuiObject, slot: number, scaler: UIScale } } = {}
 local placedBeside: { { object: GuiObject, slot: number, dy: number } } = {}
 local watching = false
@@ -53,15 +55,16 @@ local function new(className: string, props: { [string]: any }, parent: Instance
 	return instance
 end
 
--- Where the button of slot 1 to 5 sits, at the current scale.
+-- Where the button of slot 1 to 5 sits, at the current scale, in its safe-area ScreenGui.
 function Dock.position(slot: number): UDim2
-	return UDim2.fromOffset(LEFT, TOP + (slot - 1) * (SIZE + GAP) * scale)
+	return UDim2.fromOffset(LEFT - edgeLeft, TOP + (slot - 1) * (SIZE + GAP) * scale)
 end
 
 local function layout()
 	local camera = Workspace.CurrentCamera
 	local height = if camera then camera.ViewportSize.Y else 0
 	scale = math.clamp(height / SCALE_REFERENCE_HEIGHT, 1, MAX_SCALE)
+	edgeLeft = Edges.insets()
 	for _, tile in placedTiles do
 		tile.button.Position = Dock.position(tile.slot)
 		tile.scaler.Scale = scale
@@ -69,7 +72,7 @@ local function layout()
 	for _, beside in placedBeside do
 		local tileTop = Dock.position(beside.slot).Y.Offset
 		beside.object.Position =
-			UDim2.fromOffset(LEFT + SIZE * scale + BESIDE_GAP, tileTop + beside.dy * scale)
+			UDim2.fromOffset(LEFT - edgeLeft + SIZE * scale + BESIDE_GAP, tileTop + beside.dy * scale)
 	end
 end
 
@@ -92,6 +95,7 @@ local function watchViewport()
 	end
 	Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(follow)
 	follow()
+	Edges.watch(layout)
 end
 
 -- Keeps a note or toast just right of the button in `slot`, `dy` pixels below its top (at 1x), so it
@@ -120,6 +124,11 @@ function Dock.build(
 		AutoButtonColor = false,
 		ZIndex = 2,
 	}, parent)
+	-- The button sits over the strip left of the safe area, which the ScreenGui would otherwise cut.
+	local screen = button:FindFirstAncestorOfClass("ScreenGui")
+	if screen then
+		screen.ClipToDeviceSafeArea = false
+	end
 	new("UICorner", { CornerRadius = UDim.new(0, 12) }, button)
 	local gradient = new("UIGradient", {
 		Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(170, 175, 195)),

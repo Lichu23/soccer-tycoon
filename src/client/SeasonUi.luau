@@ -15,6 +15,7 @@ local Workspace = game:GetService("Workspace")
 local Formulas = require(ReplicatedStorage.Shared.Formulas)
 local Icons = require(script.Parent.Icons)
 local Net = require(script.Parent.Net)
+local Edges = require(script.Parent.Edges)
 local Panel = require(script.Parent.Panel)
 local Season = require(ReplicatedStorage.Shared.Season)
 local Sounds = require(script.Parent.Sounds)
@@ -116,6 +117,12 @@ function SeasonUi.init()
 	}, gui)
 	rounded(badge, 8)
 	new("UIPadding", { PaddingLeft = UDim.new(0, 24) }, badge)
+	-- Under the HUD column, which sits near the real right edge (client/Hud, client/Edges).
+	gui.ClipToDeviceSafeArea = false
+	Edges.watch(function()
+		local _, right = Edges.insets()
+		badge.Position = UDim2.new(1, right - 10, 0, BADGE_Y)
+	end)
 	-- A small gold cup at the left of the badge: bowl, handles, stem and base.
 	local icon = new("Frame", {
 		Name = "Icon",
