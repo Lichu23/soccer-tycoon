@@ -1,7 +1,7 @@
 --!strict
--- The equipment of each gym tier (the Gym upgrade, Config.Store.gymRate). The plot template holds it
+-- The equipment of each gym tier (the Gym tier upgrade, Config.Store.gymTier). The plot template holds it
 -- in Gym.GymTiers (built by tools/studio/BuildGymTiers.luau): one model a level, with a GymLevel
--- attribute. A model shows once the owner's Gym upgrade reaches its level; until then it waits in
+-- attribute. A model shows once the owner's Gym tier upgrade reaches its level; until then it waits in
 -- ServerStorage, so it is never streamed. Derived from the saved level, never stored itself.
 
 local ServerStorage = game:GetService("ServerStorage")
@@ -26,7 +26,7 @@ local function stashFor(plot: Model): Folder
 	return stash :: Folder
 end
 
--- Shows the equipment of every gym tier up to `level` (the Gym upgrade level) on `plot`.
+-- Shows the equipment of every gym tier up to `level` (the Gym tier upgrade level) on `plot`.
 function GymTiers.update(plot: Model, level: number)
 	local gym = plot:FindFirstChild("Gym")
 	local shown = gym and gym:FindFirstChild("GymTiers")

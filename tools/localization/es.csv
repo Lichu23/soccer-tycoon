@@ -291,9 +291,9 @@ Key,Source,Context,Example,es
 ,BIG CHANCE,,,OCASIÓN DE GOL
 ,Big chance! Get ready...,,,¡Ocasión de gol! Prepárate...
 ,TOO LATE,,,MUY TARDE
-,Gym upgrade,,,Mejora del gimnasio
-,GYM UPGRADE,,,MEJORA DEL GIMNASIO
-,"Upgrade your gym: new equipment, more TP a minute and a longer stamina bar.",,,"Mejora tu gimnasio: equipos nuevos, más TP por minuto y una barra de energía más larga."
+,Gym tier,,,Nivel del gimnasio
+,GYM TIERS,,,NIVELES DEL GIMNASIO
+,Upgrade your gym: new equipment and a longer stamina bar.,,,Mejora tu gimnasio: equipos nuevos y una barra de energía más larga.
 ,Season 1,,,Temporada 1
 ,SEASON 1 COMPLETE,,,TEMPORADA 1 COMPLETA
 ,CLAIM THE TROPHY · START SEASON 2,,,RECLAMA EL TROFEO · EMPIEZA LA TEMPORADA 2
@@ -434,7 +434,7 @@ Key,Source,Context,Example,es
 ,{1} minutes,,,{1} minutos
 ,Tap to shoot for {1}x match cash,,,Toca para patear por {1}x el dinero de un partido
 ,A goal pays {1},,,Un gol paga {1}
-,"Gym tier {1}: {2} TP a minute, {3} min stamina",,,"Gimnasio nivel {1}: {2} TP por minuto, {3} min de energía"
+,"Gym tier {1}: new equipment, {2} min stamina",,,"Gimnasio nivel {1}: equipos nuevos, {2} min de energía"
 ,Tier 2 · F5 hall,,,Nivel 2 · Salón F5
 ,Tier 3 · Stadium,,,Nivel 3 · Estadio
 ,Tier 4 · Big stadium,,,Nivel 4 · Gran estadio

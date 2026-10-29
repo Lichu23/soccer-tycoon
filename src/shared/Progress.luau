@@ -73,14 +73,14 @@ function Progress.hatTrickChance(data: ProgressData): number
 	return Formulas.storeValue("hatTrick", data.storeLevels.hatTrick)
 end
 
--- TP a minute of the conditioning stations (treadmill, bench press) after the Gym upgrade.
+-- TP a minute of the conditioning stations (treadmill, bench press) after the Faster training upgrade.
 function Progress.idleTpPerMinute(data: ProgressData): number
 	return Formulas.storeValue("gymRate", data.storeLevels.gymRate)
 end
 
--- The length of the stamina bar (seconds of the skill games) after the Gym upgrade.
+-- The length of the stamina bar (seconds of the skill games) at the player's Gym tier.
 function Progress.staminaSeconds(data: ProgressData): number
-	return Config.GymStamina[data.storeLevels.gymRate] or Config.Training.staminaSeconds
+	return Formulas.storeValue("gymTier", data.storeLevels.gymTier)
 end
 
 -- The share of normal income earned while away (no upgrade: the same for everyone).

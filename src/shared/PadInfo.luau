@@ -31,7 +31,8 @@ export type Info = {
 local STORE_NAMES: { [string]: string } = {
 	matchSpeed = "Faster matches",
 	hatTrick = "Hat-trick chance",
-	gymRate = "Gym upgrade",
+	gymRate = "Faster training",
+	gymTier = "Gym tier",
 	offline = "Offline earnings",
 }
 
@@ -217,13 +218,15 @@ function PadInfo.describe(kind: string, padId: string, data: ProgressData): Info
 				state = status,
 			}
 		end
-		-- The Gym upgrade says what the next gym tier gives (the others are told by their name).
+		-- Faster training and the Gym tier say what their next level gives (the others are told by
+		-- their name).
 		local note = ""
 		if id == "gymRate" then
-			local nextLevel = data.storeLevels.gymRate + 1
-			local stamina = math.floor((Config.GymStamina[nextLevel] or 0) / 60)
-			note =
-				`Gym tier {nextLevel + 1}: {Formulas.storeValue(id, nextLevel)} TP a minute, {stamina} min stamina`
+			note = `Next: {Formulas.storeValue(id, data.storeLevels.gymRate + 1)} TP a minute`
+		elseif id == "gymTier" then
+			local nextLevel = data.storeLevels.gymTier + 1
+			local minutes = math.floor(Formulas.storeValue(id, nextLevel) / 60)
+			note = `Gym tier {nextLevel + 1}: new equipment, {minutes} min stamina`
 		end
 		return { title = title, price = NumberFormat.money(price), note = note, state = status }
 	elseif kind == "robux" then

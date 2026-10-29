@@ -319,15 +319,15 @@ ES = {
     "NATIONAL CUP": "COPA NACIONAL",
     "CONTINENTAL CUP": "COPA CONTINENTAL",
     "WORLD CUP": "COPA DEL MUNDO",
-    # Big Chance and the Gym upgrade
+    # Big Chance and the Gym tier
     "BIG CHANCE!": "¡OCASIÓN DE GOL!",
     "BIG CHANCE": "OCASIÓN DE GOL",
     "Big chance! Get ready...": "¡Ocasión de gol! Prepárate...",
     "TOO LATE": "MUY TARDE",
-    "Gym upgrade": "Mejora del gimnasio",
-    "GYM UPGRADE": "MEJORA DEL GIMNASIO",
-    "Upgrade your gym: new equipment, more TP a minute and a longer stamina bar.":
-        "Mejora tu gimnasio: equipos nuevos, más TP por minuto y una barra de energía más larga.",
+    "Gym tier": "Nivel del gimnasio",
+    "GYM TIERS": "NIVELES DEL GIMNASIO",
+    "Upgrade your gym: new equipment and a longer stamina bar.":
+        "Mejora tu gimnasio: equipos nuevos y una barra de energía más larga.",
 }
 
 # Texts with a season number: the few first seasons are listed one by one.
@@ -449,7 +449,7 @@ TEMPLATES = {
     "{1} minutes": "{1} minutos",
     "Tap to shoot for {1}x match cash": "Toca para patear por {1}x el dinero de un partido",
     "A goal pays {1}": "Un gol paga {1}",
-    "Gym tier {1}: {2} TP a minute, {3} min stamina": "Gimnasio nivel {1}: {2} TP por minuto, {3} min de energía",
+    "Gym tier {1}: new equipment, {2} min stamina": "Gimnasio nivel {1}: equipos nuevos, {2} min de energía",
 }
 ES.update(TEMPLATES)
 

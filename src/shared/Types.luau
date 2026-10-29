@@ -8,6 +8,7 @@ export type StoreLevels = {
 	matchSpeed: number,
 	hatTrick: number,
 	gymRate: number,
+	gymTier: number,
 }
 
 -- What the progress rules (roster, store, stadium, goals) need to know.

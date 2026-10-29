@@ -56,7 +56,7 @@ T.test("Faster training raises the pad to 25, 30, 35 and 40 TP per minute", func
 end)
 
 T.test(
-	"the Gym upgrade is a cash upgrade from stadium tier 2, its pad says what the next gym tier gives",
+	"Faster training is a cash upgrade from stadium tier 2, its pad says the next rate",
 	function()
 		local session = { data = ProfileSchema.newProfile() }
 		local data = session.data
@@ -64,17 +64,14 @@ T.test(
 		T.eq(Progress.storeStatus(data, "gymRate"), "locked")
 		T.eq(PadInfo.describe("store", "gymRate", data).note, "Stadium Tier 2 needed")
 		data.stadiumTier = 2
-		T.eq(
-			PadInfo.describe("store", "gymRate", data).note,
-			"Gym tier 2: 25 TP a minute, 6 min stamina"
-		)
-		data.staminaLeft = 10
+		T.eq(PadInfo.describe("store", "gymRate", data).title, "Faster training")
+		T.eq(PadInfo.describe("store", "gymRate", data).note, "Next: 25 TP a minute")
 		T.eq(Actions.buyStore(session, "gymRate", 0), true)
 		T.eq(data.cash, 10_000_000 - 5_000)
 		T.eq(Progress.idleTpPerMinute(data), 25)
-		-- The new tier's longer stamina bar starts full.
-		T.eq(Progress.staminaSeconds(data), Config.GymStamina[1])
-		T.eq(data.staminaLeft, Config.GymStamina[1])
+		-- Training faster does not touch the gym tier or the stamina bar.
+		T.eq(data.storeLevels.gymTier, 0)
+		T.eq(Progress.staminaSeconds(data), Config.Training.staminaSeconds)
 		data.flags.milestones.first_match = 1 -- the gym opens after the first match
 		T.eq(
 			PadInfo.describe("training", "trainingTreadmill", data).note,
@@ -85,6 +82,36 @@ T.test(
 		T.eq(select(2, Actions.buyStore(session, "gymRate", 2)), "cannotAfford") -- $50M
 		data.storeLevels.gymRate = 4
 		T.eq(PadInfo.describe("store", "gymRate", data).price, "MAX")
+	end
+)
+
+T.test(
+	"the Gym tier is its own pad from stadium tier 2: a longer stamina bar, full on purchase",
+	function()
+		local session = { data = ProfileSchema.newProfile() }
+		local data = session.data
+		data.cash = 10_000_000_000
+		T.eq(Progress.storeStatus(data, "gymTier"), "locked")
+		data.stadiumTier = 2
+		-- A player who already maxed Faster training still has every gym tier to buy.
+		data.storeLevels.gymRate = 4
+		T.eq(PadInfo.describe("store", "gymTier", data).title, "Gym tier")
+		T.eq(
+			PadInfo.describe("store", "gymTier", data).note,
+			"Gym tier 2: new equipment, 6 min stamina"
+		)
+		T.eq(Progress.staminaSeconds(data), Config.Training.staminaSeconds)
+		data.staminaLeft = 10
+		local minutes = { 6, 7, 8, 10 }
+		for level = 1, 4 do
+			local cash = data.cash
+			T.eq(Actions.buyStore(session, "gymTier", level - 1), true)
+			T.eq(data.cash, cash - Config.Store.gymTier.prices[level])
+			T.eq(Progress.staminaSeconds(data), minutes[level] * 60)
+			T.eq(data.staminaLeft, minutes[level] * 60) -- the new bar starts full
+		end
+		T.eq(Progress.idleTpPerMinute(data), 40) -- the training rate is its own upgrade
+		T.eq(PadInfo.describe("store", "gymTier", data).price, "MAX")
 	end
 )
 

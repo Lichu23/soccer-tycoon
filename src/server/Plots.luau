@@ -316,7 +316,7 @@ function Plots.refresh(session: Session.Session)
 		else nil
 	plot:SetAttribute("KitId", if kit then kit.id else "")
 	TrophyCase.update(plot, session.data.season.number)
-	GymTiers.update(plot, session.data.storeLevels.gymRate)
+	GymTiers.update(plot, session.data.storeLevels.gymTier)
 
 	-- The stairs are always walkable (the owner wants to see every floor). The gate marker at the
 	-- bottom of each flight only carries the label; Open says whether buying there is unlocked.

@@ -25,7 +25,7 @@ export type RarityDef = {
 	costFactor: number, -- training level cost multiplier
 }
 
-export type StoreUpgradeId = "matchSpeed" | "hatTrick" | "gymRate"
+export type StoreUpgradeId = "matchSpeed" | "hatTrick" | "gymRate" | "gymTier"
 
 export type StoreUpgradeDef = {
 	id: StoreUpgradeId,
@@ -921,11 +921,11 @@ Config.Store = {
 		values = { 0.10, 0.20, 0.25 },
 		floorsComplete = 1,
 	},
-	-- The Gym upgrade (gym tiers 2 to 5; the pad stands between the treadmill and the bench in the gym
-	-- hall). Each level raises the TP a minute of the treadmill and the bench press, lengthens the
-	-- stamina bar (Config.GymStamina) and puts new equipment in the gym (server/GymTiers). The rate stays under the ~50 a
-	-- minute of a juggler, so the skill games stay worth playing. Prices are a few minutes of income at
-	-- the tier each level is meant for (2, 3, 5 and 6); a New Season resets it like the other upgrades.
+	-- Faster training (its pad stands in the middle of the gym hall, between the treadmill and the
+	-- bench): each level raises the TP a minute of the treadmill and the bench press. The rate stays
+	-- under the ~50 a minute of a juggler, so the skill games stay worth playing. Prices are a few
+	-- minutes of income at the tier each level is meant for (2, 3, 5 and 6); a New Season resets it
+	-- like the other upgrades.
 	gymRate = {
 		id = "gymRate",
 		baseValue = Config.Training.idleTpPerMinute,
@@ -934,18 +934,21 @@ Config.Store = {
 		minTier = 2,
 		showLocked = true, -- it stands alone in the gym, so a Tier 1 player sees what is coming
 	},
+	-- The Gym tier (gym tiers 2 to 5; its own pad, next to Faster training in the gym hall): each
+	-- level puts new equipment in the gym and the yard (server/GymTiers) and lengthens the stamina
+	-- bar of the skill games (the values, in seconds: a minute more for each of the first three
+	-- levels and two for the last; the refill from empty takes as long at every level). A purchase
+	-- starts the longer bar full. A pad of its own, apart from Faster training, so a player who had
+	-- already bought the training levels still has every gym tier to buy. A New Season resets it.
+	gymTier = {
+		id = "gymTier",
+		baseValue = Config.Training.staminaSeconds,
+		prices = { 20_000, 2_000_000, 200_000_000, 5_000_000_000 },
+		values = { 360, 420, 480, 600 },
+		minTier = 2,
+		showLocked = true,
+	},
 } :: { [StoreUpgradeId]: StoreUpgradeDef }
-
--- The stamina bar (seconds of the skill games) at each level of the Gym upgrade: [0] is the base
--- (Config.Training.staminaSeconds), then a minute more for each of the first three levels and two
--- for the last. The refill from empty takes as long at every level.
-Config.GymStamina = {
-	[0] = Config.Training.staminaSeconds,
-	[1] = 360,
-	[2] = 420,
-	[3] = 480,
-	[4] = 600,
-} :: { [number]: number }
 
 -- Big Chance (docs/PLAN.md, Step 4, Active play during the waits): every few matches the match on
 -- the player's pitch makes a chance. A "BIG CHANCE!" button shows for `offerSeconds`; tapping it
