@@ -749,9 +749,10 @@ T.test("the power meter fills faster and its green zone narrows with every goal"
 	local low, high = Freekick.goodZone(1)
 	T.near(low, FK.freekickGoodLow, 1e-9)
 	T.near(high, FK.freekickGoodHigh, 1e-9)
-	-- The daily penalty's zone is its own, wider than the 1v1's first one.
+	-- The daily penalty's zone is its own: 30% of the meter, with the sweet power on it.
 	local penaltyLow, penaltyHigh = Freekick.penaltyZone()
-	T.truthy(penaltyLow < low and penaltyHigh > high)
+	T.near(penaltyHigh - penaltyLow, 0.3, 1e-9)
+	T.truthy(penaltyLow < FK.freekickPowerSweet and FK.freekickPowerSweet < penaltyHigh)
 	local low2, high2 = Freekick.goodZone(2)
 	T.truthy(low2 > low and high2 < high)
 	local lowMax, highMin = Freekick.goodZone(200)

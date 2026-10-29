@@ -295,8 +295,11 @@ Config.Daily = {
 	penaltyLeadSeconds = 1.2,
 	penaltyFilmSeconds = 5.2,
 	penaltyKeeperReach = 0.5,
-	-- The penalty's green zone: from the breakaway's weak power up to this (wider than the 1v1's).
-	penaltyGoodHigh = 0.82,
+	-- The green zone of the penalty's power meter (and Big Chance's), bottom and top: a stop on it
+	-- shoots where the reticle aimed, off it misses (Freekick.judgeShot). 30% of the meter, a little
+	-- narrower than the 1v1's first one, with the sweet power inside it.
+	penaltyGoodLow = 0.48,
+	penaltyGoodHigh = 0.78,
 	-- The free daily case: five small rewards (never players, never large amounts). `weight` is the
 	-- relative chance. Cash is worth `minutes` of normal income, a boost is x2 for `seconds`, `tp`
 	-- is a few training points. The roulette on screen spins through exactly these.

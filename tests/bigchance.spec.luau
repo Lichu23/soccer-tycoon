@@ -100,7 +100,7 @@ T.test("the aim, then the power: a good shot away from the keeper is a goal", fu
 	T.eq(BigChance.strike(state, shot + 0.1, shot + 0.1), nil) -- one shot only
 end)
 
-T.test("a shot at the keeper is saved, a soft one rolls to him", function()
+T.test("a shot at the keeper is saved, one just under the green rolls to him", function()
 	local state = aiming(3) -- the keeper shades to the right post
 	local at = findAim(state, BigChance.keeperX(3), 0.3)
 	BigChance.lock(state, at, at)
@@ -110,7 +110,7 @@ T.test("a shot at the keeper is saved, a soft one rolls to him", function()
 	local soft = aiming(2)
 	local aimAt = findAim(soft, 0.7, 0.4)
 	BigChance.lock(soft, aimAt, aimAt)
-	local weak = findPower(soft, Config.Training.freekickWeakPower - 0.1)
+	local weak = findPower(soft, (Freekick.penaltyZone()) - 0.05) -- just under the green
 	T.eq(BigChance.strike(soft, weak, weak), "saved")
 end)
 

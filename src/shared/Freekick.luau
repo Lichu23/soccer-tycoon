@@ -216,9 +216,9 @@ function Freekick.goodZone(kick: number): (number, number)
 	return low, high
 end
 
--- The green zone of the daily penalty's meter, bottom and top: always the same, wider than the 1v1's.
+-- The green zone of the daily penalty's meter (and Big Chance's), bottom and top: always the same.
 function Freekick.penaltyZone(): (number, number)
-	return Config.Training.freekickWeakPower, Config.Daily.penaltyGoodHigh
+	return Config.Daily.penaltyGoodLow, Config.Daily.penaltyGoodHigh
 end
 
 -- The power meter at time `at` once it moves: it fills, then empties again, faster on a later
