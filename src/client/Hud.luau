@@ -25,7 +25,7 @@ local Style = require(ReplicatedStorage.Shared.Style)
 local player = Players.LocalPlayer
 
 local COLUMN_WIDTH = 230
-local COLUMN_EDGE = 10 -- from the right edge of the screen, past the safe area strip (client/Edges)
+local COLUMN_EDGE = 10 -- inside the safe area, less the part of its strip the column moves over (client/Edges)
 local BOX_HEIGHT = 44
 local MATCH_TITLE_HEIGHT = 16 -- "MATCH TIME" over the timer
 local MATCH_TIMER_WIDTH = 104
@@ -365,12 +365,17 @@ function Hud.init()
 	local playerGui = player:WaitForChild("PlayerGui")
 	local gui = Hud.build(playerGui)
 	local top = gui.Top
-	-- The column sits near the real right edge, over the strip right of the safe area.
+	-- The column moves out over the strip right of the safe area and shrinks on a phone (it scales
+	-- around its top right corner, its AnchorPoint).
 	gui.ClipToDeviceSafeArea = false
-	Edges.watch(function()
-		local _, right = Edges.insets()
+	local columnScale = Instance.new("UIScale")
+	columnScale.Parent = top
+	local function placeColumn()
+		local _, right = Edges.pull()
 		top.Position = UDim2.new(1, right - COLUMN_EDGE, 0, 6)
-	end)
+		columnScale.Scale = Edges.hudScale()
+	end
+	Edges.watch(placeColumn)
 	local money, matchTimer = top.MoneyRow.Money, top.MatchTimer
 	local matchClock = matchTimer.Box.Clock
 	local stadium = top.Stadium

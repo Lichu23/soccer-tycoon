@@ -14,7 +14,7 @@ local Style = require(ReplicatedStorage.Shared.Style)
 
 local SIZE = 46 -- on the smallest landscape phone; bigger screens scale the buttons up
 local GAP = 10
-local LEFT = 10 -- from the real screen edge, not the safe area (client/Edges)
+local LEFT = 8 -- inside the safe area, less the part of its strip the buttons move over (client/Edges)
 local TOP = 20 -- clear of the Roblox menu, chat and voice buttons above the safe area
 local REASON_SECONDS = 2.5
 -- The buttons grow with the screen height: 1x up to a phone (about 500 px tall), up to MAX_SCALE on
@@ -28,7 +28,7 @@ local Dock = {}
 Dock.SIZE = SIZE
 
 local scale = 1
-local edgeLeft = 0 -- the strip left of the safe area; the buttons move out over it
+local edgeLeft = 0 -- how far the buttons move out over the strip left of the safe area
 local placedTiles: { { button: GuiObject, slot: number, scaler: UIScale } } = {}
 local placedBeside: { { object: GuiObject, slot: number, dy: number } } = {}
 local watching = false
@@ -64,7 +64,7 @@ local function layout()
 	local camera = Workspace.CurrentCamera
 	local height = if camera then camera.ViewportSize.Y else 0
 	scale = math.clamp(height / SCALE_REFERENCE_HEIGHT, 1, MAX_SCALE)
-	edgeLeft = Edges.insets()
+	edgeLeft = Edges.pull()
 	for _, tile in placedTiles do
 		tile.button.Position = Dock.position(tile.slot)
 		tile.scaler.Scale = scale

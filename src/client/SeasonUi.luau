@@ -117,11 +117,15 @@ function SeasonUi.init()
 	}, gui)
 	rounded(badge, 8)
 	new("UIPadding", { PaddingLeft = UDim.new(0, 24) }, badge)
-	-- Under the HUD column, which sits near the real right edge (client/Hud, client/Edges).
+	-- Under the HUD column, which moves out to the right and shrinks on a phone (client/Hud,
+	-- client/Edges): the badge follows it and shrinks the same way. The column's top is at y 6.
 	gui.ClipToDeviceSafeArea = false
+	local badgeScale = new("UIScale", {}, badge)
 	Edges.watch(function()
-		local _, right = Edges.insets()
-		badge.Position = UDim2.new(1, right - 10, 0, BADGE_Y)
+		local _, right = Edges.pull()
+		local scale = Edges.hudScale()
+		badgeScale.Scale = scale
+		badge.Position = UDim2.new(1, right - 10, 0, 6 + (BADGE_Y - 6) * scale)
 	end)
 	-- A small gold cup at the left of the badge: bowl, handles, stem and base.
 	local icon = new("Frame", {
